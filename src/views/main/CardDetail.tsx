@@ -1,0 +1,160 @@
+import { useState } from "react";
+import { useCardStore } from "../../stores/useCardStore";
+import { getCardDisplayName } from "../../models/types";
+import type { Benefit } from "../../models/types";
+import { calculateCardROI } from "../../utils/roi";
+import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
+import { GlassContainer } from "../shared/GlassContainer";
+import { BenefitCard } from "../shared/BenefitCard";
+import "./CardDetail.css";
+
+type FilterMode = "all" | "unused" | "used" | "hidden";
+
+interface CardDetailProps {
+  cardId: string;
+}
+
+export const CardDetail = ({ cardId }: CardDetailProps) => {
+  const cards = useCardStore((s) => s.cards);
+  const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const today = new Date();
+
+  const card = cards.find((c) => c.id === cardId);
+  if (!card) return <p>卡片未找到</p>;
+
+  const roi = calculateCardROI(card, today);
+
+  const filterBenefit = (benefit: Benefit): boolean => {
+    if (filter === "hidden") return benefit.isHidden;
+    if (benefit.isHidden) return false;
+    if (filter === "all") return true;
+    const used = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
+    if (filter === "unused") return !used && isApplicableNow(benefit, today);
+    // filter === "used"
+    return used;
+  };
+
+  const filteredBenefits = card.benefits.filter(filterBenefit);
+
+  // Collect all usage records across all benefits for history table
+  const allRecords = card.benefits
+    .flatMap((b) =>
+      b.usageRecords.map((r) => ({ ...r, benefitName: b.name, benefitId: b.id })),
+    )
+    .sort((a, b) => b.usedDate.localeCompare(a.usedDate));
+
+  const FILTERS: { key: FilterMode; label: string }[] = [
+    { key: "all", label: "全部" },
+    { key: "unused", label: "未使用" },
+    { key: "used", label: "已使用" },
+    { key: "hidden", label: "已隐藏" },
+  ];
+
+  // Renewal date: same month/day as cardOpenDate, next anniversary
+  const openDate = new Date(card.cardOpenDate + "T00:00:00");
+  const renewalYear =
+    today >= new Date(today.getFullYear(), openDate.getMonth(), openDate.getDate())
+      ? today.getFullYear() + 1
+      : today.getFullYear();
+  const renewalDate = `${String(renewalYear)}-${String(openDate.getMonth() + 1).padStart(2, "0")}-${String(openDate.getDate()).padStart(2, "0")}`;
+
+  return (
+    <div className="card-detail">
+      <GlassContainer className="card-detail__header">
+        <div
+          className="card-detail__visual"
+          style={{ background: `linear-gradient(135deg, ${card.color}, ${card.color}88)` }}
+        >
+          {card.cardNumber ? `···${card.cardNumber.slice(-4)}` : ""}
+        </div>
+        <div className="card-detail__header-info">
+          <div className="card-detail__card-name">{getCardDisplayName(card)}</div>
+          <div className="card-detail__card-meta">
+            {card.owner} · 开卡 {card.cardOpenDate} · 续费 {renewalDate}
+          </div>
+        </div>
+        <button className="card-detail__edit-btn">编辑</button>
+      </GlassContainer>
+
+      <div className="card-detail__roi-strip" data-testid="roi-strip">
+        <GlassContainer className="card-detail__roi-cell">
+          <span className="card-detail__roi-label">年费</span>
+          <span className="card-detail__roi-value" data-testid="roi-fee">
+            ${String(roi.annualFee)}
+          </span>
+        </GlassContainer>
+        <GlassContainer className="card-detail__roi-cell">
+          <span className="card-detail__roi-label">面值回报</span>
+          <span className="card-detail__roi-value" data-testid="roi-face">
+            ${String(roi.faceValueReturn)}
+          </span>
+        </GlassContainer>
+        <GlassContainer className="card-detail__roi-cell">
+          <span className="card-detail__roi-label">实际回报</span>
+          <span className="card-detail__roi-value" data-testid="roi-actual">
+            ${String(roi.actualReturn)}
+          </span>
+        </GlassContainer>
+        <GlassContainer className="card-detail__roi-cell">
+          <span className="card-detail__roi-label">回本率</span>
+          <span className="card-detail__roi-value" data-testid="roi-pct">
+            {roi.roiPercent}%
+          </span>
+        </GlassContainer>
+      </div>
+
+      <div className="card-detail__filters" data-testid="filter-pills">
+        {FILTERS.map(({ key, label }) => (
+          <button
+            key={key}
+            className={`card-detail__filter-pill${filter === key ? " card-detail__filter-pill--active" : ""}`}
+            onClick={() => { setFilter(key); }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="card-detail__benefits-grid" data-testid="benefits-grid">
+        {filteredBenefits.map((benefit) => (
+          <BenefitCard
+            key={benefit.id}
+            benefit={benefit}
+            card={card}
+            onToggleUsage={toggleBenefitUsage}
+          />
+        ))}
+        <button className="card-detail__add-btn">+ 添加 Benefit</button>
+      </div>
+
+      <div className="card-detail__history-section">
+        <span className="card-detail__section-title">使用历史</span>
+        {allRecords.length === 0 ? (
+          <p className="card-detail__history-empty">暂无使用记录</p>
+        ) : (
+          <table className="card-detail__history-table" data-testid="history-table">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>权益</th>
+                <th>面值</th>
+                <th>实际</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allRecords.map((r, i) => (
+                <tr key={`${r.benefitId}-${r.usedDate}-${String(i)}`}>
+                  <td>{r.usedDate}</td>
+                  <td>{r.benefitName}</td>
+                  <td>${String(r.faceValue)}</td>
+                  <td>${String(r.actualValue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
