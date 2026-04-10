@@ -165,6 +165,26 @@ describe("getCurrentPeriodRange", () => {
       });
       expect(result).toEqual({ start: "2026-03-15", end: "2027-03-14" });
     });
+
+    it("handles leap year open date (Feb 29) in non-leap year", () => {
+      const result = getCurrentPeriodRange(d("2025-04-10"), {
+        resetType: "anniversary",
+        resetConfig: {},
+        cardOpenDate: "2024-02-29",
+      });
+      // In 2025 (non-leap), Feb 29 rolls to Mar 1 in JS Date
+      // Anniversary should be treated as Mar 1 in non-leap years
+      expect(result).toEqual({ start: "2025-03-01", end: "2026-02-28" });
+    });
+
+    it("handles leap year open date (Feb 29) in leap year", () => {
+      const result = getCurrentPeriodRange(d("2028-04-10"), {
+        resetType: "anniversary",
+        resetConfig: {},
+        cardOpenDate: "2024-02-29",
+      });
+      expect(result).toEqual({ start: "2028-02-29", end: "2029-02-28" });
+    });
   });
 
   describe("subscription", () => {
@@ -271,6 +291,25 @@ describe("isBenefitUsedInPeriod", () => {
       usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
+  });
+
+  it("returns false for since_last_use exactly at cooldown expiry", () => {
+    // cooldown=5, used Apr 1, check Apr 6: cooldownEnd = Apr 6, today < Apr 6 is false → available
+    const benefit = makeBenefit({
+      resetType: "since_last_use",
+      resetConfig: { cooldownDays: 5 },
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+    });
+    expect(isBenefitUsedInPeriod(benefit, d("2026-04-06"))).toBe(false);
+  });
+
+  it("returns true for since_last_use one day before cooldown expiry", () => {
+    const benefit = makeBenefit({
+      resetType: "since_last_use",
+      resetConfig: { cooldownDays: 5 },
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+    });
+    expect(isBenefitUsedInPeriod(benefit, d("2026-04-05"))).toBe(true);
   });
 
   it("returns false for since_last_use with cooldown=0", () => {

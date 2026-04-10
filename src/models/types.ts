@@ -90,9 +90,13 @@ export interface CreditCard {
 export interface AppSettings {
   logLevel: "debug" | "info" | "warn" | "error";
   debugLogEnabled: boolean;
+  reminderEnabled: boolean;
+  reminderDays: number;
+  dismissedDate: string | null;
 }
 
 export interface AppData {
+  version: number;
   cards: CreditCard[];
   settings: AppSettings;
 }
@@ -101,10 +105,10 @@ export interface AppData {
 
 export const CARD_TYPE_NAMES: Partial<Record<string, string>> = {
   amex_platinum: "Amex Platinum",
-  amex_gold: "Amex Gold",
-  chase_sapphire_reserve: "Chase Sapphire Reserve",
+  amex_aspire: "Hilton Aspire",
   chase_sapphire_preferred: "Chase Sapphire Preferred",
-  capital_one_venture_x: "Capital One Venture X",
+  chase_sapphire_reserve: "Chase Sapphire Reserve",
+  chase_marriott_boundless: "Chase Marriott Boundless",
 };
 
 export const getCardDisplayName = (card: CreditCard): string => {

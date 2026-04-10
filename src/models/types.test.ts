@@ -6,7 +6,7 @@ const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
   id: "test-id",
   owner: "Test User",
   cardTypeSlug: "amex_platinum",
-  annualFee: 695,
+  annualFee: 895,
   cardOpenDate: "2024-01-15",
   color: "#8E9EAF",
   isEnabled: true,
