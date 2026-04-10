@@ -13,7 +13,7 @@ const getWindowLabelSync = (): string => {
 
   // In Tauri runtime, __TAURI_INTERNALS__ is available synchronously
   try {
-    const internals = (window as Record<string, unknown>)["__TAURI_INTERNALS__"] as
+    const internals = (window as unknown as Record<string, unknown>)["__TAURI_INTERNALS__"] as
       | { metadata?: { currentWindow?: { label?: string } } }
       | undefined;
     const label = internals?.metadata?.currentWindow?.label;

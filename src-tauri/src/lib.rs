@@ -56,11 +56,6 @@ pub fn run() {
         ))
         .invoke_handler(tauri::generate_handler![update_tray_badge])
         .setup(|app| {
-            // Show main window after setup (it starts hidden so frontend can hydrate first)
-            if let Some(main_win) = app.get_webview_window("main") {
-                let _ = main_win.show();
-            }
-
             // Build right-click context menu
             let show_item = MenuItemBuilder::with_id("show", "显示 Benefits").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
