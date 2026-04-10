@@ -27,5 +27,6 @@ export default defineConfig(async () => ({
     setupFiles: "./src/test-setup.ts",
     css: false,
     passWithNoTests: true,
+    include: ["src/**/*.test.{ts,tsx}", "tests/**/*.test.{ts,tsx}"],
   },
 }));

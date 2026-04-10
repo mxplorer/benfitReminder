@@ -57,11 +57,21 @@ Use Vitest for all tests, React Testing Library for component tests.
 - Card/benefit editor: form submit → data persisted correctly
 - Do NOT test pure styling or layout — only behavior and data flow
 
+**Test file organization:**
+- **Unit tests**: colocated with source files, e.g. `src/utils/period.ts` → `src/utils/period.test.ts`
+  - Tests individual functions, components, or modules in isolation
+- **Integration / E2E tests**: in `tests/` directory at project root
+  - Tests cross-module interactions, full user flows, multi-component scenarios
+  - Mirror source structure when helpful, e.g. `tests/store-persistence.test.ts`
+
+**Build exclusion:**
+- Production build uses `tsconfig.build.json` which excludes `*.test.ts`, `test-setup.ts`, and `tests/`
+- Vite only bundles files reachable from the entry point import chain — test files are never imported by source, so they are excluded from the bundle automatically
+
 **Test discipline:**
 - Write tests BEFORE or alongside implementation, not after
 - All tests must pass before committing. Run `npm run test` first.
 - When fixing a bug, add a regression test that reproduces the bug BEFORE writing the fix
-- Test file location: colocated, e.g. `utils/period.ts` → `utils/period.test.ts`
 - Use descriptive test names: `it("returns deadline as June 30 for H1 semi-annual benefit in April")`
 
 ### Commits
@@ -75,7 +85,7 @@ Use Vitest for all tests, React Testing Library for component tests.
 - Prefer named exports over default exports
 - Use `const` arrow functions for React components
 - Keep components focused — one component per file
-- Colocate tests next to source files: `foo.ts` → `foo.test.ts`
+- Unit tests colocated: `foo.ts` → `foo.test.ts`; integration/E2E tests in `tests/`
 
 ### Logging
 - Use `createLogger("module.name")` from `src/lib/logger.ts` for all logging
@@ -107,6 +117,7 @@ src/views/shared/           # Shared UI components
 src/tauri/                  # Tauri API wrappers (tray, notifications, fs)
 src/styles/                 # CSS theme + glass utilities
 src-tauri/                  # Backend (Rust, Tauri framework)
+tests/                      # Integration / E2E tests
 docs/superpowers/specs/     # Design specs
 docs/superpowers/plans/     # Implementation plan (index + per-task files)
 docs/dev/                   # Developer documentation (L1: architecture, L2: modules)
