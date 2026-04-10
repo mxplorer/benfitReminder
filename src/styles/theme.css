@@ -1,0 +1,100 @@
+/* Design tokens — light theme (default) */
+:root {
+  /* Accent colors */
+  --color-blue: #007aff;
+  --color-green: #34c759;
+  --color-orange: #ff9500;
+  --color-red: #ff3b30;
+
+  /* Text */
+  --text-primary: rgba(0, 0, 0, 0.85);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.35);
+
+  /* Backgrounds */
+  --bg-panel: rgba(245, 245, 247, 0.45);
+  --bg-card: rgba(255, 255, 255, 0.45);
+  --bg-card-hover: rgba(255, 255, 255, 0.65);
+  --bg-sidebar: rgba(240, 240, 242, 0.8);
+  --bg-tab: rgba(0, 0, 0, 0.04);
+  --bg-tab-active: rgba(255, 255, 255, 0.85);
+
+  /* Borders */
+  --border-card: rgba(0, 0, 0, 0.06);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+
+  /* Status tag backgrounds */
+  --tag-done-bg: rgba(0, 0, 0, 0.05);
+  --tag-danger-bg: rgba(255, 59, 48, 0.1);
+  --tag-warning-bg: rgba(255, 149, 0, 0.1);
+  --tag-safe-bg: rgba(52, 199, 89, 0.1);
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+
+  /* Spacing */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-blue: #0a84ff;
+    --color-green: #30d158;
+    --color-orange: #ff9f0a;
+    --color-red: #ff453a;
+
+    --text-primary: rgba(255, 255, 255, 0.85);
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-tertiary: rgba(255, 255, 255, 0.35);
+
+    --bg-panel: rgba(28, 28, 32, 0.55);
+    --bg-card: rgba(255, 255, 255, 0.06);
+    --bg-card-hover: rgba(255, 255, 255, 0.1);
+    --bg-sidebar: rgba(32, 32, 36, 0.8);
+    --bg-tab: rgba(255, 255, 255, 0.06);
+    --bg-tab-active: rgba(255, 255, 255, 0.12);
+
+    --border-card: rgba(255, 255, 255, 0.08);
+    --border-subtle: rgba(255, 255, 255, 0.04);
+
+    --tag-done-bg: rgba(255, 255, 255, 0.06);
+    --tag-danger-bg: rgba(255, 69, 58, 0.15);
+    --tag-warning-bg: rgba(255, 159, 10, 0.15);
+    --tag-safe-bg: rgba(48, 209, 88, 0.15);
+
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Global resets */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: var(--bg-panel);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -1,0 +1,35 @@
+/* Frosted glass utility classes */
+
+.glass-panel {
+  background: var(--bg-panel);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.glass-card:hover {
+  background: var(--bg-card-hover);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.glass-card.urgent {
+  border-left: 3px solid var(--color-red);
+}
+
+.glass-card.used {
+  opacity: 0.5;
+}
+
+.glass-card.hidden-benefit {
+  opacity: 0.35;
+}
