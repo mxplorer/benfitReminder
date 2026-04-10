@@ -2,3 +2,26 @@
 .claude/
 .superpowers/
 .obsidian/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Test coverage
+coverage/
