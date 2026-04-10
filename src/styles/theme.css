@@ -29,6 +29,13 @@
   --tag-warning-bg: rgba(255, 149, 0, 0.1);
   --tag-safe-bg: rgba(52, 199, 89, 0.1);
 
+  /* Semantic aliases */
+  --accent: var(--color-blue);
+  --accent-subtle: rgba(0, 122, 255, 0.1);
+  --danger: var(--color-red);
+  --bg-primary: var(--bg-panel);
+  --bg-hover: rgba(0, 0, 0, 0.04);
+
   /* Shadows */
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -69,6 +76,12 @@
     --tag-danger-bg: rgba(255, 69, 58, 0.15);
     --tag-warning-bg: rgba(255, 159, 10, 0.15);
     --tag-safe-bg: rgba(48, 209, 88, 0.15);
+
+    --accent: var(--color-blue);
+    --accent-subtle: rgba(10, 132, 255, 0.15);
+    --danger: var(--color-red);
+    --bg-primary: var(--bg-panel);
+    --bg-hover: rgba(255, 255, 255, 0.06);
 
     --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
