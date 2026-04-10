@@ -33,3 +33,112 @@
 .glass-card.hidden-benefit {
   opacity: 0.35;
 }
+
+/* Status tags */
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.status-tag--done {
+  background: var(--tag-done-bg);
+  color: var(--text-secondary);
+}
+
+.status-tag--danger {
+  background: var(--tag-danger-bg);
+  color: var(--color-red);
+}
+
+.status-tag--warning {
+  background: var(--tag-warning-bg);
+  color: var(--color-orange);
+}
+
+.status-tag--safe {
+  background: var(--tag-safe-bg);
+  color: var(--color-green);
+}
+
+/* Benefit card */
+
+.benefit-card {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.benefit-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.benefit-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.benefit-card__name--used {
+  text-decoration: line-through;
+}
+
+.benefit-card__description {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.benefit-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.benefit-card__value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.benefit-card__check-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-card);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--color-green);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.benefit-card__check-btn:hover {
+  border-color: var(--color-green);
+  background: var(--tag-safe-bg);
+}
+
+.benefit-card__check-btn--checked {
+  background: var(--color-green);
+  border-color: var(--color-green);
+  color: white;
+}
+
+.benefit-card__period {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
