@@ -1,6 +1,7 @@
 import { useCardStore } from "../../stores/useCardStore";
 import { GlassContainer } from "../shared/GlassContainer";
 import { getMetrics } from "../../lib/transports";
+import { exportToFile, importFromFile } from "../../tauri/bridge";
 
 export const Settings = () => {
   const settings = useCardStore((s) => s.settings);
@@ -8,23 +9,42 @@ export const Settings = () => {
   const exportData = useCardStore((s) => s.exportData);
   const importData = useCardStore((s) => s.importData);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const json = exportData();
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ccb-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // In Tauri: use native save dialog. In browser dev: fall back to download link.
+    if ("__TAURI_INTERNALS__" in window) {
+      await exportToFile(json);
+    } else {
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ccb-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
     try {
       getMetrics().count("data.exported");
-    } catch {
-      // metrics not initialized in test environment
+    } catch { /* metrics not initialized */ }
+  };
+
+  const handleImport = async () => {
+    // In Tauri: use native file picker. In browser dev: use hidden file input.
+    if ("__TAURI_INTERNALS__" in window) {
+      const text = await importFromFile();
+      if (!text) return;
+      try {
+        importData(text);
+        getMetrics().count("data.imported");
+      } catch (err) {
+        window.alert(`导入失败: ${String(err)}`);
+      }
+    } else {
+      document.querySelector<HTMLInputElement>('[data-testid="import-input"]')?.click();
     }
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -33,19 +53,12 @@ export const Settings = () => {
       if (typeof text !== "string") return;
       try {
         importData(text);
-        try {
-          getMetrics().count("data.imported");
-        } catch {
-          // metrics not initialized in test environment
-        }
+        try { getMetrics().count("data.imported"); } catch { /* ok */ }
       } catch (err) {
-        // Log import error to console — real UI would show a dialog
-        // Using a direct window alert here to avoid requiring a modal component
         window.alert(`导入失败: ${String(err)}`);
       }
     };
     reader.readAsText(file);
-    // Reset input so same file can be re-imported
     e.target.value = "";
   };
 
@@ -98,23 +111,22 @@ export const Settings = () => {
 
       <GlassContainer className="settings__section">
         <h3>数据管理</h3>
-        <button onClick={handleExport} data-testid="export-btn">
+        <button onClick={() => { void handleExport(); }} data-testid="export-btn">
           导出数据
         </button>
         <label>
           <span>导入数据</span>
+          {/* Hidden input used as fallback in browser dev mode */}
           <input
             type="file"
             accept=".json"
-            onChange={handleImport}
+            onChange={handleImportFile}
             data-testid="import-input"
             style={{ display: "none" }}
           />
           <button
             type="button"
-            onClick={() => {
-              document.querySelector<HTMLInputElement>('[data-testid="import-input"]')?.click();
-            }}
+            onClick={() => { void handleImport(); }}
             data-testid="import-btn"
           >
             选择文件

@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Credit Card Benefits",
         "width": 1024,
-        "height": 768
+        "height": 768,
+        "visible": false
       }
     ],
     "security": {
