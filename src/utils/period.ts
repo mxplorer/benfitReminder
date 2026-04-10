@@ -77,27 +77,31 @@ export const getCalendarPeriodRange = (
   }
 };
 
+// Clamp day to last day of target month (handles Feb 29 in non-leap years)
+const clampDate = (year: number, month: number, day: number): Date => {
+  const maxDay = lastDay(year, month + 1); // month is 0-indexed, lastDay expects 1-indexed
+  return new Date(year, month, Math.min(day, maxDay));
+};
+
 export const getAnniversaryRange = (today: Date, cardOpenDate: string): DateRange => {
   const open = new Date(cardOpenDate + "T00:00:00");
   const openMonth = open.getMonth();
   const openDay = open.getDate();
   const year = today.getFullYear();
 
-  // Anniversary date this year
-  const anniversaryThisYear = new Date(year, openMonth, openDay);
+  const anniversaryThisYear = clampDate(year, openMonth, openDay);
   let periodStart: Date;
 
   if (today >= anniversaryThisYear) {
     periodStart = anniversaryThisYear;
   } else {
-    periodStart = new Date(year - 1, openMonth, openDay);
+    periodStart = clampDate(year - 1, openMonth, openDay);
   }
 
-  const periodEnd = new Date(
-    periodStart.getFullYear() + 1,
-    openMonth,
-    openDay - 1,
-  );
+  // End is one year after start, minus one day
+  const periodEnd = new Date(periodStart);
+  periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+  periodEnd.setDate(periodEnd.getDate() - 1);
 
   return { start: formatDate(periodStart), end: formatDate(periodEnd) };
 };

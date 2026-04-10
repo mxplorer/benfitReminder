@@ -172,9 +172,8 @@ describe("getCurrentPeriodRange", () => {
         resetConfig: {},
         cardOpenDate: "2024-02-29",
       });
-      // In 2025 (non-leap), Feb 29 rolls to Mar 1 in JS Date
-      // Anniversary should be treated as Mar 1 in non-leap years
-      expect(result).toEqual({ start: "2025-03-01", end: "2026-02-28" });
+      // Feb 29 clamped to Feb 28 in non-leap year, full year period
+      expect(result).toEqual({ start: "2025-02-28", end: "2026-02-27" });
     });
 
     it("handles leap year open date (Feb 29) in leap year", () => {

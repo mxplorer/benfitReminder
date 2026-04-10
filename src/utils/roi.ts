@@ -1,6 +1,12 @@
 import type { CreditCard } from "../models/types";
 import type { DateRange } from "./period";
-import { formatDate } from "./period";
+import { formatDate, lastDay } from "./period";
+
+// Clamp day to last day of target month (handles Feb 29 in non-leap years)
+const clampDate = (year: number, month: number, day: number): Date => {
+  const maxDay = lastDay(year, month + 1);
+  return new Date(year, month, Math.min(day, maxDay));
+};
 
 export interface CardROI {
   cardId: string;
@@ -28,7 +34,7 @@ export const getMembershipYearRange = (
   const openDay = open.getDate();
   const year = today.getFullYear();
 
-  const anniversaryThisYear = new Date(year, openMonth, openDay);
+  const anniversaryThisYear = clampDate(year, openMonth, openDay);
   let periodStartYear: number;
 
   if (today >= anniversaryThisYear) {
@@ -39,8 +45,10 @@ export const getMembershipYearRange = (
 
   periodStartYear += yearOffset;
 
-  const start = new Date(periodStartYear, openMonth, openDay);
-  const end = new Date(periodStartYear + 1, openMonth, openDay - 1);
+  const start = clampDate(periodStartYear, openMonth, openDay);
+  const end = new Date(start);
+  end.setFullYear(end.getFullYear() + 1);
+  end.setDate(end.getDate() - 1);
 
   return { start: formatDate(start), end: formatDate(end) };
 };

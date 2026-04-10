@@ -94,6 +94,38 @@ describe("calculateCardROI", () => {
     expect(roi.roiPercent).toBe(0);
     expect(roi.isRecovered).toBe(false);
   });
+
+  it("handles annualFee=0 (free card is always recovered)", () => {
+    const card = makeCard({ annualFee: 0 });
+    const roi = calculateCardROI(card, d("2026-04-10"));
+    expect(roi.roiPercent).toBe(0);
+    expect(roi.isRecovered).toBe(true);
+  });
+
+  it("handles cross-year membership range (Dec open date)", () => {
+    const card = makeCard({
+      cardOpenDate: "2024-12-15",
+      benefits: [
+        {
+          id: "b1",
+          name: "B1",
+          description: "",
+          faceValue: 100,
+          category: "hotel",
+          resetType: "anniversary",
+          resetConfig: {},
+          isHidden: false,
+          autoRecur: false,
+          usageRecords: [
+            { usedDate: "2026-01-10", faceValue: 100, actualValue: 100 },
+          ],
+        },
+      ],
+    });
+    const roi = calculateCardROI(card, d("2026-04-10"));
+    // Membership year: 2025-12-15 to 2026-12-14, record on 2026-01-10 is within
+    expect(roi.actualReturn).toBe(100);
+  });
 });
 
 describe("calculateDashboardROI", () => {
@@ -142,6 +174,29 @@ describe("calculateDashboardROI", () => {
     expect(dashboard.totalFaceValue).toBe(350);
     expect(dashboard.totalActualValue).toBe(350);
     expect(dashboard.cards).toHaveLength(2);
+  });
+
+  it("includes hidden benefits in ROI (per spec)", () => {
+    const cards = [
+      makeCard({
+        benefits: [
+          {
+            id: "b1",
+            name: "Hidden Benefit",
+            description: "",
+            faceValue: 200,
+            category: "hotel",
+            resetType: "calendar",
+            resetConfig: { period: "annual" },
+            isHidden: true,
+            autoRecur: false,
+            usageRecords: [{ usedDate: "2026-04-01", faceValue: 200, actualValue: 200 }],
+          },
+        ],
+      }),
+    ];
+    const dashboard = calculateDashboardROI(cards, 2026);
+    expect(dashboard.totalActualValue).toBe(200);
   });
 
   it("excludes disabled cards", () => {

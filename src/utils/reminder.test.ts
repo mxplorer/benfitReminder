@@ -129,6 +129,28 @@ describe("getBenefitsDueForReminder", () => {
     expect(result).toHaveLength(0);
   });
 
+  it("excludes since_last_use benefits (no deadline)", () => {
+    const benefit = makeBenefit({
+      resetType: "since_last_use",
+      resetConfig: { cooldownDays: 30 },
+    });
+    const card = makeCard([benefit]);
+    const result = getBenefitsDueForReminder([card], d("2026-04-25"), 7);
+    expect(result).toHaveLength(0);
+  });
+
+  it("includes subscription with autoRecur=false within reminder window", () => {
+    const benefit = makeBenefit({
+      resetType: "subscription",
+      resetConfig: {},
+      autoRecur: false,
+    });
+    const card = makeCard([benefit]);
+    // Deadline is Apr 30, 5 days remaining
+    const result = getBenefitsDueForReminder([card], d("2026-04-25"), 7);
+    expect(result).toHaveLength(1);
+  });
+
   it("sorts by daysRemaining ascending (most urgent first)", () => {
     const b1 = makeBenefit({ id: "b1", resetConfig: { period: "quarterly" } }); // deadline Jun 30 → 66 days
     const b2 = makeBenefit({ id: "b2", resetConfig: { period: "monthly" } }); // deadline Apr 30 → 5 days
