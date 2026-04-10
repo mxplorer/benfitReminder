@@ -202,4 +202,144 @@ describe("useCardStore", () => {
       expect(useCardStore.getState().settings.logLevel).toBe("debug");
     });
   });
+
+  describe("exportData", () => {
+    it("returns valid JSON with version, cards, and settings", () => {
+      useCardStore.getState().addCard(makeCard({ id: "c1" }));
+      const json = useCardStore.getState().exportData();
+      const parsed = JSON.parse(json) as Record<string, unknown>;
+      expect(parsed.version).toBe(1);
+      expect(Array.isArray(parsed.cards)).toBe(true);
+      expect(parsed.settings).toBeDefined();
+    });
+  });
+
+  describe("importData", () => {
+    it("replaces state with valid import data", () => {
+      useCardStore.getState().addCard(makeCard({ id: "old" }));
+      const importJson = JSON.stringify({
+        version: 1,
+        cards: [makeCard({ id: "imported" })],
+        settings: {
+          logLevel: "warn",
+          debugLogEnabled: false,
+          reminderEnabled: true,
+          reminderDays: 5,
+          dismissedDate: null,
+        },
+      });
+      useCardStore.getState().importData(importJson);
+      expect(useCardStore.getState().cards).toHaveLength(1);
+      expect(useCardStore.getState().cards[0].id).toBe("imported");
+      expect(useCardStore.getState().settings.logLevel).toBe("warn");
+    });
+
+    it("throws on invalid JSON and preserves state", () => {
+      useCardStore.getState().addCard(makeCard({ id: "existing" }));
+      expect(() => {
+        useCardStore.getState().importData("not json");
+      }).toThrow("Invalid JSON");
+      expect(useCardStore.getState().cards[0].id).toBe("existing");
+    });
+
+    it("throws on missing version field", () => {
+      expect(() => {
+        useCardStore.getState().importData(JSON.stringify({ cards: [] }));
+      }).toThrow("version");
+    });
+
+    it("throws on missing cards array", () => {
+      expect(() => {
+        useCardStore.getState().importData(JSON.stringify({ version: 1 }));
+      }).toThrow("cards");
+    });
+  });
+
+  describe("JSON round-trip", () => {
+    it("export → import produces deep-equal state", () => {
+      const card = makeCard({
+        id: "rt-1",
+        benefits: [
+          makeBenefit({
+            id: "b1",
+            usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 80 }],
+          }),
+        ],
+      });
+      useCardStore.getState().addCard(card);
+      const exported = useCardStore.getState().exportData();
+
+      // Reset and reimport
+      useCardStore.setState({ cards: [] });
+      useCardStore.getState().importData(exported);
+
+      expect(useCardStore.getState().cards).toHaveLength(1);
+      expect(useCardStore.getState().cards[0].benefits[0].usageRecords[0]).toEqual({
+        usedDate: "2026-04-01",
+        faceValue: 100,
+        actualValue: 80,
+      });
+    });
+  });
+
+  describe("generateAutoRecurRecords", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("creates records for subscription autoRecur benefits without current month record", () => {
+      const card = makeCard({
+        benefits: [
+          makeBenefit({
+            id: "sub1",
+            resetType: "subscription",
+            autoRecur: true,
+            faceValue: 25,
+            usageRecords: [],
+          }),
+          makeBenefit({
+            id: "sub2",
+            resetType: "subscription",
+            autoRecur: false,
+            usageRecords: [],
+          }),
+          makeBenefit({ id: "reg", resetType: "calendar", usageRecords: [] }),
+        ],
+      });
+      useCardStore.getState().addCard(card);
+      useCardStore.getState().generateAutoRecurRecords();
+
+      const benefits = useCardStore.getState().cards[0].benefits;
+      // sub1 (autoRecur=true) should have a record
+      expect(benefits[0].usageRecords).toHaveLength(1);
+      expect(benefits[0].usageRecords[0].usedDate).toBe("2026-04-01");
+      expect(benefits[0].usageRecords[0].faceValue).toBe(25);
+      // sub2 (autoRecur=false) and reg (calendar) should not
+      expect(benefits[1].usageRecords).toHaveLength(0);
+      expect(benefits[2].usageRecords).toHaveLength(0);
+    });
+
+    it("does not duplicate if record already exists for current month", () => {
+      const card = makeCard({
+        benefits: [
+          makeBenefit({
+            id: "sub1",
+            resetType: "subscription",
+            autoRecur: true,
+            faceValue: 25,
+            usageRecords: [{ usedDate: "2026-04-01", faceValue: 25, actualValue: 25 }],
+          }),
+        ],
+      });
+      useCardStore.getState().addCard(card);
+      useCardStore.getState().generateAutoRecurRecords();
+
+      expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
+    });
+  });
 });

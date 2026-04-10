@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
-import { formatDate, isBenefitUsedInPeriod, isApplicableNow } from "../utils/period";
+import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
+import { formatDate, getMonthRange, isBenefitUsedInPeriod, isApplicableNow } from "../utils/period";
 
 interface CardStoreState {
   cards: CreditCard[];
@@ -20,6 +20,9 @@ interface CardStoreActions {
   getUnusedBenefitCount: () => number;
   updateSettings: (partial: Partial<AppSettings>) => void;
   loadData: (cards: CreditCard[], settings: AppSettings) => void;
+  exportData: () => string;
+  importData: (json: string) => void;
+  generateAutoRecurRecords: () => void;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -162,5 +165,66 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
 
   loadData: (cards, settings) => {
     set({ cards, settings });
+  },
+
+  exportData: () => {
+    const { cards, settings } = get();
+    const data: AppData = { version: 1, cards, settings };
+    return JSON.stringify(data);
+  },
+
+  importData: (json) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json) as unknown;
+    } catch {
+      throw new Error("Invalid JSON format");
+    }
+
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new Error("Import data must be an object");
+    }
+
+    const data = parsed as Record<string, unknown>;
+    if (typeof data.version !== "number") {
+      throw new Error("Missing or invalid version field");
+    }
+    if (!Array.isArray(data.cards)) {
+      throw new Error("Missing or invalid cards array");
+    }
+
+    set({
+      cards: data.cards as CreditCard[],
+      settings: (data.settings as AppSettings | undefined) ?? { ...DEFAULT_SETTINGS },
+    });
+  },
+
+  generateAutoRecurRecords: () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    const monthRange = getMonthRange(year, month);
+    const firstOfMonth = monthRange.start;
+
+    set((state) => ({
+      cards: state.cards.map((card) => ({
+        ...card,
+        benefits: card.benefits.map((benefit) => {
+          if (benefit.resetType !== "subscription" || !benefit.autoRecur) return benefit;
+
+          const hasRecordThisMonth = benefit.usageRecords.some(
+            (r) => r.usedDate >= monthRange.start && r.usedDate <= monthRange.end,
+          );
+          if (hasRecordThisMonth) return benefit;
+
+          const newRecord: UsageRecord = {
+            usedDate: firstOfMonth,
+            faceValue: benefit.faceValue,
+            actualValue: benefit.faceValue,
+          };
+          return { ...benefit, usageRecords: [...benefit.usageRecords, newRecord] };
+        }),
+      })),
+    }));
   },
 }));
