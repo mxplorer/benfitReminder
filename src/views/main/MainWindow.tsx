@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
+import { Dashboard } from "./Dashboard";
+import { History } from "./History";
+import { Settings } from "./Settings";
+import { CardDetail } from "./CardDetail";
 import "./MainWindow.css";
 
 export type ActiveView =
@@ -8,19 +12,11 @@ export type ActiveView =
   | "settings"
   | { type: "card"; cardId: string };
 
-// Placeholder views — replaced in Tasks 18-21
-const DashboardPlaceholder = () => <div data-testid="view-dashboard">Dashboard</div>;
-const HistoryPlaceholder = () => <div data-testid="view-history">历史记录</div>;
-const SettingsPlaceholder = () => <div data-testid="view-settings">设置</div>;
-const CardDetailPlaceholder = ({ cardId }: { cardId: string }) => (
-  <div data-testid={`view-card-${cardId}`}>Card {cardId}</div>
-);
-
 const renderView = (view: ActiveView) => {
-  if (view === "dashboard") return <DashboardPlaceholder />;
-  if (view === "history") return <HistoryPlaceholder />;
-  if (view === "settings") return <SettingsPlaceholder />;
-  return <CardDetailPlaceholder cardId={view.cardId} />;
+  if (view === "dashboard") return <div data-testid="view-dashboard"><Dashboard /></div>;
+  if (view === "history") return <div data-testid="view-history"><History /></div>;
+  if (view === "settings") return <div data-testid="view-settings"><Settings /></div>;
+  return <div data-testid={`view-card-${view.cardId}`}><CardDetail cardId={view.cardId} /></div>;
 };
 
 export const MainWindow = () => {

@@ -43,9 +43,10 @@ describe("MainWindow", () => {
     useCardStore.setState({ cards: [makeCard({ id: "c1", alias: "My Amex" })] });
     render(<MainWindow />);
 
-    expect(screen.getByText("My Amex")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("My Amex"));
+    // Click the card in the sidebar specifically
+    const sidebarCardBtn = document.querySelector(".sidebar__card-item");
+    if (!sidebarCardBtn) throw new Error("Sidebar card button not found");
+    fireEvent.click(sidebarCardBtn);
     expect(screen.getByTestId("view-card-c1")).toBeInTheDocument();
   });
 });
