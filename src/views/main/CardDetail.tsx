@@ -1,22 +1,30 @@
 import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
+import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { getCardDisplayName } from "../../models/types";
 import type { Benefit } from "../../models/types";
 import { calculateCardROI } from "../../utils/roi";
 import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
 import { GlassContainer } from "../shared/GlassContainer";
 import { BenefitCard } from "../shared/BenefitCard";
+import type { ActiveView } from "./MainWindow";
 import "./CardDetail.css";
 
 type FilterMode = "all" | "unused" | "used" | "hidden";
 
 interface CardDetailProps {
   cardId: string;
+  onNavigate: (view: ActiveView) => void;
 }
 
-export const CardDetail = ({ cardId }: CardDetailProps) => {
+export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const removeCard = useCardStore((s) => s.removeCard);
+  const removeBenefit = useCardStore((s) => s.removeBenefit);
+  const toggleBenefitHidden = useCardStore((s) => s.toggleBenefitHidden);
+  const getCardImage = useCardTypeStore((s) => s.getCardImage);
+  const getCardType = useCardTypeStore((s) => s.getCardType);
   const [filter, setFilter] = useState<FilterMode>("all");
   const today = new Date();
 
@@ -64,17 +72,38 @@ export const CardDetail = ({ cardId }: CardDetailProps) => {
       <GlassContainer className="card-detail__header">
         <div
           className="card-detail__visual"
-          style={{ background: `linear-gradient(135deg, ${card.color}, ${card.color}88)` }}
+          style={getCardImage(card.cardTypeSlug) ? undefined : { background: `linear-gradient(135deg, ${card.color}, ${card.color}88)` }}
         >
-          {card.cardNumber ? `···${card.cardNumber.slice(-4)}` : ""}
+          {getCardImage(card.cardTypeSlug) ? (
+            <img
+              src={getCardImage(card.cardTypeSlug)}
+              alt={getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}
+              className="card-detail__card-img"
+            />
+          ) : (
+            card.cardNumber ? `···${card.cardNumber.slice(-4)}` : ""
+          )}
         </div>
         <div className="card-detail__header-info">
-          <div className="card-detail__card-name">{getCardDisplayName(card)}</div>
+          <div className="card-detail__card-name">{getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}</div>
           <div className="card-detail__card-meta">
             {card.owner} · 开卡 {card.cardOpenDate} · 续费 {renewalDate}
           </div>
         </div>
-        <button className="card-detail__edit-btn">编辑</button>
+        <button
+          className="card-detail__edit-btn"
+          onClick={() => { onNavigate({ type: "card-editor", cardId }); }}
+        >编辑</button>
+        <button
+          className="card-detail__delete-btn"
+          onClick={() => {
+            if (window.confirm("确定删除此卡片？所有权益和使用记录将被永久删除。")) {
+              removeCard(cardId);
+              onNavigate("dashboard");
+            }
+          }}
+          data-testid="delete-card-btn"
+        >删除</button>
       </GlassContainer>
 
       <div className="card-detail__roi-strip" data-testid="roi-strip">
@@ -123,9 +152,14 @@ export const CardDetail = ({ cardId }: CardDetailProps) => {
             benefit={benefit}
             card={card}
             onToggleUsage={toggleBenefitUsage}
+            onToggleHidden={toggleBenefitHidden}
+            onDelete={removeBenefit}
           />
         ))}
-        <button className="card-detail__add-btn">+ 添加 Benefit</button>
+        <button
+          className="card-detail__add-btn"
+          onClick={() => { onNavigate({ type: "benefit-editor", cardId }); }}
+        >+ 添加 Benefit</button>
       </div>
 
       <div className="card-detail__history-section">

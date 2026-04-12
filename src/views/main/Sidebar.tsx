@@ -1,4 +1,5 @@
 import { useCardStore } from "../../stores/useCardStore";
+import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { getCardDisplayName } from "../../models/types";
 import { CardChip } from "../shared/CardChip";
 import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
@@ -11,6 +12,8 @@ interface SidebarProps {
 
 export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
   const cards = useCardStore((s) => s.cards);
+  const getCardImage = useCardTypeStore((s) => s.getCardImage);
+  const getCardType = useCardTypeStore((s) => s.getCardType);
   const today = new Date();
 
   const enabledCards = cards.filter((c) => c.isEnabled);
@@ -31,7 +34,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
     typeof activeView === "string" && activeView === view;
 
   const isCardActive = (cardId: string) =>
-    typeof activeView === "object" && activeView.cardId === cardId;
+    typeof activeView === "object" && "cardId" in activeView && activeView.cardId === cardId;
 
   return (
     <nav className="sidebar">
@@ -56,30 +59,40 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
         </button>
       </div>
 
-      {enabledCards.length > 0 && (
-        <>
-          <div className="sidebar__divider" />
-          <span className="sidebar__section-title">我的卡片</span>
-          <div className="sidebar__nav" style={{ marginBottom: 0 }}>
-            {enabledCards.map((card) => {
-              const unusedCount = getUnusedCount(card);
-              return (
-                <button
-                  key={card.id}
-                  className={`sidebar__card-item${isCardActive(card.id) ? " sidebar__card-item--active" : ""}`}
-                  onClick={() => { onNavigate({ type: "card", cardId: card.id }); }}
-                >
-                  <CardChip color={card.color} size="small" />
-                  <span className="sidebar__card-name">{getCardDisplayName(card)}</span>
-                  {unusedCount > 0 && (
-                    <span className="sidebar__card-badge">{unusedCount}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+      <div className="sidebar__divider" />
+      <span className="sidebar__section-title">我的卡片</span>
+      <div className="sidebar__nav" style={{ marginBottom: 0 }}>
+        {enabledCards.map((card) => {
+          const unusedCount = getUnusedCount(card);
+          return (
+            <button
+              key={card.id}
+              className={`sidebar__card-item${isCardActive(card.id) ? " sidebar__card-item--active" : ""}`}
+              onClick={() => { onNavigate({ type: "card", cardId: card.id }); }}
+            >
+              {getCardImage(card.cardTypeSlug) ? (
+                <img
+                  src={getCardImage(card.cardTypeSlug)}
+                  alt={getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}
+                  className="sidebar__card-img"
+                />
+              ) : (
+                <CardChip color={card.color} size="small" />
+              )}
+              <span className="sidebar__card-name">{getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}</span>
+              {unusedCount > 0 && (
+                <span className="sidebar__card-badge">{unusedCount}</span>
+              )}
+            </button>
+          );
+        })}
+        <button
+          className="sidebar__add-card-btn"
+          onClick={() => { onNavigate({ type: "card-editor" }); }}
+        >
+          + 添加卡片
+        </button>
+      </div>
     </nav>
   );
 };

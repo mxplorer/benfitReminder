@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { CreditCard } from "../../models/types";
-import { CARD_TEMPLATES } from "../../models/templates";
+import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useCardStore } from "../../stores/useCardStore";
 import { getMetrics } from "../../lib/transports";
+import "./CardEditor.css";
 
 interface CardEditorProps {
   /** If provided, pre-fills the form for editing */
@@ -33,11 +34,12 @@ const toFormState = (card?: CreditCard): FormState => ({
 export const CardEditor = ({ card, onDone }: CardEditorProps) => {
   const addCard = useCardStore((s) => s.addCard);
   const updateCard = useCardStore((s) => s.updateCard);
+  const cardTypes = useCardTypeStore((s) => s.cardTypes);
   const [form, setForm] = useState<FormState>(toFormState(card));
   const isEdit = !!card;
 
   const handleTemplateChange = (slug: string) => {
-    const template = CARD_TEMPLATES.find((t) => t.slug === slug);
+    const template = cardTypes.find((t) => t.slug === slug);
     if (template) {
       setForm((f) => ({
         ...f,
@@ -67,7 +69,7 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
         color: form.color,
       });
     } else {
-      const template = CARD_TEMPLATES.find((t) => t.slug === form.templateSlug);
+      const template = cardTypes.find((t) => t.slug === form.templateSlug);
       const newCard: CreditCard = {
         id: crypto.randomUUID(),
         owner: form.owner,
@@ -99,7 +101,7 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} data-testid="card-editor">
+    <form onSubmit={handleSubmit} data-testid="card-editor" className="card-editor">
       <label>
         卡片类型
         <select
@@ -108,7 +110,7 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
           data-testid="template-select"
         >
           <option value="">自定义</option>
-          {CARD_TEMPLATES.map((t) => (
+          {cardTypes.map((t) => (
             <option key={t.slug} value={t.slug}>
               {t.name}
             </option>

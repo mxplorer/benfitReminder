@@ -75,16 +75,18 @@ describe("ByCardView", () => {
     expect(screen.queryByText("Disabled Card Benefit")).not.toBeInTheDocument();
   });
 
-  it("calls store toggleBenefitUsage when check button clicked", () => {
-    const benefit = makeBenefit({ id: "b1", name: "Clickable Benefit" });
+  it("calls store toggleBenefitUsage with actual value after prompt confirm", () => {
+    const benefit = makeBenefit({ id: "b1", name: "Clickable Benefit", faceValue: 100 });
     const card = makeCard({ id: "c1", benefits: [benefit] });
     useCardStore.setState({ cards: [card] });
     const toggleSpy = vi.spyOn(useCardStore.getState(), "toggleBenefitUsage");
 
     render(<ByCardView />);
 
-    // The BenefitCard renders a check button
+    // Click check button → prompt appears
     fireEvent.click(screen.getByRole("button", { name: "标记使用" }));
-    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1");
+    // Confirm with default face value
+    fireEvent.click(screen.getByRole("button", { name: "确认" }));
+    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100);
   });
 });

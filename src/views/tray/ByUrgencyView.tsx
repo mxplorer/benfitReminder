@@ -1,4 +1,5 @@
 import { useCardStore } from "../../stores/useCardStore";
+import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import "./TrayViews.css";
 import {
   getDeadline,
@@ -12,6 +13,7 @@ import { BenefitCard } from "../shared/BenefitCard";
 export const ByUrgencyView = () => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const today = new Date();
 
   // Collect all unused, non-hidden, applicable benefits across enabled cards
@@ -61,7 +63,15 @@ export const ByUrgencyView = () => {
         return (
           <div key={`${cardId}-${benefitId}`} className="by-urgency-view__item">
             <div className="by-urgency-view__source">
-              <CardChip color={card.color} size="small" />
+              {getCardImage(card.cardTypeSlug) ? (
+                <img
+                  src={getCardImage(card.cardTypeSlug)}
+                  alt=""
+                  className="by-urgency-view__card-img"
+                />
+              ) : (
+                <CardChip color={card.color} size="small" />
+              )}
             </div>
             <BenefitCard
               benefit={benefit}

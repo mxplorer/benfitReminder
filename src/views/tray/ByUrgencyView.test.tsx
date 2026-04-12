@@ -88,8 +88,8 @@ describe("ByUrgencyView", () => {
     expect(screen.queryByText("Used Benefit")).not.toBeInTheDocument();
   });
 
-  it("calls store toggleBenefitUsage when check button clicked", () => {
-    const benefit = makeBenefit({ id: "b1", name: "Clickable" });
+  it("calls store toggleBenefitUsage with actual value after prompt confirm", () => {
+    const benefit = makeBenefit({ id: "b1", name: "Clickable", faceValue: 100 });
     const card = makeCard({ id: "c1", benefits: [benefit] });
     useCardStore.setState({ cards: [card] });
     const toggleSpy = vi.spyOn(useCardStore.getState(), "toggleBenefitUsage");
@@ -97,7 +97,8 @@ describe("ByUrgencyView", () => {
     render(<ByUrgencyView />);
 
     fireEvent.click(screen.getByRole("button", { name: "标记使用" }));
-    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1");
+    fireEvent.click(screen.getByRole("button", { name: "确认" }));
+    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100);
   });
 
   it("excludes auto-recur subscription benefits", () => {

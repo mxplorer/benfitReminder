@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { CreditCard } from "../../models/types";
 import { useCardStore } from "../../stores/useCardStore";
+import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { CardEditor } from "./CardEditor";
 
 const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
@@ -20,6 +21,27 @@ const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
 
 beforeEach(() => {
   useCardStore.setState({ cards: [] });
+  useCardTypeStore.setState({
+    cardTypes: [
+      {
+        slug: "amex_platinum",
+        name: "Amex Platinum",
+        defaultAnnualFee: 895,
+        color: "#8E9EAF",
+        isBuiltin: true,
+        defaultBenefits: [
+          {
+            name: "$200 Airline Fee Credit",
+            description: "Annual airline fee credit",
+            faceValue: 200,
+            category: "airline",
+            resetType: "calendar",
+            resetConfig: { period: "annual" },
+          },
+        ],
+      },
+    ],
+  });
 });
 
 describe("CardEditor", () => {

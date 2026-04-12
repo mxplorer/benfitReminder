@@ -1,4 +1,5 @@
 import { useCardStore } from "../../stores/useCardStore";
+import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import "./TrayViews.css";
 import { getCardDisplayName } from "../../models/types";
 import { isApplicableNow } from "../../utils/period";
@@ -8,6 +9,8 @@ import { BenefitCard } from "../shared/BenefitCard";
 export const ByCardView = () => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const getCardImage = useCardTypeStore((s) => s.getCardImage);
+  const getCardType = useCardTypeStore((s) => s.getCardType);
   const today = new Date();
 
   const enabledCards = cards.filter((c) => c.isEnabled);
@@ -27,8 +30,16 @@ export const ByCardView = () => {
         return (
           <div key={card.id} className="by-card-view__group">
             <div className="by-card-view__group-header">
-              <CardChip color={card.color} size="small" />
-              <span className="by-card-view__card-name">{getCardDisplayName(card)}</span>
+              {getCardImage(card.cardTypeSlug) ? (
+                <img
+                  src={getCardImage(card.cardTypeSlug)}
+                  alt={getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}
+                  className="by-card-view__card-img"
+                />
+              ) : (
+                <CardChip color={card.color} size="small" />
+              )}
+              <span className="by-card-view__card-name">{getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}</span>
               {unusedCount > 0 && (
                 <span className="by-card-view__unused-badge">{unusedCount}</span>
               )}

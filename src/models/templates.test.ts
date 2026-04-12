@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { CARD_TEMPLATES } from "./templates";
+import { BUILTIN_CARD_TYPES } from "./templates";
 
 const findCard = (slug: string) => {
-  const card = CARD_TEMPLATES.find((c) => c.slug === slug);
+  const card = BUILTIN_CARD_TYPES.find((c) => c.slug === slug);
   if (!card) throw new Error(`Card ${slug} not found`);
   return card;
 };
 
-describe("CARD_TEMPLATES", () => {
+describe("BUILTIN_CARD_TYPES", () => {
   it("contains 5 card types", () => {
-    expect(CARD_TEMPLATES).toHaveLength(5);
+    expect(BUILTIN_CARD_TYPES).toHaveLength(5);
   });
 
   it("has Amex Platinum with annual fee $895", () => {
@@ -34,6 +34,12 @@ describe("CARD_TEMPLATES", () => {
     expect(oneTimeBenefits[1].resetConfig.expiresDate).toBe("2026-12-31");
   });
 
+  it("all have isBuiltin === true", () => {
+    for (const ct of BUILTIN_CARD_TYPES) {
+      expect(ct.isBuiltin).toBe(true);
+    }
+  });
+
   it("all benefits have valid resetType", () => {
     const validTypes = new Set([
       "calendar",
@@ -42,7 +48,7 @@ describe("CARD_TEMPLATES", () => {
       "subscription",
       "one_time",
     ]);
-    for (const card of CARD_TEMPLATES) {
+    for (const card of BUILTIN_CARD_TYPES) {
       for (const benefit of card.defaultBenefits) {
         expect(validTypes.has(benefit.resetType)).toBe(true);
       }
@@ -50,7 +56,7 @@ describe("CARD_TEMPLATES", () => {
   });
 
   it("calendar benefits with applicableMonths have valid month numbers (1-12)", () => {
-    for (const card of CARD_TEMPLATES) {
+    for (const card of BUILTIN_CARD_TYPES) {
       for (const benefit of card.defaultBenefits) {
         if (benefit.resetConfig.applicableMonths) {
           for (const month of benefit.resetConfig.applicableMonths) {
@@ -64,7 +70,7 @@ describe("CARD_TEMPLATES", () => {
 
   it("one_time benefits with expiresDate have valid ISO date format", () => {
     const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    for (const card of CARD_TEMPLATES) {
+    for (const card of BUILTIN_CARD_TYPES) {
       for (const benefit of card.defaultBenefits) {
         if (benefit.resetType === "one_time" && benefit.resetConfig.expiresDate) {
           expect(benefit.resetConfig.expiresDate).toMatch(isoDateRegex);

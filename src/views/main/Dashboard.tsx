@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
+import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { getCardDisplayName } from "../../models/types";
 import { calculateDashboardROI, calculateCardROI } from "../../utils/roi";
 import { GlassContainer } from "../shared/GlassContainer";
@@ -20,6 +21,8 @@ const getAvailableYears = (today: Date): number[] => {
 
 export const Dashboard = () => {
   const cards = useCardStore((s) => s.cards);
+  const getCardImage = useCardTypeStore((s) => s.getCardImage);
+  const getCardType = useCardTypeStore((s) => s.getCardType);
   const today = new Date();
   const currentYear = today.getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -88,9 +91,17 @@ export const Dashboard = () => {
               key={card.id}
               className={`dashboard__card-row${!roi.isRecovered ? " dashboard__card-row--not-recovered" : ""}`}
             >
-              <CardChip color={card.color} size="small" />
+              {getCardImage(card.cardTypeSlug) ? (
+                <img
+                  src={getCardImage(card.cardTypeSlug)}
+                  alt={getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}
+                  className="dashboard__card-img"
+                />
+              ) : (
+                <CardChip color={card.color} size="small" />
+              )}
               <div className="dashboard__card-meta">
-                <span className="dashboard__card-name">{getCardDisplayName(card)}</span>
+                <span className="dashboard__card-name">{getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}</span>
                 <span className="dashboard__card-sub">{card.owner} · 年费 ${String(card.annualFee)}</span>
               </div>
               <div className="dashboard__card-progress-wrap">
