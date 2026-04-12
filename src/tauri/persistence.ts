@@ -3,6 +3,7 @@ import { BUILTIN_CARD_TYPES } from "../models/templates";
 import { useCardStore } from "../stores/useCardStore";
 import { useCardTypeStore } from "../stores/useCardTypeStore";
 import { loadData, saveData } from "./bridge";
+import { loadUserCardTypes } from "./cardTypePersistence";
 
 const logger = createLogger("tauri.persistence");
 
@@ -56,15 +57,31 @@ const subscribeDataChanged = async (): Promise<void> => {
 /**
  * Initialize the card type registry:
  * 1. Load built-in card types (from Vite glob — always available)
- * 2. Load user card types from disk (Tauri only — implemented in Task 7)
+ * 2. Load user card types from disk (Tauri only)
  */
-export const initCardTypeRegistry = (): Promise<void> => {
+export const initCardTypeRegistry = async (): Promise<void> => {
   useCardTypeStore.getState().setBuiltinCardTypes(BUILTIN_CARD_TYPES);
   logger.info("Built-in card types loaded", { count: BUILTIN_CARD_TYPES.length });
 
-  // User card types will be loaded here in Task 7 (requires async disk read)
-  // For now, only built-in types are loaded
-  return Promise.resolve();
+  // Load user card types from disk
+  try {
+    const userTypes = await loadUserCardTypes();
+    for (const ut of userTypes) {
+      try {
+        useCardTypeStore.getState().addUserCardType(ut);
+      } catch (err) {
+        logger.warn("Skipped user card type due to conflict", {
+          slug: ut.slug,
+          error: String(err),
+        });
+      }
+    }
+    if (userTypes.length > 0) {
+      logger.info("User card types loaded", { count: userTypes.length });
+    }
+  } catch (err) {
+    logger.warn("Failed to load user card types", { error: String(err) });
+  }
 };
 
 /**
