@@ -49,6 +49,8 @@ export interface CardType {
   name: string;
   defaultAnnualFee: number;
   color: string;
+  image?: string;       // optional card face image URL
+  isBuiltin: boolean;   // true for built-in, false for user-created
   defaultBenefits: BenefitTemplate[];
 }
 
@@ -93,6 +95,8 @@ export interface AppSettings {
   reminderEnabled: boolean;
   reminderDays: number;
   dismissedDate: string | null;
+  /** Tray panel background opacity 0–100. */
+  trayOpacity: number;
 }
 
 export interface AppData {
@@ -103,18 +107,8 @@ export interface AppData {
 
 // --- Display name ---
 
-export const CARD_TYPE_NAMES: Partial<Record<string, string>> = {
-  amex_platinum: "Amex Platinum",
-  amex_aspire: "Hilton Aspire",
-  chase_sapphire_preferred: "Chase Sapphire Preferred",
-  chase_sapphire_reserve: "Chase Sapphire Reserve",
-  chase_marriott_boundless: "Chase Marriott Boundless",
-};
-
-export const getCardDisplayName = (card: CreditCard): string => {
+export const getCardDisplayName = (card: CreditCard, typeName?: string): string => {
   if (card.alias) return card.alias;
-
-  const typeName = CARD_TYPE_NAMES[card.cardTypeSlug];
 
   if (typeName && card.cardNumber && card.cardNumber.length >= 4) {
     const last4 = card.cardNumber.slice(-4);
