@@ -1,0 +1,112 @@
+{
+  "slug": "amex_platinum",
+  "name": "Amex Platinum",
+  "defaultAnnualFee": 895,
+  "color": "#8E9EAF",
+  "defaultBenefits": [
+    {
+      "name": "$300 Hotel Credit FHR/THC (H1)",
+      "description": "Fine Hotels + Resorts or The Hotel Collection credit, January–June",
+      "faceValue": 300,
+      "category": "hotel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "semi_annual", "applicableMonths": [1, 2, 3, 4, 5, 6] }
+    },
+    {
+      "name": "$300 Hotel Credit FHR/THC (H2)",
+      "description": "Fine Hotels + Resorts or The Hotel Collection credit, July–December",
+      "faceValue": 300,
+      "category": "hotel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "semi_annual", "applicableMonths": [7, 8, 9, 10, 11, 12] }
+    },
+    {
+      "name": "$200 Airline Fee Credit",
+      "description": "Annual airline fee credit for selected airline",
+      "faceValue": 200,
+      "category": "airline",
+      "resetType": "calendar",
+      "resetConfig": { "period": "annual" }
+    },
+    {
+      "name": "$200 Oura Ring Credit",
+      "description": "Annual Oura Ring membership credit",
+      "faceValue": 200,
+      "category": "wellness",
+      "resetType": "calendar",
+      "resetConfig": { "period": "annual" }
+    },
+    {
+      "name": "$209 CLEAR+ Credit",
+      "description": "Annual CLEAR Plus membership credit",
+      "faceValue": 209,
+      "category": "travel",
+      "resetType": "subscription",
+      "resetConfig": {}
+    },
+    {
+      "name": "$100 Global Entry / TSA PreCheck",
+      "description": "Global Entry or TSA PreCheck application fee credit",
+      "faceValue": 100,
+      "category": "travel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "every_4_years" }
+    },
+    {
+      "name": "$100/quarter Resy Dining Credit",
+      "description": "Quarterly dining credit at Resy restaurants",
+      "faceValue": 100,
+      "category": "dining",
+      "resetType": "calendar",
+      "resetConfig": { "period": "quarterly" }
+    },
+    {
+      "name": "$75/quarter Lululemon Credit",
+      "description": "Quarterly Lululemon credit",
+      "faceValue": 75,
+      "category": "shopping",
+      "resetType": "calendar",
+      "resetConfig": { "period": "quarterly" }
+    },
+    {
+      "name": "$25/mo Digital Entertainment",
+      "description": "Monthly digital entertainment credit",
+      "faceValue": 25,
+      "category": "streaming",
+      "resetType": "subscription",
+      "resetConfig": {}
+    },
+    {
+      "name": "$15/mo Uber Cash (Jan-Nov)",
+      "description": "Monthly Uber Cash credit, January–November",
+      "faceValue": 15,
+      "category": "transportation",
+      "resetType": "calendar",
+      "resetConfig": { "period": "monthly", "applicableMonths": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
+    },
+    {
+      "name": "$35 Uber Cash (Dec)",
+      "description": "December Uber Cash credit (bonus month)",
+      "faceValue": 35,
+      "category": "transportation",
+      "resetType": "calendar",
+      "resetConfig": { "period": "monthly", "applicableMonths": [12] }
+    },
+    {
+      "name": "$120/yr Uber One Membership",
+      "description": "Annual Uber One membership credit",
+      "faceValue": 120,
+      "category": "transportation",
+      "resetType": "subscription",
+      "resetConfig": {}
+    },
+    {
+      "name": "$12.95/mo Walmart+",
+      "description": "Monthly Walmart+ membership credit",
+      "faceValue": 12.95,
+      "category": "shopping",
+      "resetType": "subscription",
+      "resetConfig": {}
+    }
+  ]
+}

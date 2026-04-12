@@ -1,0 +1,40 @@
+{
+  "slug": "chase_marriott_boundless",
+  "name": "Chase Marriott Boundless",
+  "defaultAnnualFee": 95,
+  "color": "#6B2D5B",
+  "defaultBenefits": [
+    {
+      "name": "Free Night Award (up to 35k pts)",
+      "description": "Annual free night certificate at Marriott properties",
+      "faceValue": 0,
+      "category": "hotel",
+      "resetType": "anniversary",
+      "resetConfig": {}
+    },
+    {
+      "name": "$50 Airline Credit (H1 2026)",
+      "description": "2026 promotional airline credit (H1), requires $250+ airline spend",
+      "faceValue": 50,
+      "category": "airline",
+      "resetType": "one_time",
+      "resetConfig": { "expiresDate": "2026-06-30" }
+    },
+    {
+      "name": "$50 Airline Credit (H2 2026)",
+      "description": "2026 promotional airline credit (H2), requires $250+ airline spend",
+      "faceValue": 50,
+      "category": "airline",
+      "resetType": "one_time",
+      "resetConfig": { "expiresDate": "2026-12-31" }
+    },
+    {
+      "name": "15 Elite Night Credits",
+      "description": "Annual Marriott Bonvoy elite night credits",
+      "faceValue": 0,
+      "category": "hotel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "annual" }
+    }
+  ]
+}

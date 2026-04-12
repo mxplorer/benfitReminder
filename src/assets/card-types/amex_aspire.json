@@ -1,0 +1,56 @@
+{
+  "slug": "amex_aspire",
+  "name": "Hilton Aspire",
+  "defaultAnnualFee": 550,
+  "color": "#1A5276",
+  "defaultBenefits": [
+    {
+      "name": "$200 Hilton Resort Credit (H1)",
+      "description": "Hilton resort credit, January–June",
+      "faceValue": 200,
+      "category": "hotel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "semi_annual", "applicableMonths": [1, 2, 3, 4, 5, 6] }
+    },
+    {
+      "name": "$200 Hilton Resort Credit (H2)",
+      "description": "Hilton resort credit, July–December",
+      "faceValue": 200,
+      "category": "hotel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "semi_annual", "applicableMonths": [7, 8, 9, 10, 11, 12] }
+    },
+    {
+      "name": "$50/quarter Flight Credit",
+      "description": "Quarterly airline credit",
+      "faceValue": 50,
+      "category": "airline",
+      "resetType": "calendar",
+      "resetConfig": { "period": "quarterly" }
+    },
+    {
+      "name": "$209 CLEAR+ Credit",
+      "description": "Annual CLEAR Plus membership credit",
+      "faceValue": 209,
+      "category": "travel",
+      "resetType": "subscription",
+      "resetConfig": {}
+    },
+    {
+      "name": "Free Weekend Night Award",
+      "description": "Annual free weekend night certificate at Hilton properties",
+      "faceValue": 0,
+      "category": "hotel",
+      "resetType": "anniversary",
+      "resetConfig": {}
+    },
+    {
+      "name": "$100 Waldorf/Conrad Credit",
+      "description": "Credit at Waldorf Astoria or Conrad properties per stay",
+      "faceValue": 100,
+      "category": "hotel",
+      "resetType": "since_last_use",
+      "resetConfig": { "cooldownDays": 0 }
+    }
+  ]
+}
