@@ -1,10 +1,17 @@
 import { createLogger } from "../lib/logger";
+import { BUILTIN_CARD_TYPES } from "../models/templates";
 import { useCardStore } from "../stores/useCardStore";
+import { useCardTypeStore } from "../stores/useCardTypeStore";
 import { loadData, saveData } from "./bridge";
 
 const logger = createLogger("tauri.persistence");
 
+/** Event name emitted when any window mutates the store, so sibling windows can re-sync. */
+const DATA_CHANGED_EVENT = "ccb:data-changed";
+
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+/** Last JSON we wrote/received — used to break feedback loops between windows. */
+let lastSyncedJson: string | null = null;
 
 const debouncedSave = (json: string, delayMs = 500) => {
   if (saveTimer !== null) clearTimeout(saveTimer);
@@ -14,30 +21,91 @@ const debouncedSave = (json: string, delayMs = 500) => {
   }, delayMs);
 };
 
+/** Emit a Tauri event so every other webview window can update its store. */
+const emitDataChanged = async (json: string): Promise<void> => {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  try {
+    const { emit } = await import("@tauri-apps/api/event");
+    await emit(DATA_CHANGED_EVENT, json);
+  } catch (err) {
+    logger.warn("Failed to emit data-changed event", { error: String(err) });
+  }
+};
+
+/** Listen for data-changed events from other windows and refresh local store. */
+const subscribeDataChanged = async (): Promise<void> => {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  try {
+    const { listen } = await import("@tauri-apps/api/event");
+    await listen<string>(DATA_CHANGED_EVENT, (event) => {
+      const json = event.payload;
+      if (json === lastSyncedJson) return; // already up to date
+      lastSyncedJson = json;
+      try {
+        useCardStore.getState().importData(json);
+        logger.debug("Store re-synced from cross-window event");
+      } catch (err) {
+        logger.warn("Failed to import data from event", { error: String(err) });
+      }
+    });
+  } catch (err) {
+    logger.warn("Failed to subscribe to data-changed event", { error: String(err) });
+  }
+};
+
+/**
+ * Initialize the card type registry:
+ * 1. Load built-in card types (from Vite glob — always available)
+ * 2. Load user card types from disk (Tauri only — implemented in Task 7)
+ */
+export const initCardTypeRegistry = (): Promise<void> => {
+  useCardTypeStore.getState().setBuiltinCardTypes(BUILTIN_CARD_TYPES);
+  logger.info("Built-in card types loaded", { count: BUILTIN_CARD_TYPES.length });
+
+  // User card types will be loaded here in Task 7 (requires async disk read)
+  // For now, only built-in types are loaded
+  return Promise.resolve();
+};
+
 /**
  * Initialize Tauri file persistence:
  * 1. Load data from disk and hydrate the store.
- * 2. Subscribe to store changes and auto-save (debounced).
+ * 2. Subscribe to local store changes → debounced save to disk + emit to other windows.
+ * 3. Subscribe to cross-window events → refresh local store when siblings mutate.
  *
- * Call this once at app startup inside MainWindow (not TrayPanel — only one writer needed).
+ * Safe to call from every window (main + tray) — each window needs its own store sync.
  */
 export const initPersistence = async (): Promise<void> => {
-  // 1. Hydrate
+  // 0. Initialize card type registry (built-in + user templates)
+  await initCardTypeRegistry();
+
+  // 1. Hydrate from disk
   try {
     const json = await loadData();
     if (json) {
       useCardStore.getState().importData(json);
+      lastSyncedJson = json;
       logger.info("Store hydrated from disk");
     }
   } catch (err) {
     logger.warn("Failed to hydrate store from disk", { error: String(err) });
   }
 
-  // 2. Subscribe for auto-save
+  // 2. Subscribe for auto-save + cross-window emit.
+  //    Set up BEFORE generateAutoRecurRecords so the generated records get persisted.
   useCardStore.subscribe((state) => {
     const json = state.exportData();
+    if (json === lastSyncedJson) return; // redundant change (e.g. just imported)
+    lastSyncedJson = json;
     debouncedSave(json);
+    void emitDataChanged(json);
   });
+
+  // 3. Generate auto-recur records for subscription benefits (triggers subscribe → save).
+  useCardStore.getState().generateAutoRecurRecords();
+
+  // 4. Listen for cross-window data changes.
+  void subscribeDataChanged();
 
   logger.info("Persistence initialized");
 };
