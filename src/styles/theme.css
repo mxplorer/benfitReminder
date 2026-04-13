@@ -59,35 +59,40 @@
     --color-orange: #ff9f0a;
     --color-red: #ff453a;
 
-    --text-primary: rgba(255, 255, 255, 0.85);
-    --text-secondary: rgba(255, 255, 255, 0.55);
-    --text-tertiary: rgba(255, 255, 255, 0.35);
+    /* Text: boosted opacity across all levels for clear legibility */
+    --text-primary: rgba(255, 255, 255, 0.95);
+    --text-secondary: rgba(255, 255, 255, 0.72);
+    --text-tertiary: rgba(255, 255, 255, 0.48);
 
-    --bg-panel-rgb: 28, 28, 32;
-    --bg-panel: rgba(28, 28, 32, 0.55);
-    --bg-card: rgba(255, 255, 255, 0.06);
-    --bg-card-hover: rgba(255, 255, 255, 0.1);
-    --bg-sidebar: rgba(32, 32, 36, 0.8);
-    --bg-tab: rgba(255, 255, 255, 0.06);
-    --bg-tab-active: rgba(255, 255, 255, 0.12);
+    /* Backgrounds: deeper base + more opaque so content doesn't bleed through */
+    --bg-panel-rgb: 16, 16, 20;
+    --bg-panel: rgba(16, 16, 20, 0.90);
+    --bg-card: rgba(255, 255, 255, 0.10);
+    --bg-card-hover: rgba(255, 255, 255, 0.17);
+    --bg-sidebar: rgba(12, 12, 16, 0.96);
+    --bg-tab: rgba(255, 255, 255, 0.08);
+    --bg-tab-active: rgba(255, 255, 255, 0.20);
 
-    --border-card: rgba(255, 255, 255, 0.08);
-    --border-subtle: rgba(255, 255, 255, 0.04);
+    /* Borders: visible enough to delineate cards and inputs */
+    --border-card: rgba(255, 255, 255, 0.16);
+    --border-subtle: rgba(255, 255, 255, 0.10);
 
-    --tag-done-bg: rgba(255, 255, 255, 0.06);
-    --tag-danger-bg: rgba(255, 69, 58, 0.15);
-    --tag-warning-bg: rgba(255, 159, 10, 0.15);
-    --tag-safe-bg: rgba(48, 209, 88, 0.15);
+    /* Status tags: slightly brighter tints against the darker base */
+    --tag-done-bg: rgba(255, 255, 255, 0.09);
+    --tag-danger-bg: rgba(255, 69, 58, 0.22);
+    --tag-warning-bg: rgba(255, 159, 10, 0.22);
+    --tag-safe-bg: rgba(48, 209, 88, 0.20);
 
     --accent: var(--color-blue);
-    --accent-subtle: rgba(10, 132, 255, 0.15);
+    --accent-subtle: rgba(10, 132, 255, 0.22);
     --danger: var(--color-red);
     --bg-primary: var(--bg-panel);
-    --bg-hover: rgba(255, 255, 255, 0.06);
+    --bg-hover: rgba(255, 255, 255, 0.10);
 
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
-    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.4);
+    /* Shadows: stronger depth to separate layers */
+    --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.35);
+    --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.50);
+    --shadow-panel: 0 8px 40px rgba(0, 0, 0, 0.60);
   }
 }
 
