@@ -83,8 +83,10 @@ Rollover only applies to `calendar` reset type benefits. The `rolloverable` flag
 
 Update `amex_platinum.json`:
 
-- FHR H1 benefit: add `"rolloverable": true, "rolloverMaxYears": 2`
-- FHR H2 benefit: add `"rolloverable": true, "rolloverMaxYears": 2`
+- **Merge FHR H1 + H2 into a single benefit:**
+  - Remove the two separate H1/H2 entries (with `applicableMonths` split)
+  - Replace with one entry: `"$300 Hotel Credit FHR/THC"`, `semi_annual`, `faceValue: 300`, no `applicableMonths`
+  - Add `"rolloverable": true, "rolloverMaxYears": 2`
 
 Other benefits remain `rolloverable: false` (or omitted, defaulting to false).
 
