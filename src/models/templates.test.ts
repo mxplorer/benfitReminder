@@ -15,7 +15,16 @@ describe("BUILTIN_CARD_TYPES", () => {
   it("has Amex Platinum with annual fee $895", () => {
     const platinum = findCard("amex_platinum");
     expect(platinum.defaultAnnualFee).toBe(895);
-    expect(platinum.defaultBenefits).toHaveLength(13);
+    expect(platinum.defaultBenefits).toHaveLength(12);
+  });
+
+  it("FHR benefit is rolloverable with semi_annual period", () => {
+    const platinum = BUILTIN_CARD_TYPES.find((t) => t.slug === "amex_platinum")!;
+    const fhr = platinum.defaultBenefits.find((b) => b.name.includes("FHR"));
+    expect(fhr).toBeDefined();
+    expect(fhr!.resetConfig.period).toBe("semi_annual");
+    expect(fhr!.rolloverable).toBe(true);
+    expect(fhr!.rolloverMaxYears).toBe(2);
   });
 
   it("has Chase Sapphire Reserve with annual fee $795", () => {

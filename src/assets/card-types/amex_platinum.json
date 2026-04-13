@@ -5,20 +5,14 @@
   "color": "#8E9EAF",
   "defaultBenefits": [
     {
-      "name": "$300 Hotel Credit FHR/THC (H1)",
-      "description": "Fine Hotels + Resorts or The Hotel Collection credit, January–June",
+      "name": "$300 Hotel Credit FHR/THC",
+      "description": "Fine Hotels + Resorts or The Hotel Collection credit, per half-year",
       "faceValue": 300,
       "category": "hotel",
       "resetType": "calendar",
-      "resetConfig": { "period": "semi_annual", "applicableMonths": [1, 2, 3, 4, 5, 6] }
-    },
-    {
-      "name": "$300 Hotel Credit FHR/THC (H2)",
-      "description": "Fine Hotels + Resorts or The Hotel Collection credit, July–December",
-      "faceValue": 300,
-      "category": "hotel",
-      "resetType": "calendar",
-      "resetConfig": { "period": "semi_annual", "applicableMonths": [7, 8, 9, 10, 11, 12] }
+      "resetConfig": { "period": "semi_annual" },
+      "rolloverable": true,
+      "rolloverMaxYears": 2
     },
     {
       "name": "$200 Airline Fee Credit",
