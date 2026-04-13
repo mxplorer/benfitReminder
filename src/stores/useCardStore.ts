@@ -31,6 +31,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   reminderEnabled: true,
   reminderDays: 3,
   dismissedDate: null,
+  trayOpacity: 45,
 };
 
 const updateBenefitInCards = (

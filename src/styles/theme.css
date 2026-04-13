@@ -12,6 +12,7 @@
   --text-tertiary: rgba(0, 0, 0, 0.35);
 
   /* Backgrounds */
+  --bg-panel-rgb: 245, 245, 247;
   --bg-panel: rgba(245, 245, 247, 0.45);
   --bg-card: rgba(255, 255, 255, 0.45);
   --bg-card-hover: rgba(255, 255, 255, 0.65);
@@ -62,6 +63,7 @@
     --text-secondary: rgba(255, 255, 255, 0.55);
     --text-tertiary: rgba(255, 255, 255, 0.35);
 
+    --bg-panel-rgb: 28, 28, 32;
     --bg-panel: rgba(28, 28, 32, 0.55);
     --bg-card: rgba(255, 255, 255, 0.06);
     --bg-card-hover: rgba(255, 255, 255, 0.1);
@@ -101,7 +103,7 @@
 body {
   font-family: var(--font-family);
   color: var(--text-primary);
-  background: var(--bg-panel);
+  background: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;

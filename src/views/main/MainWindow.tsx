@@ -8,23 +8,21 @@ import { Dashboard } from "./Dashboard";
 import { History } from "./History";
 import { Settings } from "./Settings";
 import { CardDetail } from "./CardDetail";
+import { CardEditor } from "./CardEditor";
+import { BenefitEditor } from "./BenefitEditor";
 import "./MainWindow.css";
 
 export type ActiveView =
   | "dashboard"
   | "history"
   | "settings"
-  | { type: "card"; cardId: string };
-
-const renderView = (view: ActiveView) => {
-  if (view === "dashboard") return <div data-testid="view-dashboard"><Dashboard /></div>;
-  if (view === "history") return <div data-testid="view-history"><History /></div>;
-  if (view === "settings") return <div data-testid="view-settings"><Settings /></div>;
-  return <div data-testid={`view-card-${view.cardId}`}><CardDetail cardId={view.cardId} /></div>;
-};
+  | { type: "card"; cardId: string }
+  | { type: "card-editor"; cardId?: string }
+  | { type: "benefit-editor"; cardId: string; benefitId?: string };
 
 export const MainWindow = () => {
   const [activeView, setActiveView] = useState<ActiveView>("dashboard");
+  const cards = useCardStore((s) => s.cards);
 
   useEffect(() => {
     // Initialize file persistence (hydrate from disk + start auto-save)
@@ -56,12 +54,67 @@ export const MainWindow = () => {
     return () => { window.removeEventListener("focus", onFocus); };
   }, []);
 
+  const renderView = () => {
+    if (activeView === "dashboard") return <div data-testid="view-dashboard"><Dashboard /></div>;
+    if (activeView === "history") return <div data-testid="view-history"><History /></div>;
+    if (activeView === "settings") return <div data-testid="view-settings"><Settings /></div>;
+    if (typeof activeView === "object") {
+      if (activeView.type === "card-editor") {
+        const editCard = activeView.cardId
+          ? cards.find((c) => c.id === activeView.cardId)
+          : undefined;
+        return (
+          <div data-testid="view-card-editor">
+            <CardEditor
+              card={editCard}
+              onDone={() => {
+                if (activeView.cardId) {
+                  setActiveView({ type: "card", cardId: activeView.cardId });
+                } else {
+                  // New card added — navigate to the newest card in the store
+                  const latest = useCardStore.getState().cards;
+                  const newest = latest[latest.length - 1] as { id: string } | undefined;
+                  if (newest) {
+                    setActiveView({ type: "card", cardId: newest.id });
+                  } else {
+                    setActiveView("dashboard");
+                  }
+                }
+              }}
+            />
+          </div>
+        );
+      }
+      if (activeView.type === "benefit-editor") {
+        const editCard = cards.find((c) => c.id === activeView.cardId);
+        const benefit = activeView.benefitId
+          ? editCard?.benefits.find((b) => b.id === activeView.benefitId)
+          : undefined;
+        return (
+          <div data-testid="view-benefit-editor">
+            <BenefitEditor
+              cardId={activeView.cardId}
+              benefit={benefit}
+              onDone={() => { setActiveView({ type: "card", cardId: activeView.cardId }); }}
+            />
+          </div>
+        );
+      }
+      return (
+        <div data-testid={`view-card-${activeView.cardId}`}>
+          <CardDetail cardId={activeView.cardId} onNavigate={setActiveView} />
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="main-window">
       <div className="main-window__sidebar">
         <Sidebar activeView={activeView} onNavigate={setActiveView} />
       </div>
-      <main className="main-window__content">{renderView(activeView)}</main>
+      <main className="main-window__content">{renderView()}</main>
     </div>
   );
 };

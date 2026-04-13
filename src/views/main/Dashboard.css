@@ -104,6 +104,14 @@
   border-left-color: var(--danger, #ef4444);
 }
 
+.dashboard__card-img {
+  width: 28px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
 .dashboard__card-meta {
   flex: 1;
   display: flex;

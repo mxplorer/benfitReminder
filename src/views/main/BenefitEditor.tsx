@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Benefit, BenefitCategory, CalendarPeriod, ResetType } from "../../models/types";
 import { useCardStore } from "../../stores/useCardStore";
+import "./BenefitEditor.css";
 
 interface BenefitEditorProps {
   cardId: string;
@@ -125,7 +126,7 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
   };
 
   return (
-    <form onSubmit={handleSubmit} data-testid="benefit-editor">
+    <form onSubmit={handleSubmit} data-testid="benefit-editor" className="benefit-editor">
       <label>
         名称
         <input

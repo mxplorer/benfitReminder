@@ -55,14 +55,15 @@ describe("BenefitCard", () => {
     expect(screen.queryByText("Should be hidden")).not.toBeInTheDocument();
   });
 
-  it("fires onToggleUsage with correct cardId and benefitId on click", () => {
+  it("fires onToggleUsage with actual value after confirming prompt", () => {
     const handler = vi.fn();
-    const benefit = makeBenefit({ id: "b42" });
+    const benefit = makeBenefit({ id: "b42", faceValue: 50 });
     const card = makeCard({ id: "c99" });
     render(<BenefitCard benefit={benefit} card={card} onToggleUsage={handler} />);
 
-    fireEvent.click(screen.getByRole("button"));
-    expect(handler).toHaveBeenCalledWith("c99", "b42");
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(handler).toHaveBeenCalledWith("c99", "b42", 50);
   });
 
   it("shows used state with checkmark and strikethrough", () => {
@@ -80,5 +81,54 @@ describe("BenefitCard", () => {
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
 
     expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("prompts for actual value before marking benefit as used", () => {
+    const handler = vi.fn();
+    const benefit = makeBenefit({ id: "b1", faceValue: 100 });
+    const card = makeCard({ id: "c1" });
+    render(<BenefitCard benefit={benefit} card={card} onToggleUsage={handler} />);
+
+    // Click the check button — should reveal the actual-value prompt
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const input = screen.getByLabelText<HTMLInputElement>("实际到手");
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe("100"); // pre-filled with face value
+
+    // Handler should NOT have been called yet
+    expect(handler).not.toHaveBeenCalled();
+
+    // Edit value and confirm
+    fireEvent.change(input, { target: { value: "75" } });
+    fireEvent.click(screen.getByLabelText("确认"));
+
+    expect(handler).toHaveBeenCalledWith("c1", "b1", 75);
+  });
+
+  it("cancels without calling handler", () => {
+    const handler = vi.fn();
+    const benefit = makeBenefit();
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={handler} />);
+
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.click(screen.getByLabelText("取消"));
+
+    expect(handler).not.toHaveBeenCalled();
+    // prompt should be gone
+    expect(screen.queryByLabelText("实际到手")).not.toBeInTheDocument();
+  });
+
+  it("unchecks directly without prompting when already used", () => {
+    const handler = vi.fn();
+    const benefit = makeBenefit({
+      id: "b7",
+      usageRecords: [{ usedDate: "2026-04-20", faceValue: 100, actualValue: 100 }],
+    });
+    const card = makeCard({ id: "c7" });
+    render(<BenefitCard benefit={benefit} card={card} onToggleUsage={handler} />);
+
+    fireEvent.click(screen.getByLabelText("取消使用"));
+    expect(handler).toHaveBeenCalledWith("c7", "b7");
+    expect(screen.queryByLabelText("实际到手")).not.toBeInTheDocument();
   });
 });

@@ -46,7 +46,7 @@ describe("CardDetail", () => {
   it("shows card name and owner in header", () => {
     const card = makeCard();
     useCardStore.setState({ cards: [card] });
-    render(<CardDetail cardId="c1" />);
+    render(<CardDetail cardId="c1" onNavigate={() => {}} />);
 
     expect(screen.getByText("My Amex")).toBeInTheDocument();
     expect(screen.getByText(/Alice/)).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("CardDetail", () => {
     const card = makeCard({ benefits: [b1, b2] });
     useCardStore.setState({ cards: [card] });
 
-    render(<CardDetail cardId="c1" />);
+    render(<CardDetail cardId="c1" onNavigate={() => {}} />);
     // 全部 shows non-hidden only by default (hidden excluded unless 已隐藏 filter)
     // Note: 全部 filter shows non-hidden benefits, 已隐藏 filter shows hidden
     expect(screen.getByText("Benefit One")).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe("CardDetail", () => {
     const card = makeCard({ benefits: [b1, b2] });
     useCardStore.setState({ cards: [card] });
 
-    render(<CardDetail cardId="c1" />);
+    render(<CardDetail cardId="c1" onNavigate={() => {}} />);
     fireEvent.click(screen.getByText("已隐藏"));
 
     expect(screen.queryByText("Visible")).not.toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("CardDetail", () => {
     const card = makeCard({ benefits: [unused, used] });
     useCardStore.setState({ cards: [card] });
 
-    render(<CardDetail cardId="c1" />);
+    render(<CardDetail cardId="c1" onNavigate={() => {}} />);
     // Use the filter pills container to avoid ambiguity with StatusTag "已使用" text
     const filterPills = screen.getByTestId("filter-pills");
     const usedPill = filterPills.querySelector(".card-detail__filter-pill:nth-child(3)");
@@ -107,7 +107,7 @@ describe("CardDetail", () => {
     const card = makeCard({ benefits: [benefit] });
     useCardStore.setState({ cards: [card] });
 
-    render(<CardDetail cardId="c1" />);
+    render(<CardDetail cardId="c1" onNavigate={() => {}} />);
 
     const table = screen.getByTestId("history-table");
     expect(table).toBeInTheDocument();

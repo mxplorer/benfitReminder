@@ -2,6 +2,7 @@ import { useCardStore } from "../../stores/useCardStore";
 import { GlassContainer } from "../shared/GlassContainer";
 import { getMetrics } from "../../lib/transports";
 import { exportToFile, importFromFile } from "../../tauri/bridge";
+import "./Settings.css";
 
 export const Settings = () => {
   const settings = useCardStore((s) => s.settings);
@@ -94,6 +95,22 @@ export const Settings = () => {
             />
           </label>
         )}
+      </GlassContainer>
+
+      <GlassContainer className="settings__section">
+        <h3>外观</h3>
+        <label className="settings__slider-label">
+          Tray 面板透明度
+          <span className="settings__slider-value">{settings.trayOpacity}%</span>
+        </label>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={settings.trayOpacity}
+          onChange={(e) => { updateSettings({ trayOpacity: Number(e.target.value) }); }}
+          data-testid="tray-opacity-slider"
+        />
       </GlassContainer>
 
       <GlassContainer className="settings__section">

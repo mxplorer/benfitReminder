@@ -12,6 +12,14 @@
   margin-bottom: 8px;
 }
 
+.by-card-view__card-img {
+  width: 28px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
 .by-card-view__card-name {
   font-size: 13px;
   font-weight: 600;
@@ -52,6 +60,13 @@
 .by-urgency-view__source {
   padding-top: 6px;
   flex-shrink: 0;
+}
+
+.by-urgency-view__card-img {
+  width: 28px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
 }
 
 .by-urgency-view__item > .glass-card {

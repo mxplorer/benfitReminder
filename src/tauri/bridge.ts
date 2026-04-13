@@ -98,14 +98,17 @@ export const importFromFile = async (): Promise<string | null> => {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const { readTextFile } = await import("@tauri-apps/plugin-fs");
 
-    const selected = await open({
+    const selected = (await open({
       filters: [{ name: "JSON", extensions: ["json"] }],
       multiple: false,
-    });
+    })) as string | string[] | null;
 
-    if (!selected || typeof selected !== "string") return null;
-    const text = await readTextFile(selected);
-    logger.info("Data imported from file", { path: selected });
+    if (!selected) return null;
+    // open() returns string | string[] | null in Tauri v2
+    const filePath = Array.isArray(selected) ? selected[0] : selected;
+    if (!filePath) return null;
+    const text = await readTextFile(filePath);
+    logger.info("Data imported from file", { path: filePath });
     return text;
   } catch (err) {
     logger.error("Import failed", { error: String(err) });
