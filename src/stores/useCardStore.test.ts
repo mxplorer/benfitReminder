@@ -284,6 +284,67 @@ describe("useCardStore", () => {
     });
   });
 
+  describe("rolloverBenefit", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("writes a rollover UsageRecord with faceValue 0", () => {
+      const card = makeCard({
+        id: "c1",
+        benefits: [makeBenefit({ id: "b1", rolloverable: true, rolloverMaxYears: 2 })],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().rolloverBenefit("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records).toHaveLength(1);
+      expect(records[0].faceValue).toBe(0);
+      expect(records[0].actualValue).toBe(0);
+      expect(records[0].isRollover).toBe(true);
+    });
+
+    it("does nothing for non-rolloverable benefit", () => {
+      const card = makeCard({
+        id: "c1",
+        benefits: [makeBenefit({ id: "b1", rolloverable: false })],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().rolloverBenefit("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records).toHaveLength(0);
+    });
+  });
+
+  describe("backfillBenefitUsage", () => {
+    it("appends multiple records at once", () => {
+      const card = makeCard({
+        id: "c1",
+        benefits: [makeBenefit({ id: "b1" })],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      const records = [
+        { usedDate: "2026-01-01", faceValue: 100, actualValue: 80 },
+        { usedDate: "2025-10-01", faceValue: 100, actualValue: 100 },
+      ];
+      useCardStore.getState().backfillBenefitUsage("c1", "b1", records);
+
+      const stored = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(stored).toHaveLength(2);
+      expect(stored[0].usedDate).toBe("2026-01-01");
+      expect(stored[1].usedDate).toBe("2025-10-01");
+    });
+  });
+
   describe("generateAutoRecurRecords", () => {
     beforeEach(() => {
       vi.useFakeTimers();

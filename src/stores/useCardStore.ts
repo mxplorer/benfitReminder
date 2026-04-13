@@ -16,7 +16,9 @@ interface CardStoreActions {
   removeBenefit: (cardId: string, benefitId: string) => void;
   toggleBenefitHidden: (cardId: string, benefitId: string) => void;
   toggleBenefitAutoRecur: (cardId: string, benefitId: string) => void;
-  toggleBenefitUsage: (cardId: string, benefitId: string, actualValue?: number) => void;
+  toggleBenefitUsage: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
+  rolloverBenefit: (cardId: string, benefitId: string, usedDate?: string) => void;
+  backfillBenefitUsage: (cardId: string, benefitId: string, records: UsageRecord[]) => void;
   getUnusedBenefitCount: () => number;
   updateSettings: (partial: Partial<AppSettings>) => void;
   loadData: (cards: CreditCard[], settings: AppSettings) => void;
@@ -106,7 +108,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
     }));
   },
 
-  toggleBenefitUsage: (cardId, benefitId, actualValue?) => {
+  toggleBenefitUsage: (cardId, benefitId, actualValue?, usedDate?) => {
     const today = new Date();
     set((state) => {
       const card = state.cards.find((c) => c.id === cardId);
@@ -130,7 +132,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
 
       // Add new record with faceValue snapshot
       const newRecord: UsageRecord = {
-        usedDate: formatDate(today),
+        usedDate: usedDate ?? formatDate(today),
         faceValue: benefit.faceValue,
         actualValue: actualValue ?? benefit.faceValue,
       };
@@ -141,6 +143,38 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         })),
       };
     });
+  },
+
+  rolloverBenefit: (cardId, benefitId, usedDate?) => {
+    const today = new Date();
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit || !benefit.rolloverable) return state;
+
+      const newRecord: UsageRecord = {
+        usedDate: usedDate ?? formatDate(today),
+        faceValue: 0,
+        actualValue: 0,
+        isRollover: true,
+      };
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: [...b.usageRecords, newRecord],
+        })),
+      };
+    });
+  },
+
+  backfillBenefitUsage: (cardId, benefitId, records) => {
+    set((state) => ({
+      cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+        ...b,
+        usageRecords: [...b.usageRecords, ...records],
+      })),
+    }));
   },
 
   getUnusedBenefitCount: () => {
