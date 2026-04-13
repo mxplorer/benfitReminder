@@ -20,6 +20,7 @@ interface CardDetailProps {
 export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const removeCard = useCardStore((s) => s.removeCard);
   const removeBenefit = useCardStore((s) => s.removeBenefit);
   const toggleBenefitHidden = useCardStore((s) => s.toggleBenefitHidden);
@@ -152,6 +153,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
             benefit={benefit}
             card={card}
             onToggleUsage={toggleBenefitUsage}
+            onRollover={rolloverBenefit}
             onToggleHidden={toggleBenefitHidden}
             onDelete={removeBenefit}
           />

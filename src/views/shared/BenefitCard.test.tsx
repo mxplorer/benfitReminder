@@ -166,6 +166,52 @@ describe("BenefitCard", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it("shows rollover badge for rolloverable benefit", () => {
+    const benefit = makeBenefit({ rolloverable: true, rolloverMaxYears: 2 });
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
+    expect(screen.getByText("可Roll")).toBeInTheDocument();
+  });
+
+  it("does not show rollover badge for non-rolloverable benefit", () => {
+    const benefit = makeBenefit({ rolloverable: false });
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
+    expect(screen.queryByText("可Roll")).not.toBeInTheDocument();
+  });
+
+  it("shows rollover button for unused rolloverable benefit", () => {
+    const benefit = makeBenefit({ rolloverable: true, rolloverMaxYears: 2 });
+    render(
+      <BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} onRollover={vi.fn()} />
+    );
+    expect(screen.getByLabelText("Rollover")).toBeInTheDocument();
+  });
+
+  it("fires onRollover when rollover button is clicked", () => {
+    const handler = vi.fn();
+    const benefit = makeBenefit({ id: "b1", rolloverable: true, rolloverMaxYears: 2 });
+    const card = makeCard({ id: "c1" });
+    render(
+      <BenefitCard benefit={benefit} card={card} onToggleUsage={vi.fn()} onRollover={handler} />
+    );
+    fireEvent.click(screen.getByLabelText("Rollover"));
+    expect(handler).toHaveBeenCalledWith("c1", "b1");
+  });
+
+  it("shows accumulated value when rollover records exist", () => {
+    // Today is 2026-04-25 → Q2. Q1 was rolled → available = 300 + 300 = 600
+    const benefit = makeBenefit({
+      faceValue: 300,
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      resetConfig: { period: "quarterly" },
+      usageRecords: [
+        { usedDate: "2026-01-15", faceValue: 0, actualValue: 0, isRollover: true },
+      ],
+    });
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
+    expect(screen.getByText("$600")).toBeInTheDocument();
+  });
+
   it("unchecks directly without prompting when already used", () => {
     const handler = vi.fn();
     const benefit = makeBenefit({

@@ -13,6 +13,7 @@ import { BenefitCard } from "../shared/BenefitCard";
 export const ByUrgencyView = () => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const today = new Date();
 
@@ -77,6 +78,7 @@ export const ByUrgencyView = () => {
               benefit={benefit}
               card={card}
               onToggleUsage={toggleBenefitUsage}
+              onRollover={rolloverBenefit}
               compact
             />
           </div>

@@ -1,13 +1,18 @@
 import { useState } from "react";
-import type { Benefit, CreditCard } from "../../models/types";
-import { getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
+import type { Benefit, CreditCard, ResetType } from "../../models/types";
+import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
+import { getAvailableValue } from "../../utils/rollover";
 import { GlassContainer } from "./GlassContainer";
 import { StatusTag } from "./StatusTag";
+
+/** Reset types where the refresh date depends on when the benefit was used. */
+const DATE_REQUIRED_RESET_TYPES: ReadonlySet<ResetType> = new Set(["anniversary", "since_last_use"]);
 
 interface BenefitCardProps {
   benefit: Benefit;
   card: CreditCard;
-  onToggleUsage: (cardId: string, benefitId: string, actualValue?: number) => void;
+  onToggleUsage: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
+  onRollover?: (cardId: string, benefitId: string) => void;
   onToggleHidden?: (cardId: string, benefitId: string) => void;
   onDelete?: (cardId: string, benefitId: string) => void;
   compact?: boolean;
@@ -29,12 +34,15 @@ const getResetLabel = (benefit: Benefit): string => {
   return PERIOD_LABELS[benefit.resetConfig.period ?? ""] ?? "";
 };
 
-export const BenefitCard = ({ benefit, card, onToggleUsage, onToggleHidden, onDelete, compact = false }: BenefitCardProps) => {
+export const BenefitCard = ({ benefit, card, onToggleUsage, onRollover, onToggleHidden, onDelete, compact = false }: BenefitCardProps) => {
   const today = new Date();
   const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
+  const availableValue = getAvailableValue(benefit, today);
   // When not-yet-used benefit is clicked we open an inline prompt so the user
   // can record the *actual* amount redeemed (may differ from faceValue).
   const [pendingValue, setPendingValue] = useState<string | null>(null);
+  const [pendingDate, setPendingDate] = useState<string>(formatDate(today));
+  const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);
 
   const deadline = getDeadline(today, {
     resetType: benefit.resetType,
@@ -58,13 +66,15 @@ export const BenefitCard = ({ benefit, card, onToggleUsage, onToggleHidden, onDe
       return;
     }
     setPendingValue(String(benefit.faceValue));
+    setPendingDate(formatDate(today));
   };
 
   const handleConfirm = () => {
     if (pendingValue === null) return;
     const value = Number(pendingValue);
     if (isNaN(value) || value < 0) return;
-    onToggleUsage(card.id, benefit.id, value);
+    if (dateRequired && !pendingDate) return;
+    onToggleUsage(card.id, benefit.id, value, pendingDate || undefined);
     setPendingValue(null);
   };
 
@@ -77,6 +87,9 @@ export const BenefitCard = ({ benefit, card, onToggleUsage, onToggleHidden, onDe
       <div className="benefit-card__header">
         <StatusTag daysRemaining={daysRemaining} isUsed={isUsed} />
         <span className="benefit-card__period">{getResetLabel(benefit)}</span>
+        {benefit.rolloverable && (
+          <span className="benefit-card__rollover-badge">可Roll</span>
+        )}
       </div>
       <span className={`benefit-card__name ${isUsed ? "benefit-card__name--used" : ""}`}>
         {benefit.name}
@@ -86,7 +99,7 @@ export const BenefitCard = ({ benefit, card, onToggleUsage, onToggleHidden, onDe
       )}
       <div className="benefit-card__footer">
         <span className="benefit-card__value">
-          {benefit.faceValue > 0 ? `$${String(benefit.faceValue)}` : "—"}
+          {availableValue > 0 ? `$${String(availableValue)}` : "—"}
         </span>
         {pendingValue === null ? (
           <div className="benefit-card__actions">
@@ -114,6 +127,16 @@ export const BenefitCard = ({ benefit, card, onToggleUsage, onToggleHidden, onDe
                 ✕
               </button>
             )}
+            {onRollover && benefit.rolloverable && !isUsed && (
+              <button
+                className="benefit-card__action-btn benefit-card__rollover-btn"
+                onClick={() => { onRollover(card.id, benefit.id); }}
+                aria-label="Rollover"
+                title="Rollover"
+              >
+                ↗
+              </button>
+            )}
             <button
               className={`benefit-card__check-btn ${isUsed ? "benefit-card__check-btn--checked" : ""}`}
               onClick={handleClick}
@@ -124,23 +147,40 @@ export const BenefitCard = ({ benefit, card, onToggleUsage, onToggleHidden, onDe
           </div>
         ) : (
           <div className="benefit-card__prompt" role="group">
-            <label className="benefit-card__prompt-label">
-              实际到手
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={pendingValue}
-                onChange={(e) => { setPendingValue(e.target.value); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirm();
-                  if (e.key === "Escape") handleCancel();
-                }}
-                aria-label="实际到手"
-                autoFocus
-                className="benefit-card__prompt-input"
-              />
-            </label>
+            <div className="benefit-card__prompt-fields">
+              <label className="benefit-card__prompt-label">
+                实际到手
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={pendingValue}
+                  onChange={(e) => { setPendingValue(e.target.value); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleConfirm();
+                    if (e.key === "Escape") handleCancel();
+                  }}
+                  aria-label="实际到手"
+                  autoFocus
+                  className="benefit-card__prompt-input"
+                />
+              </label>
+              <label className="benefit-card__prompt-label">
+                {dateRequired ? "使用日期*" : "使用日期"}
+                <input
+                  type="date"
+                  value={pendingDate}
+                  onChange={(e) => { setPendingDate(e.target.value); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleConfirm();
+                    if (e.key === "Escape") handleCancel();
+                  }}
+                  aria-label="使用日期"
+                  required={dateRequired}
+                  className="benefit-card__prompt-input benefit-card__prompt-input--date"
+                />
+              </label>
+            </div>
             <button
               className="benefit-card__action-btn benefit-card__action-btn--confirm"
               onClick={handleConfirm}
