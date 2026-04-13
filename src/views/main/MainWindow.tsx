@@ -10,6 +10,7 @@ import { Settings } from "./Settings";
 import { CardDetail } from "./CardDetail";
 import { CardEditor } from "./CardEditor";
 import { BenefitEditor } from "./BenefitEditor";
+import { BackfillDialog } from "./BackfillDialog";
 import "./MainWindow.css";
 
 export type ActiveView =
@@ -22,6 +23,7 @@ export type ActiveView =
 
 export const MainWindow = () => {
   const [activeView, setActiveView] = useState<ActiveView>("dashboard");
+  const [backfillCardId, setBackfillCardId] = useState<string | null>(null);
   const cards = useCardStore((s) => s.cards);
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export const MainWindow = () => {
                   const latest = useCardStore.getState().cards;
                   const newest = latest[latest.length - 1] as { id: string } | undefined;
                   if (newest) {
+                    setBackfillCardId(newest.id);
                     setActiveView({ type: "card", cardId: newest.id });
                   } else {
                     setActiveView("dashboard");
@@ -115,6 +118,20 @@ export const MainWindow = () => {
         <Sidebar activeView={activeView} onNavigate={setActiveView} />
       </div>
       <main className="main-window__content">{renderView()}</main>
+      {backfillCardId && (() => {
+        const backfillCard = cards.find((c) => c.id === backfillCardId);
+        if (!backfillCard) return null;
+        const hasPastPeriods = backfillCard.benefits.some(
+          (b) => b.resetType === "calendar" && b.resetConfig.period,
+        );
+        if (!hasPastPeriods) return null;
+        return (
+          <BackfillDialog
+            card={backfillCard}
+            onDone={() => { setBackfillCardId(null); }}
+          />
+        );
+      })()}
     </div>
   );
 };
