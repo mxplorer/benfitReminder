@@ -1,4 +1,4 @@
-import type { Benefit, CalendarPeriod } from "../models/types";
+import type { Benefit, CalendarPeriod, UsageRecord } from "../models/types";
 import type { DateRange } from "./period";
 import { getCalendarPeriodRange } from "./period";
 
@@ -35,6 +35,57 @@ const PERIOD_MULTIPLIER: Record<CalendarPeriod, number> = {
   semi_annual: 2,
   annual: 1,
   every_4_years: 1,
+};
+
+export const getPastPeriods = (
+  period: CalendarPeriod,
+  today: Date,
+  maxLookbackMonths: number,
+): DateRange[] => {
+  const currentRange = getPeriodRangeAt(today, period);
+  const cutoff = new Date(today);
+  cutoff.setMonth(cutoff.getMonth() - maxLookbackMonths);
+  const cutoffStr = `${String(cutoff.getFullYear())}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-01`;
+
+  const results: DateRange[] = [];
+  let cursor = new Date(currentRange.start + "T00:00:00");
+  let range = getPeriodRangeAt(cursor, period);
+
+  // Walk backward one period at a time until the period start precedes the cutoff
+  do {
+    cursor = getPreviousPeriodStart(cursor, period);
+    range = getPeriodRangeAt(cursor, period);
+    if (range.start < cutoffStr) break;
+    results.push(range);
+  } while (range.start >= cutoffStr);
+
+  return results;
+};
+
+export const generateRolloverRecords = (
+  benefit: Benefit,
+  rolloverAmount: number,
+  today: Date,
+): UsageRecord[] => {
+  if (!benefit.rolloverable || benefit.faceValue <= 0 || rolloverAmount <= 0) return [];
+  const period = benefit.resetConfig.period;
+  if (!period) return [];
+
+  const maxPeriods = benefit.rolloverMaxYears * PERIOD_MULTIPLIER[period];
+  let periodsNeeded = Math.floor(rolloverAmount / benefit.faceValue);
+  periodsNeeded = Math.min(periodsNeeded, maxPeriods);
+
+  const records: UsageRecord[] = [];
+  const currentRange = getPeriodRangeAt(today, period);
+  let cursor = new Date(currentRange.start + "T00:00:00");
+
+  for (let i = 0; i < periodsNeeded; i++) {
+    cursor = getPreviousPeriodStart(cursor, period);
+    const prevRange = getPeriodRangeAt(cursor, period);
+    records.push({ usedDate: prevRange.start, faceValue: 0, actualValue: 0, isRollover: true });
+  }
+
+  return records;
 };
 
 export const getAvailableValue = (benefit: Benefit, today: Date): number => {

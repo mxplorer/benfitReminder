@@ -4,6 +4,8 @@ import {
   getPeriodRangeAt,
   getPreviousPeriodStart,
   getAvailableValue,
+  getPastPeriods,
+  generateRolloverRecords,
 } from "./rollover";
 
 const d = (iso: string) => new Date(iso + "T00:00:00");
@@ -209,5 +211,69 @@ describe("getAvailableValue", () => {
       ],
     });
     expect(getAvailableValue(b, d("2026-07-15"))).toBe(300);
+  });
+});
+
+describe("getPastPeriods", () => {
+  it("returns past semi_annual periods within lookback", () => {
+    const periods = getPastPeriods("semi_annual", d("2026-07-15"), 12);
+    expect(periods).toEqual([
+      { start: "2026-01-01", end: "2026-06-30" },
+      { start: "2025-07-01", end: "2025-12-31" },
+    ]);
+  });
+
+  it("returns past quarterly periods within 12-month lookback", () => {
+    const periods = getPastPeriods("quarterly", d("2026-07-15"), 12);
+    expect(periods).toEqual([
+      { start: "2026-04-01", end: "2026-06-30" },
+      { start: "2026-01-01", end: "2026-03-31" },
+      { start: "2025-10-01", end: "2025-12-31" },
+      { start: "2025-07-01", end: "2025-09-30" },
+    ]);
+  });
+
+  it("returns past monthly periods within 3-month lookback", () => {
+    const periods = getPastPeriods("monthly", d("2026-04-15"), 3);
+    expect(periods).toEqual([
+      { start: "2026-03-01", end: "2026-03-31" },
+      { start: "2026-02-01", end: "2026-02-28" },
+      { start: "2026-01-01", end: "2026-01-31" },
+    ]);
+  });
+
+  it("returns empty array when no past periods exist within lookback", () => {
+    const periods = getPastPeriods("annual", d("2026-04-15"), 6);
+    expect(periods).toEqual([]);
+  });
+});
+
+describe("generateRolloverRecords", () => {
+  it("generates correct number of rollover records from dollar amount", () => {
+    const b = makeBenefit({ faceValue: 300, resetConfig: { period: "semi_annual" } });
+    const records = generateRolloverRecords(b, 600, d("2026-07-15"));
+    expect(records).toHaveLength(2);
+    expect(records[0]).toEqual({ usedDate: "2026-01-01", faceValue: 0, actualValue: 0, isRollover: true });
+    expect(records[1]).toEqual({ usedDate: "2025-07-01", faceValue: 0, actualValue: 0, isRollover: true });
+  });
+
+  it("rounds down non-exact multiples", () => {
+    const b = makeBenefit({ faceValue: 300 });
+    const records = generateRolloverRecords(b, 500, d("2026-07-15"));
+    expect(records).toHaveLength(1);
+  });
+
+  it("clamps to rolloverMaxYears worth of periods", () => {
+    const b = makeBenefit({ faceValue: 100, resetConfig: { period: "quarterly" }, rolloverMaxYears: 1 });
+    const records = generateRolloverRecords(b, 600, d("2026-07-15"));
+    expect(records).toHaveLength(4); // max 1yr * 4 quarters
+  });
+
+  it("returns empty array for zero amount", () => {
+    expect(generateRolloverRecords(makeBenefit(), 0, d("2026-07-15"))).toEqual([]);
+  });
+
+  it("returns empty array for non-rolloverable benefit", () => {
+    expect(generateRolloverRecords(makeBenefit({ rolloverable: false }), 300, d("2026-07-15"))).toEqual([]);
   });
 });
