@@ -42,6 +42,8 @@ export interface BenefitTemplate {
   category: BenefitCategory;
   resetType: ResetType;
   resetConfig: ResetConfig;
+  rolloverable?: boolean;
+  rolloverMaxYears?: number;
 }
 
 export interface CardType {
@@ -60,6 +62,7 @@ export interface UsageRecord {
   usedDate: string;
   faceValue: number;
   actualValue: number;
+  isRollover?: boolean;
 }
 
 export interface Benefit {
@@ -72,6 +75,8 @@ export interface Benefit {
   resetConfig: ResetConfig;
   isHidden: boolean;
   autoRecur: boolean;
+  rolloverable: boolean;
+  rolloverMaxYears: number;
   usageRecords: UsageRecord[];
 }
 

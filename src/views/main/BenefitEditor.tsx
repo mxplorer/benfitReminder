@@ -106,6 +106,8 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
       resetConfig,
       isHidden: benefit?.isHidden ?? false,
       autoRecur: form.resetType === "subscription" ? form.autoRecur : false,
+      rolloverable: benefit?.rolloverable ?? false,
+      rolloverMaxYears: benefit?.rolloverMaxYears ?? 2,
       usageRecords: benefit?.usageRecords ?? [],
     };
   };

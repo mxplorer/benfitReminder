@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { CardType, CreditCard } from "./types";
+import type { Benefit, CardType, CreditCard, UsageRecord } from "./types";
 import { getCardDisplayName } from "./types";
 
 const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
@@ -66,5 +66,24 @@ describe("CardType", () => {
       isBuiltin: false,
     };
     expect(ct.image).toBeUndefined();
+  });
+});
+
+describe("Benefit rollover fields", () => {
+  it("supports rolloverable and rolloverMaxYears on Benefit", () => {
+    const b: Benefit = {
+      id: "b1", name: "FHR", description: "", faceValue: 300,
+      category: "hotel", resetType: "calendar",
+      resetConfig: { period: "semi_annual" },
+      isHidden: false, autoRecur: false,
+      rolloverable: true, rolloverMaxYears: 2, usageRecords: [],
+    };
+    expect(b.rolloverable).toBe(true);
+    expect(b.rolloverMaxYears).toBe(2);
+  });
+
+  it("supports isRollover on UsageRecord", () => {
+    const r: UsageRecord = { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, isRollover: true };
+    expect(r.isRollover).toBe(true);
   });
 });

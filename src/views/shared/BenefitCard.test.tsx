@@ -13,6 +13,8 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetConfig: { period: "monthly" },
   isHidden: false,
   autoRecur: false,
+  rolloverable: false,
+  rolloverMaxYears: 2,
   usageRecords: [],
   ...overrides,
 });
@@ -63,7 +65,7 @@ describe("BenefitCard", () => {
 
     fireEvent.click(screen.getByLabelText("标记使用"));
     fireEvent.click(screen.getByLabelText("确认"));
-    expect(handler).toHaveBeenCalledWith("c99", "b42", 50);
+    expect(handler).toHaveBeenCalledWith("c99", "b42", 50, "2026-04-25");
   });
 
   it("shows used state with checkmark and strikethrough", () => {
@@ -102,7 +104,7 @@ describe("BenefitCard", () => {
     fireEvent.change(input, { target: { value: "75" } });
     fireEvent.click(screen.getByLabelText("确认"));
 
-    expect(handler).toHaveBeenCalledWith("c1", "b1", 75);
+    expect(handler).toHaveBeenCalledWith("c1", "b1", 75, "2026-04-25");
   });
 
   it("cancels without calling handler", () => {
@@ -116,6 +118,52 @@ describe("BenefitCard", () => {
     expect(handler).not.toHaveBeenCalled();
     // prompt should be gone
     expect(screen.queryByLabelText("实际到手")).not.toBeInTheDocument();
+  });
+
+  it("shows date input defaulting to today when marking benefit as used", () => {
+    const benefit = makeBenefit();
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
+
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const dateInput = screen.getByLabelText<HTMLInputElement>("使用日期");
+    expect(dateInput).toBeInTheDocument();
+    expect(dateInput.value).toBe("2026-04-25");
+  });
+
+  it("passes custom date to handler when user changes date", () => {
+    const handler = vi.fn();
+    const benefit = makeBenefit({ id: "b1", faceValue: 50 });
+    const card = makeCard({ id: "c1" });
+    render(<BenefitCard benefit={benefit} card={card} onToggleUsage={handler} />);
+
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.change(screen.getByLabelText("使用日期"), { target: { value: "2026-04-20" } });
+    fireEvent.click(screen.getByLabelText("确认"));
+
+    expect(handler).toHaveBeenCalledWith("c1", "b1", 50, "2026-04-20");
+  });
+
+  it("shows required marker for anniversary reset type date", () => {
+    const benefit = makeBenefit({ resetType: "anniversary" });
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
+
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    expect(screen.getByText("使用日期*")).toBeInTheDocument();
+    const dateInput = screen.getByLabelText<HTMLInputElement>("使用日期");
+    expect(dateInput.required).toBe(true);
+  });
+
+  it("blocks confirm when anniversary benefit has empty date", () => {
+    const handler = vi.fn();
+    const benefit = makeBenefit({ resetType: "anniversary" });
+    const card = makeCard();
+    render(<BenefitCard benefit={benefit} card={card} onToggleUsage={handler} />);
+
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.change(screen.getByLabelText("使用日期"), { target: { value: "" } });
+    fireEvent.click(screen.getByLabelText("确认"));
+
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it("unchecks directly without prompting when already used", () => {

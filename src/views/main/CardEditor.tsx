@@ -143,6 +143,49 @@ const RollingDatePicker = ({ value, onChange }: RollingDatePickerProps) => {
   );
 };
 
+// ─── Card Face Preview ──────────────────────────────────────────────────────
+
+interface CardFacePreviewProps {
+  color: string;
+  image?: string;
+  onColorChange: (color: string) => void;
+}
+
+const CardFacePreview = ({ color, image, onColorChange }: CardFacePreviewProps) => {
+  const colorRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div
+      className="card-face-preview"
+      style={{ backgroundColor: color }}
+      onClick={() => { if (!image) colorRef.current?.click(); }}
+      data-testid="card-face-preview"
+    >
+      {image ? (
+        <img
+          src={image}
+          alt="卡面"
+          className="card-face-preview__img"
+          draggable={false}
+        />
+      ) : (
+        <span className="card-face-preview__hint">点击选色</span>
+      )}
+      {!image && (
+        <input
+          ref={colorRef}
+          type="color"
+          value={color}
+          onChange={(e) => { onColorChange(e.target.value); }}
+          className="card-face-preview__color-input"
+          data-testid="color-input"
+          tabIndex={-1}
+        />
+      )}
+    </div>
+  );
+};
+
 // ─── Card Editor ─────────────────────────────────────────────────────────────
 
 interface CardEditorProps {
@@ -226,6 +269,8 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
               id: crypto.randomUUID(),
               isHidden: false,
               autoRecur: false,
+              rolloverable: b.rolloverable ?? false,
+              rolloverMaxYears: b.rolloverMaxYears ?? 2,
               usageRecords: [],
             }))
           : [],
@@ -310,12 +355,11 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
       </label>
 
       <label>
-        颜色
-        <input
-          type="color"
-          value={form.color}
-          onChange={(e) => { handleChange("color", e.target.value); }}
-          data-testid="color-input"
+        卡面
+        <CardFacePreview
+          color={form.color}
+          image={cardTypes.find((t) => t.slug === form.templateSlug)?.image}
+          onColorChange={(c) => { handleChange("color", c); }}
         />
       </label>
 

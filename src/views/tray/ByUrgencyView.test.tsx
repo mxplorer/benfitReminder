@@ -14,6 +14,8 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetConfig: { period: "monthly" },
   isHidden: false,
   autoRecur: false,
+  rolloverable: false,
+  rolloverMaxYears: 2,
   usageRecords: [],
   ...overrides,
 });
@@ -98,7 +100,7 @@ describe("ByUrgencyView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "标记使用" }));
     fireEvent.click(screen.getByRole("button", { name: "确认" }));
-    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100);
+    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100, "2026-04-10");
   });
 
   it("excludes auto-recur subscription benefits", () => {

@@ -63,6 +63,8 @@ describe("Dashboard", () => {
         resetConfig: { period: "monthly" },
         isHidden: false,
         autoRecur: false,
+        rolloverable: false,
+        rolloverMaxYears: 2,
         usageRecords: [{ usedDate: "2026-03-15", faceValue: 200, actualValue: 150 }],
       }],
     });

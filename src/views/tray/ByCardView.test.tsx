@@ -14,6 +14,8 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetConfig: { period: "monthly" },
   isHidden: false,
   autoRecur: false,
+  rolloverable: false,
+  rolloverMaxYears: 2,
   usageRecords: [],
   ...overrides,
 });
@@ -87,6 +89,6 @@ describe("ByCardView", () => {
     fireEvent.click(screen.getByRole("button", { name: "标记使用" }));
     // Confirm with default face value
     fireEvent.click(screen.getByRole("button", { name: "确认" }));
-    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100);
+    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100, "2026-04-10");
   });
 });

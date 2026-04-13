@@ -17,6 +17,8 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetConfig: { period: "monthly" },
   isHidden: false,
   autoRecur: false,
+  rolloverable: false,
+  rolloverMaxYears: 2,
   usageRecords: [],
   ...overrides,
 });
