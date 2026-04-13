@@ -19,12 +19,13 @@ describe("BUILTIN_CARD_TYPES", () => {
   });
 
   it("FHR benefit is rolloverable with semi_annual period", () => {
-    const platinum = BUILTIN_CARD_TYPES.find((t) => t.slug === "amex_platinum")!;
+    const platinum = findCard("amex_platinum");
     const fhr = platinum.defaultBenefits.find((b) => b.name.includes("FHR"));
     expect(fhr).toBeDefined();
-    expect(fhr!.resetConfig.period).toBe("semi_annual");
-    expect(fhr!.rolloverable).toBe(true);
-    expect(fhr!.rolloverMaxYears).toBe(2);
+    if (!fhr) return;
+    expect(fhr.resetConfig.period).toBe("semi_annual");
+    expect(fhr.rolloverable).toBe(true);
+    expect(fhr.rolloverMaxYears).toBe(2);
   });
 
   it("has Chase Sapphire Reserve with annual fee $795", () => {
