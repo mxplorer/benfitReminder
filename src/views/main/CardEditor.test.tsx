@@ -71,7 +71,7 @@ describe("CardEditor", () => {
 
     fireEvent.change(screen.getByTestId("template-select"), { target: { value: "amex_platinum" } });
     fireEvent.change(screen.getByTestId("owner-input"), { target: { value: "Bob" } });
-    fireEvent.change(screen.getByTestId("open-date-input"), { target: { value: "2025-01-01" } });
+    // Date is pre-filled by RollingDatePicker's initial emit — no interaction needed
 
     fireEvent.click(screen.getByTestId("submit-btn"));
 

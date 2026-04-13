@@ -1,9 +1,149 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { CreditCard } from "../../models/types";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useCardStore } from "../../stores/useCardStore";
 import { getMetrics } from "../../lib/transports";
 import "./CardEditor.css";
+
+// ─── Rolling Drum Picker ────────────────────────────────────────────────────
+
+interface RollingColumnProps {
+  items: string[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+}
+
+const ITEM_HEIGHT = 36; // px, matches CSS --rolling-item-h
+
+const RollingColumn = ({ items, selectedIndex, onSelect }: RollingColumnProps) => {
+  const listRef = useRef<HTMLUListElement>(null);
+  // Track whether a scroll event came from a user gesture vs. programmatic scroll
+  const isProgrammatic = useRef(false);
+
+  // Scroll to selected item without triggering onSelect feedback loop
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    isProgrammatic.current = true;
+    if (typeof el.scrollTo === "function") {
+      el.scrollTo({ top: selectedIndex * ITEM_HEIGHT, behavior: "smooth" });
+    } else {
+      el.scrollTop = selectedIndex * ITEM_HEIGHT;
+    }
+  }, [selectedIndex]);
+
+  const handleScroll = useCallback(() => {
+    if (isProgrammatic.current) {
+      isProgrammatic.current = false;
+      return;
+    }
+    const el = listRef.current;
+    if (!el) return;
+    const idx = Math.round(el.scrollTop / ITEM_HEIGHT);
+    if (idx !== selectedIndex && idx >= 0 && idx < items.length) {
+      onSelect(idx);
+    }
+  }, [items.length, onSelect, selectedIndex]);
+
+  return (
+    <div className="rolling-col">
+      <div className="rolling-col__highlight" />
+      <ul
+        ref={listRef}
+        className="rolling-col__list"
+        onScroll={handleScroll}
+        data-testid="rolling-col-list"
+      >
+        {/* top padding item so first real item can land in the center window */}
+        <li className="rolling-col__pad" aria-hidden="true" />
+        {items.map((item, i) => (
+          <li
+            key={item}
+            className={`rolling-col__item${i === selectedIndex ? " rolling-col__item--selected" : ""}`}
+            onClick={() => { onSelect(i); }}
+          >
+            {item}
+          </li>
+        ))}
+        {/* bottom padding item */}
+        <li className="rolling-col__pad" aria-hidden="true" />
+      </ul>
+    </div>
+  );
+};
+
+interface RollingDatePickerProps {
+  value: string; // YYYY-MM-DD or ""
+  onChange: (value: string) => void;
+}
+
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: currentYear - 2009 }, (_, i) => String(2010 + i));
+const MONTHS = ["01","02","03","04","05","06","07","08","09","10","11","12"];
+const MONTH_LABELS = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+
+const daysInMonth = (year: number, month: number) =>
+  new Date(year, month, 0).getDate(); // month is 1-based here
+
+const parseDateString = (v: string): [number, number, number] => {
+  // Returns [yearIndex, monthIndex, dayIndex] or sensible defaults
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const parts = v.split("-").map(Number);
+    const [y, m, d] = [parts[0] ?? 2010, parts[1] ?? 1, parts[2] ?? 1];
+    const yi = YEARS.indexOf(String(y));
+    return [yi >= 0 ? yi : YEARS.length - 1, m - 1, d - 1];
+  }
+  return [YEARS.length - 1, 0, 0];
+};
+
+const RollingDatePicker = ({ value, onChange }: RollingDatePickerProps) => {
+  const [yi, setYi] = useState(() => parseDateString(value)[0]);
+  const [mi, setMi] = useState(() => parseDateString(value)[1]);
+  const [di, setDi] = useState(() => parseDateString(value)[2]);
+
+  const year = Number(YEARS[yi]);
+  const month = mi + 1; // 1-based
+  const maxDay = daysInMonth(year, month);
+  const days = Array.from({ length: maxDay }, (_, i) => String(i + 1).padStart(2, "0"));
+
+  // Clamp day when month/year changes reduce max days
+  const safeDi = Math.min(di, maxDay - 1);
+
+  const emit = useCallback((newYi: number, newMi: number, newDi: number) => {
+    const y = YEARS[newYi];
+    const m = MONTHS[newMi];
+    const maxD = daysInMonth(Number(y), newMi + 1);
+    const clampedDi = Math.min(newDi, maxD - 1);
+    const d = String(clampedDi + 1).padStart(2, "0");
+    onChange(`${y}-${m}-${d}`);
+  }, [onChange]);
+
+  // Sync form state with the picker's initial/resolved value on mount
+  useEffect(() => {
+    emit(yi, mi, safeDi);
+  // Only run on mount — yi/mi/safeDi are stable at this point
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleYear = (i: number) => { setYi(i); emit(i, mi, safeDi); };
+  const handleMonth = (i: number) => { setMi(i); emit(yi, i, safeDi); };
+  const handleDay = (i: number) => { setDi(i); emit(yi, mi, i); };
+
+  // Sync safeDi back when it gets clamped
+  useEffect(() => {
+    if (safeDi !== di) setDi(safeDi);
+  }, [safeDi, di]);
+
+  return (
+    <div className="rolling-picker" data-testid="open-date-input">
+      <RollingColumn items={YEARS} selectedIndex={yi} onSelect={handleYear} />
+      <RollingColumn items={MONTH_LABELS} selectedIndex={mi} onSelect={handleMonth} />
+      <RollingColumn items={days} selectedIndex={safeDi} onSelect={handleDay} />
+    </div>
+  );
+};
+
+// ─── Card Editor ─────────────────────────────────────────────────────────────
 
 interface CardEditorProps {
   /** If provided, pre-fills the form for editing */
@@ -163,12 +303,9 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
 
       <label>
         开卡日期
-        <input
-          type="date"
+        <RollingDatePicker
           value={form.cardOpenDate}
-          onChange={(e) => { handleChange("cardOpenDate", e.target.value); }}
-          required
-          data-testid="open-date-input"
+          onChange={(v) => { handleChange("cardOpenDate", v); }}
         />
       </label>
 
