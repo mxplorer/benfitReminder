@@ -25,6 +25,9 @@ interface FormState {
   autoRecur: boolean;
   // one_time
   expiresDate: string;
+  // rollover (calendar only)
+  rolloverable: boolean;
+  rolloverMaxYears: string;
 }
 
 const CATEGORIES: BenefitCategory[] = [
@@ -61,6 +64,8 @@ const toFormState = (benefit?: Benefit): FormState => ({
   cooldownDays: String(benefit?.resetConfig.cooldownDays ?? ""),
   autoRecur: benefit?.autoRecur ?? false,
   expiresDate: benefit?.resetConfig.expiresDate ?? "",
+  rolloverable: benefit?.rolloverable ?? false,
+  rolloverMaxYears: String(benefit?.rolloverMaxYears ?? 2),
 });
 
 export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) => {
@@ -106,8 +111,8 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
       resetConfig,
       isHidden: benefit?.isHidden ?? false,
       autoRecur: form.resetType === "subscription" ? form.autoRecur : false,
-      rolloverable: benefit?.rolloverable ?? false,
-      rolloverMaxYears: benefit?.rolloverMaxYears ?? 2,
+      rolloverable: form.resetType === "calendar" ? form.rolloverable : false,
+      rolloverMaxYears: form.rolloverable ? Number(form.rolloverMaxYears) : 2,
       usageRecords: benefit?.usageRecords ?? [],
     };
   };
@@ -218,6 +223,28 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
               </label>
             ))}
           </div>
+          <label data-testid="rollover-field">
+            <input
+              type="checkbox"
+              checked={form.rolloverable}
+              onChange={(e) => { handleChange("rolloverable", e.target.checked); }}
+              data-testid="rollover-input"
+            />
+            可累积 (Rollover)
+          </label>
+          {form.rolloverable && (
+            <label>
+              累积上限 (年)
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={form.rolloverMaxYears}
+                onChange={(e) => { handleChange("rolloverMaxYears", e.target.value); }}
+                data-testid="rollover-max-years-input"
+              />
+            </label>
+          )}
         </div>
       )}
 

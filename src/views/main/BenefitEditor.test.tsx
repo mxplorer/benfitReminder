@@ -112,4 +112,40 @@ describe("BenefitEditor", () => {
     expect(updatedCard?.benefits[0].id).toBe("b1"); // same id, not duplicated
     expect(onDone).toHaveBeenCalled();
   });
+
+  it("shows rollover fields when resetType is calendar", () => {
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+    expect(screen.getByTestId("rollover-field")).toBeInTheDocument();
+    expect(screen.getByTestId("rollover-input")).toBeInTheDocument();
+  });
+
+  it("hides rollover fields for non-calendar reset types", () => {
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+    fireEvent.change(screen.getByTestId("reset-type-select"), {
+      target: { value: "anniversary" },
+    });
+    expect(screen.queryByTestId("rollover-field")).not.toBeInTheDocument();
+  });
+
+  it("shows max years input when rollover is checked", () => {
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("rollover-input"));
+    expect(screen.getByTestId("rollover-max-years-input")).toBeInTheDocument();
+  });
+
+  it("saves rolloverable and rolloverMaxYears on submit", () => {
+    const card = { id: "c1", owner: "X", cardTypeSlug: "", annualFee: 0, cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [] };
+    useCardStore.setState({ cards: [card] });
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("name-input"), { target: { value: "Test" } });
+    fireEvent.change(screen.getByTestId("face-value-input"), { target: { value: "100" } });
+    fireEvent.click(screen.getByTestId("rollover-input"));
+    fireEvent.change(screen.getByTestId("rollover-max-years-input"), { target: { value: "3" } });
+    fireEvent.click(screen.getByTestId("submit-btn"));
+
+    const benefits = useCardStore.getState().cards[0].benefits;
+    expect(benefits[0].rolloverable).toBe(true);
+    expect(benefits[0].rolloverMaxYears).toBe(3);
+  });
 });
