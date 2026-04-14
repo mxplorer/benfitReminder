@@ -210,3 +210,94 @@ describe("calculateDashboardROI", () => {
     expect(dashboard.cards).toHaveLength(1);
   });
 });
+
+describe("calculateCardROI — anniversary window", () => {
+  it("sums only records inside current anniversary window", () => {
+    const today = new Date(2026, 3, 14); // 2026-04-14
+    const card: CreditCard = {
+      id: "c1",
+      owner: "me",
+      cardTypeSlug: "amex-plat",
+      annualFee: 695,
+      cardOpenDate: "2025-09-15",
+      color: "#000",
+      isEnabled: true,
+      benefits: [
+        {
+          id: "b1",
+          name: "X",
+          description: "",
+          faceValue: 100,
+          category: "other",
+          resetType: "calendar",
+          resetConfig: { period: "monthly" },
+          isHidden: false,
+          autoRecur: false,
+          rolloverable: false,
+          rolloverMaxYears: 0,
+          usageRecords: [
+            { usedDate: "2025-08-01", faceValue: 100, actualValue: 100 }, // before window
+            { usedDate: "2025-10-01", faceValue: 100, actualValue: 80 }, // inside
+            { usedDate: "2026-03-01", faceValue: 100, actualValue: 90 }, // inside
+            { usedDate: "2026-10-01", faceValue: 100, actualValue: 100 }, // after window
+          ],
+        },
+      ],
+    };
+    const roi = calculateCardROI(card, today);
+    expect(roi.faceValueReturn).toBe(200);
+    expect(roi.actualReturn).toBe(170);
+  });
+
+  it("returns zero when current anniversary has no records yet", () => {
+    const today = new Date(2026, 9, 1); // Oct 1
+    const card: CreditCard = {
+      id: "c1",
+      owner: "me",
+      cardTypeSlug: "x",
+      annualFee: 500,
+      cardOpenDate: "2026-09-15",
+      color: "#000",
+      isEnabled: true,
+      benefits: [],
+    };
+    const roi = calculateCardROI(card, today);
+    expect(roi.faceValueReturn).toBe(0);
+    expect(roi.actualReturn).toBe(0);
+    expect(roi.roiPercent).toBe(0);
+  });
+
+  it("dashboard ROI remains calendar-year", () => {
+    const card: CreditCard = {
+      id: "c1",
+      owner: "me",
+      cardTypeSlug: "x",
+      annualFee: 100,
+      cardOpenDate: "2025-09-15",
+      color: "#000",
+      isEnabled: true,
+      benefits: [
+        {
+          id: "b1",
+          name: "X",
+          description: "",
+          faceValue: 10,
+          category: "other",
+          resetType: "calendar",
+          resetConfig: { period: "monthly" },
+          isHidden: false,
+          autoRecur: false,
+          rolloverable: false,
+          rolloverMaxYears: 0,
+          usageRecords: [
+            { usedDate: "2026-01-05", faceValue: 10, actualValue: 10 },
+            { usedDate: "2026-02-05", faceValue: 10, actualValue: 10 },
+          ],
+        },
+      ],
+    };
+    const dash = calculateDashboardROI([card], 2026);
+    expect(dash.totalFaceValue).toBe(20);
+    expect(dash.totalActualValue).toBe(20);
+  });
+});
