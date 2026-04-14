@@ -78,6 +78,12 @@ export interface Benefit {
   rolloverable: boolean;
   rolloverMaxYears: number;
   usageRecords: UsageRecord[];
+  /**
+   * Months (YYYY-MM) where the user explicitly cancelled the auto-replicate
+   * record for a monthly autoRecur subscription. Only meaningful when
+   * resetType === "subscription" && autoRecur === true && resetConfig.period === "monthly".
+   */
+  cancelledMonths?: string[];
 }
 
 export interface CreditCard {
@@ -100,8 +106,6 @@ export interface AppSettings {
   reminderEnabled: boolean;
   reminderDays: number;
   dismissedDate: string | null;
-  /** Tray panel background opacity 0–100. */
-  trayOpacity: number;
 }
 
 export interface AppData {
