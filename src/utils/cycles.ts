@@ -1,5 +1,5 @@
-import { getAnniversaryRange, getMonthRange, lastDay } from "./period";
-import type { Benefit } from "../models/types";
+import { formatDate, getAnniversaryRange, getMonthRange, lastDay } from "./period";
+import type { Benefit, UsageRecord } from "../models/types";
 
 export type YearScope = "calendar" | "anniversary";
 
@@ -105,27 +105,101 @@ const cyclesForAnnual = (scope: ScopeWindow, cardOpenDate: string): PeriodCycle[
   return cycles;
 };
 
+const cyclesForAnniversary = (scope: ScopeWindow, cardOpenDate: string): PeriodCycle[] => {
+  const open = new Date(cardOpenDate + "T00:00:00");
+  const scopeStart = new Date(scope.start + "T00:00:00");
+  const scopeEnd = new Date(scope.end + "T00:00:00");
+  const cycles: PeriodCycle[] = [];
+
+  let anniv = new Date(scopeStart.getFullYear(), open.getMonth(), open.getDate());
+  if (anniv > scopeStart) {
+    anniv.setFullYear(anniv.getFullYear() - 1);
+  }
+
+  // scope spans at most a few years — bound loop defensively
+  for (let i = 0; i < 100; i += 1) {
+    const nextAnniv = new Date(anniv);
+    nextAnniv.setFullYear(nextAnniv.getFullYear() + 1);
+    const cs = formatDate(anniv);
+    const ce = formatDate(new Date(nextAnniv.getTime() - 86400000));
+    if (cs > scope.end) break;
+    if (ce >= scope.start && ce >= cardOpenDate) {
+      cycles.push({ start: cs, end: ce, label: `${String(anniv.getFullYear())}年度` });
+    }
+    anniv = nextAnniv;
+    if (anniv > scopeEnd && cs > scope.end) break;
+  }
+  return cycles;
+};
+
+const cyclesForEvery4Years = (scope: ScopeWindow, cardOpenDate: string): PeriodCycle[] => {
+  const startY = new Date(scope.start + "T00:00:00").getFullYear();
+  const blockStart = startY - (startY % 4);
+  const blockEnd = blockStart + 3;
+  const cs = `${String(blockStart)}-01-01`;
+  const ce = `${String(blockEnd)}-12-31`;
+  if (ce >= cardOpenDate) {
+    return [{ start: cs, end: ce, label: `${String(blockStart)}–${String(blockEnd)}` }];
+  }
+  return [];
+};
+
+const applicableMonthsOverlap = (
+  cycle: PeriodCycle,
+  applicableMonths: number[] | undefined,
+): boolean => {
+  if (!applicableMonths || applicableMonths.length === 0) return true;
+  const start = new Date(cycle.start + "T00:00:00");
+  const end = new Date(cycle.end + "T00:00:00");
+  const months: number[] = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    months.push(cur.getMonth() + 1);
+    cur.setMonth(cur.getMonth() + 1);
+    cur.setDate(1);
+  }
+  return months.some((m) => applicableMonths.includes(m));
+};
+
 export const getScopeCycles = (
   benefit: Benefit,
   scope: ScopeWindow,
   cardOpenDate: string,
 ): PeriodCycle[] => {
   const { resetType, resetConfig } = benefit;
+  let raw: PeriodCycle[] = [];
   if (resetType === "calendar" || resetType === "subscription") {
     const period = resetType === "subscription" ? "monthly" : resetConfig.period;
     switch (period) {
       case "monthly":
-        return cyclesForMonthly(scope, cardOpenDate);
+        raw = cyclesForMonthly(scope, cardOpenDate);
+        break;
       case "quarterly":
-        return cyclesForQuarterly(scope, cardOpenDate);
+        raw = cyclesForQuarterly(scope, cardOpenDate);
+        break;
       case "semi_annual":
-        return cyclesForSemiAnnual(scope, cardOpenDate);
+        raw = cyclesForSemiAnnual(scope, cardOpenDate);
+        break;
       case "annual":
-        return cyclesForAnnual(scope, cardOpenDate);
+        raw = cyclesForAnnual(scope, cardOpenDate);
+        break;
+      case "every_4_years":
+        raw = cyclesForEvery4Years(scope, cardOpenDate);
+        break;
       default:
-        return [];
+        raw = [];
     }
+  } else if (resetType === "anniversary") {
+    raw = cyclesForAnniversary(scope, cardOpenDate);
   }
-  // anniversary / every_4_years / one_time / since_last_use handled in Task 3
-  return [];
+  // one_time / since_last_use → []
+  return raw.filter((c) => applicableMonthsOverlap(c, resetConfig.applicableMonths));
 };
+
+export const findCycleRecord = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+): UsageRecord | undefined =>
+  benefit.usageRecords.find(
+    (r) => r.usedDate >= cycle.start && r.usedDate <= cycle.end,
+  );

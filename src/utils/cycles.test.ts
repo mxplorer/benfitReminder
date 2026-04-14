@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getScopeCycles, getScopeWindow } from "./cycles";
+import { getScopeCycles, getScopeWindow, findCycleRecord, type PeriodCycle } from "./cycles";
 import type { Benefit } from "../models/types";
 
 const makeBenefit = (overrides: Partial<Benefit>): Benefit => ({
@@ -112,5 +112,89 @@ describe("getScopeCycles — annual", () => {
     const b = makeBenefit({ resetConfig: { period: "annual" } });
     const cycles = getScopeCycles(b, { start: "2026-01-01", end: "2026-12-31" }, "2024-01-01");
     expect(cycles).toEqual([{ start: "2026-01-01", end: "2026-12-31", label: "2026年" }]);
+  });
+});
+
+describe("getScopeCycles — anniversary reset", () => {
+  it("returns one anniversary cycle labeled by anniversary start year", () => {
+    const b = makeBenefit({ resetType: "anniversary", resetConfig: {} });
+    const cycles = getScopeCycles(b, { start: "2026-01-01", end: "2026-12-31" }, "2025-09-15");
+    expect(cycles).toEqual([
+      { start: "2025-09-15", end: "2026-09-14", label: "2025年度" },
+      { start: "2026-09-15", end: "2027-09-14", label: "2026年度" },
+    ]);
+  });
+
+  it("returns a single anniversary cycle when anniversary scope is used", () => {
+    const b = makeBenefit({ resetType: "anniversary", resetConfig: {} });
+    const cycles = getScopeCycles(b, { start: "2025-09-15", end: "2026-09-14" }, "2025-09-15");
+    expect(cycles).toEqual([
+      { start: "2025-09-15", end: "2026-09-14", label: "2025年度" },
+    ]);
+  });
+});
+
+describe("getScopeCycles — every_4_years", () => {
+  it("returns the 4-year block containing the scope", () => {
+    const b = makeBenefit({ resetConfig: { period: "every_4_years" } });
+    const cycles = getScopeCycles(b, { start: "2026-01-01", end: "2026-12-31" }, "2024-01-01");
+    expect(cycles).toEqual([
+      { start: "2024-01-01", end: "2027-12-31", label: "2024–2027" },
+    ]);
+  });
+});
+
+describe("getScopeCycles — applicableMonths", () => {
+  it("filters monthly cycles to applicable months only", () => {
+    const b = makeBenefit({
+      resetConfig: { period: "monthly", applicableMonths: [4, 5, 6, 7, 8, 9, 10] },
+    });
+    const cycles = getScopeCycles(b, { start: "2026-01-01", end: "2026-12-31" }, "2024-01-01");
+    expect(cycles.map((c) => c.label)).toEqual(["4月", "5月", "6月", "7月", "8月", "9月", "10月"]);
+  });
+
+  it("includes quarter whose months overlap applicableMonths", () => {
+    const b = makeBenefit({
+      resetConfig: { period: "quarterly", applicableMonths: [4, 5, 6, 7] },
+    });
+    const cycles = getScopeCycles(b, { start: "2026-01-01", end: "2026-12-31" }, "2024-01-01");
+    expect(cycles.map((c) => c.label)).toEqual(["Q2 2026", "Q3 2026"]);
+  });
+});
+
+describe("getScopeCycles — one_time / since_last_use", () => {
+  it("returns empty cycle array for one_time benefits", () => {
+    const b = makeBenefit({ resetType: "one_time", resetConfig: {} });
+    const cycles = getScopeCycles(b, { start: "2026-01-01", end: "2026-12-31" }, "2024-01-01");
+    expect(cycles).toEqual([]);
+  });
+
+  it("returns empty cycle array for since_last_use benefits", () => {
+    const b = makeBenefit({ resetType: "since_last_use", resetConfig: { cooldownDays: 90 } });
+    const cycles = getScopeCycles(b, { start: "2026-01-01", end: "2026-12-31" }, "2024-01-01");
+    expect(cycles).toEqual([]);
+  });
+});
+
+describe("findCycleRecord", () => {
+  it("returns the first record whose usedDate falls within the cycle", () => {
+    const b = makeBenefit({
+      usageRecords: [
+        { usedDate: "2026-03-10", faceValue: 10, actualValue: 8 },
+        { usedDate: "2026-04-20", faceValue: 10, actualValue: 10 },
+      ],
+    });
+    const cycle: PeriodCycle = { start: "2026-04-01", end: "2026-04-30", label: "4月" };
+    expect(findCycleRecord(b, cycle)).toEqual(
+      { usedDate: "2026-04-20", faceValue: 10, actualValue: 10 },
+    );
+  });
+
+  it("returns undefined when no records fall in cycle", () => {
+    const b = makeBenefit({
+      usageRecords: [{ usedDate: "2026-03-10", faceValue: 10, actualValue: 10 }],
+    });
+    const cycle: PeriodCycle = { start: "2026-04-01", end: "2026-04-30", label: "4月" };
+    expect(findCycleRecord(b, cycle)).toBeUndefined();
   });
 });
