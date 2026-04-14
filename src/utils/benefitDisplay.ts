@@ -173,6 +173,40 @@ const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
   return items;
 };
 
+const expandAll = (
+  card: CreditCard,
+  today: Date,
+  scope: YearScope,
+): BenefitDisplayItem[] => {
+  const window = getScopeWindow(scope, today, card.cardOpenDate);
+  const items: BenefitDisplayItem[] = [];
+  for (const b of card.benefits) {
+    // No hidden filter — include them
+    if (isStandardOnly(b)) {
+      items.push(standardItem(b, card));
+      continue;
+    }
+    const cycles = getScopeCycles(b, window, card.cardOpenDate);
+    if (isMonthlyLike(b)) {
+      if (cycles.length === 0) continue;
+      const autoRecur = b.resetType === "subscription" && b.autoRecur;
+      const aggregate = buildAggregate(b, cycles, "all", autoRecur);
+      items.push({
+        benefit: b,
+        card,
+        key: `${b.id}::agg-all`,
+        variant: "aggregated",
+        aggregate,
+      });
+    } else {
+      for (const cycle of cycles) {
+        items.push(perCycleItem(b, card, cycle, findCycleRecord(b, cycle)));
+      }
+    }
+  }
+  return items;
+};
+
 export const expandBenefitsForFilter = (
   card: CreditCard,
   filter: FilterMode,
@@ -197,6 +231,6 @@ export const expandBenefitsForFilter = (
 
   if (filter === "unused") return expandUnused(card, today, scope);
 
-  // all — Task 7
-  return [];
+  // all
+  return expandAll(card, today, scope);
 };

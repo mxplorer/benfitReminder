@@ -258,3 +258,73 @@ describe("expandBenefitsForFilter — 未使用", () => {
     expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);
   });
 });
+
+describe("expandBenefitsForFilter — 全部", () => {
+  const today = new Date(2026, 3, 14);
+
+  it("includes hidden benefits", () => {
+    const b = makeBenefit({ id: "b1", isHidden: true, resetType: "one_time", resetConfig: {} });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].benefit.isHidden).toBe(true);
+  });
+
+  it("emits aggregated item with kind=all for monthly benefit", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 15,
+      usageRecords: [
+        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+        { usedDate: "2026-03-05", faceValue: 15, actualValue: 12 },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].variant).toBe("aggregated");
+    expect(items[0].aggregate?.kind).toBe("all");
+    expect(items[0].aggregate?.usedCount).toBe(2);
+    expect(items[0].aggregate?.unusedCount).toBe(10);
+    expect(items[0].aggregate?.totalActualValue).toBe(27);
+    expect(items[0].aggregate?.totalFaceValue).toBe(180); // 12 × $15
+  });
+
+  it("emits per-cycle item per quarter (used or unused)", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "quarterly" },
+      usageRecords: [{ usedDate: "2026-02-10", faceValue: 100, actualValue: 100 }],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    expect(items.map((i) => ({ label: i.periodLabel, used: i.cycleUsed }))).toEqual([
+      { label: "Q1 2026", used: true },
+      { label: "Q2 2026", used: false },
+      { label: "Q3 2026", used: false },
+      { label: "Q4 2026", used: false },
+    ]);
+  });
+
+  it("emits standard card for one_time / since_last_use", () => {
+    const b = makeBenefit({ id: "b1", resetType: "one_time", resetConfig: {} });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    expect(items[0].variant).toBe("standard");
+  });
+
+  it("respects anniversary scope", () => {
+    const b = makeBenefit({ id: "b1", resetConfig: { period: "semi_annual" } });
+    const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2025-09-15" };
+    const items = expandBenefitsForFilter(card, "all", today, "anniversary");
+    expect(items.map((i) => i.periodLabel)).toEqual(["H2 2025", "H1 2026", "H2 2026"]);
+  });
+
+  it("excludes Q1 2026 for card opened 2026-04-10 in calendar scope", () => {
+    const b = makeBenefit({ id: "b1", resetConfig: { period: "quarterly" } });
+    const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2026-04-10" };
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    expect(items.map((i) => i.periodLabel)).toEqual(["Q2 2026", "Q3 2026", "Q4 2026"]);
+  });
+});
