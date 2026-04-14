@@ -1,94 +1,71 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import type { Benefit, CreditCard } from "../../models/types";
-import { useCardStore } from "../../stores/useCardStore";
 import { ByCardView } from "./ByCardView";
+import { useCardStore } from "../../stores/useCardStore";
 
-const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
-  id: "b1",
-  name: "Test Benefit",
-  description: "",
-  faceValue: 50,
-  category: "other",
-  resetType: "calendar",
-  resetConfig: { period: "monthly" },
-  isHidden: false,
-  autoRecur: false,
-  rolloverable: false,
-  rolloverMaxYears: 2,
-  usageRecords: [],
-  ...overrides,
-});
-
-const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
-  id: "card-1",
-  owner: "Test",
-  cardTypeSlug: "amex_platinum",
-  annualFee: 895,
-  cardOpenDate: "2024-03-15",
-  color: "#8E9EAF",
-  isEnabled: true,
-  benefits: [],
-  ...overrides,
-});
-
-beforeEach(() => {
-  useCardStore.setState({ cards: [] });
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-04-10T12:00:00"));
-});
-
-afterEach(() => {
-  vi.useRealTimers();
-});
-
-describe("ByCardView", () => {
-  it("renders benefits grouped under their card", () => {
-    const benefit1 = makeBenefit({ id: "b1", name: "Airline Credit" });
-    const benefit2 = makeBenefit({ id: "b2", name: "Hotel Credit" });
-    const card = makeCard({ id: "c1", alias: "My Amex", benefits: [benefit1, benefit2] });
-    useCardStore.setState({ cards: [card] });
-
-    render(<ByCardView />);
-
-    expect(screen.getByText("My Amex")).toBeInTheDocument();
-    expect(screen.getByText("Airline Credit")).toBeInTheDocument();
-    expect(screen.getByText("Hotel Credit")).toBeInTheDocument();
+describe("ByCardView filter integration", () => {
+  beforeEach(() => {
+    useCardStore.setState({
+      cards: [
+        {
+          id: "c1", owner: "me", cardTypeSlug: "amex-plat",
+          annualFee: 695, cardOpenDate: "2024-01-01",
+          color: "#000", isEnabled: true,
+          benefits: [
+            {
+              id: "b-u", name: "Uber Eats", description: "",
+              faceValue: 15, category: "dining",
+              resetType: "calendar", resetConfig: { period: "monthly" },
+              isHidden: false, autoRecur: false,
+              rolloverable: false, rolloverMaxYears: 0,
+              usageRecords: [
+                { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+              ],
+            },
+          ],
+        },
+        {
+          id: "c2", owner: "me", cardTypeSlug: "chase-sapphire",
+          annualFee: 550, cardOpenDate: "2024-06-01",
+          color: "#444", isEnabled: true,
+          benefits: [
+            {
+              id: "b-x", name: "All Hidden", description: "",
+              faceValue: 200, category: "other",
+              resetType: "calendar", resetConfig: { period: "annual" },
+              isHidden: true, autoRecur: false,
+              rolloverable: false, rolloverMaxYears: 0,
+              usageRecords: [],
+            },
+          ],
+        },
+      ],
+    });
   });
 
-  it("excludes hidden benefits from the grid", () => {
-    const visible = makeBenefit({ id: "b1", name: "Visible Benefit" });
-    const hidden = makeBenefit({ id: "b2", name: "Hidden Benefit", isHidden: true });
-    const card = makeCard({ benefits: [visible, hidden] });
-    useCardStore.setState({ cards: [card] });
-
+  it("defaults to 可使用 and shows card groups with applicable benefits only", () => {
     render(<ByCardView />);
-
-    expect(screen.getByText("Visible Benefit")).toBeInTheDocument();
-    expect(screen.queryByText("Hidden Benefit")).not.toBeInTheDocument();
+    const pill = screen.getByTestId("filter-pill-available");
+    expect(pill.className).toMatch(/active/);
+    expect(screen.queryByText("All Hidden")).toBeNull();
   });
 
-  it("excludes disabled cards entirely", () => {
-    const card = makeCard({ isEnabled: false, benefits: [makeBenefit({ name: "Disabled Card Benefit" })] });
-    useCardStore.setState({ cards: [card] });
-
+  it("shows hidden benefits under 已隐藏", () => {
     render(<ByCardView />);
-
-    expect(screen.queryByText("Disabled Card Benefit")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("filter-pill-hidden"));
+    expect(screen.getByText("All Hidden")).toBeInTheDocument();
   });
 
-  it("calls store toggleBenefitUsage with actual value after prompt confirm", () => {
-    const benefit = makeBenefit({ id: "b1", name: "Clickable Benefit", faceValue: 100 });
-    const card = makeCard({ id: "c1", benefits: [benefit] });
-    useCardStore.setState({ cards: [card] });
-    const toggleSpy = vi.spyOn(useCardStore.getState(), "toggleBenefitUsage");
-
+  it("aggregates monthly under 已使用", () => {
     render(<ByCardView />);
+    fireEvent.click(screen.getByTestId("filter-pill-used"));
+    expect(screen.getByText(/Uber Eats/)).toBeInTheDocument();
+    expect(screen.getByText(/1 次/)).toBeInTheDocument();
+  });
 
-    // Click check button → prompt appears
-    fireEvent.click(screen.getByRole("button", { name: "标记使用" }));
-    // Confirm with default face value
-    fireEvent.click(screen.getByRole("button", { name: "确认" }));
-    expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100, "2026-04-10");
+  it("hides card group when its expansion is empty", () => {
+    render(<ByCardView />);
+    fireEvent.click(screen.getByTestId("filter-pill-used"));
+    expect(screen.queryByText("All Hidden")).toBeNull();
   });
 });

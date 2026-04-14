@@ -1,10 +1,17 @@
+import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
-import "./TrayViews.css";
 import { getCardDisplayName } from "../../models/types";
-import { isApplicableNow } from "../../utils/period";
+import {
+  expandBenefitsForFilter,
+  type FilterMode,
+  type YearScope,
+} from "../../utils/benefitDisplay";
 import { CardChip } from "../shared/CardChip";
 import { BenefitCard } from "../shared/BenefitCard";
+import { BenefitFilterBar } from "../shared/BenefitFilterBar";
+import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
+import "./TrayViews.css";
 
 export const ByCardView = () => {
   const cards = useCardStore((s) => s.cards);
@@ -12,20 +19,26 @@ export const ByCardView = () => {
   const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
+  const [filter, setFilter] = useState<FilterMode>("available");
+  const [scope, setScope] = useState<YearScope>("calendar");
   const today = new Date();
 
   const enabledCards = cards.filter((c) => c.isEnabled);
 
   return (
     <div className="by-card-view">
+      <BenefitFilterBar
+        filter={filter}
+        onChange={setFilter}
+        scope={scope}
+        onScopeChange={setScope}
+      />
       {enabledCards.map((card) => {
-        const visibleBenefits = card.benefits.filter(
-          (b) => !b.isHidden && isApplicableNow(b, today),
-        );
-        if (visibleBenefits.length === 0) return null;
+        const items = expandBenefitsForFilter(card, filter, today, scope);
+        if (items.length === 0) return null;
 
-        const unusedCount = visibleBenefits.filter(
-          (b) => !(b.resetType === "subscription" && b.autoRecur),
+        const unusedCount = items.filter(
+          (i) => i.variant === "standard" || i.cycleUsed === false,
         ).length;
 
         return (
@@ -40,22 +53,38 @@ export const ByCardView = () => {
               ) : (
                 <CardChip color={card.color} size="small" />
               )}
-              <span className="by-card-view__card-name">{getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}</span>
-              {unusedCount > 0 && (
+              <span className="by-card-view__card-name">
+                {getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}
+              </span>
+              {filter === "available" && unusedCount > 0 && (
                 <span className="by-card-view__unused-badge">{unusedCount}</span>
               )}
             </div>
             <div className="by-card-view__grid">
-              {visibleBenefits.map((benefit) => (
-                <BenefitCard
-                  key={benefit.id}
-                  benefit={benefit}
-                  card={card}
-                  onToggleUsage={toggleBenefitUsage}
-                  onRollover={rolloverBenefit}
-                  compact
-                />
-              ))}
+              {items.map((item) => {
+                if (item.variant === "aggregated") {
+                  return (
+                    <AggregatedBenefitCard
+                      key={item.key}
+                      item={item}
+                      onToggleUsage={toggleBenefitUsage}
+                    />
+                  );
+                }
+                return (
+                  <BenefitCard
+                    key={item.key}
+                    benefit={item.benefit}
+                    card={item.card}
+                    onToggleUsage={toggleBenefitUsage}
+                    onRollover={rolloverBenefit}
+                    periodLabel={item.periodLabel}
+                    cycleUsed={item.cycleUsed}
+                    cycleRecord={item.cycleRecord}
+                    compact
+                  />
+                );
+              })}
             </div>
           </div>
         );
