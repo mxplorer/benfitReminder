@@ -81,3 +81,81 @@ describe("AggregatedBenefitCard", () => {
     expect(onToggleUsage).toHaveBeenCalledWith("c1", "b1", 15, "2026-02-01");
   });
 });
+
+describe("AggregatedBenefitCard — uncheck used row", () => {
+  const allKindItem: BenefitDisplayItem = {
+    benefit,
+    card,
+    key: "agg-all",
+    variant: "aggregated",
+    aggregate: {
+      kind: "all",
+      months: [
+        {
+          label: "1月",
+          used: true,
+          record: { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+          faceValue: 15,
+          cycleStart: "2026-01-01",
+          cycleEnd: "2026-01-31",
+        },
+        {
+          label: "2月",
+          used: false,
+          faceValue: 15,
+          cycleStart: "2026-02-01",
+          cycleEnd: "2026-02-28",
+        },
+      ],
+      usedCount: 1,
+      unusedCount: 1,
+      totalActualValue: 15,
+      totalFaceValue: 30,
+    },
+  };
+
+  it("renders an uncheck button on used rows and fires onSetCycleUsed with false", () => {
+    const onSetCycleUsed = vi.fn();
+    render(<AggregatedBenefitCard item={allKindItem} onSetCycleUsed={onSetCycleUsed} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    fireEvent.click(screen.getByTestId("agg-month-uncheck-1月"));
+    expect(onSetCycleUsed).toHaveBeenCalledWith("c1", "b1", "2026-01-01", "2026-01-31", false);
+  });
+
+  it("routes unused-row check-off through onSetCycleUsed when provided", () => {
+    const onSetCycleUsed = vi.fn();
+    const onToggleUsage = vi.fn();
+    render(
+      <AggregatedBenefitCard
+        item={allKindItem}
+        onToggleUsage={onToggleUsage}
+        onSetCycleUsed={onSetCycleUsed}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    fireEvent.click(screen.getByTestId("agg-month-check-2月"));
+    expect(onSetCycleUsed).toHaveBeenCalledWith(
+      "c1",
+      "b1",
+      "2026-02-01",
+      "2026-02-28",
+      true,
+      { actualValue: 15 },
+    );
+    expect(onToggleUsage).not.toHaveBeenCalled();
+  });
+
+  it("falls back to onToggleUsage on unused rows when onSetCycleUsed is not provided", () => {
+    const onToggleUsage = vi.fn();
+    render(<AggregatedBenefitCard item={allKindItem} onToggleUsage={onToggleUsage} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    fireEvent.click(screen.getByTestId("agg-month-check-2月"));
+    expect(onToggleUsage).toHaveBeenCalledWith("c1", "b1", 15, "2026-02-01");
+  });
+
+  it("does not render uncheck button when onSetCycleUsed is not provided", () => {
+    render(<AggregatedBenefitCard item={allKindItem} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    expect(screen.queryByTestId("agg-month-uncheck-1月")).toBeNull();
+  });
+});

@@ -30,7 +30,7 @@
 }
 .agg-benefit-card__row {
   display: grid;
-  grid-template-columns: 60px 1fr auto;
+  grid-template-columns: 60px 1fr auto auto;
   gap: 8px;
   padding: 4px 0;
   border-top: 1px solid var(--border-subtle);
@@ -58,4 +58,18 @@
 .agg-benefit-card__row-date {
   font-size: 11px;
   color: var(--text-secondary);
+}
+.agg-benefit-card__row-uncheck {
+  padding: 2px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+}
+.agg-benefit-card__row-uncheck:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
 }

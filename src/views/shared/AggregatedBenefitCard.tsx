@@ -6,6 +6,14 @@ import "./AggregatedBenefitCard.css";
 interface AggregatedBenefitCardProps {
   item: BenefitDisplayItem;
   onToggleUsage?: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
+  onSetCycleUsed?: (
+    cardId: string,
+    benefitId: string,
+    cycleStart: string,
+    cycleEnd: string,
+    used: boolean,
+    opts?: { actualValue?: number; usedDate?: string },
+  ) => void;
 }
 
 const buildSummary = (item: BenefitDisplayItem): string => {
@@ -24,7 +32,11 @@ const buildSummary = (item: BenefitDisplayItem): string => {
   return `${name} · ${String(agg.months.length)} 个月 · 已用 ${String(agg.usedCount)} · 未用 ${String(agg.unusedCount)} · $${String(agg.totalActualValue)} / $${String(agg.totalFaceValue)}`;
 };
 
-export const AggregatedBenefitCard = ({ item, onToggleUsage }: AggregatedBenefitCardProps) => {
+export const AggregatedBenefitCard = ({
+  item,
+  onToggleUsage,
+  onSetCycleUsed,
+}: AggregatedBenefitCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const agg = item.aggregate;
   if (!agg) return null;
@@ -54,7 +66,45 @@ export const AggregatedBenefitCard = ({ item, onToggleUsage }: AggregatedBenefit
                   : `$${String(m.faceValue)}`}
               </span>
               {m.used ? (
-                <span className="agg-benefit-card__row-date">{m.record?.usedDate ?? ""}</span>
+                <>
+                  <span className="agg-benefit-card__row-date">{m.record?.usedDate ?? ""}</span>
+                  {onSetCycleUsed && (
+                    <button
+                      data-testid={`agg-month-uncheck-${m.label}`}
+                      className="agg-benefit-card__row-uncheck"
+                      onClick={() => {
+                        onSetCycleUsed(
+                          item.card.id,
+                          item.benefit.id,
+                          m.cycleStart,
+                          m.cycleEnd,
+                          false,
+                        );
+                      }}
+                      aria-label="取消使用"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </>
+              ) : onSetCycleUsed ? (
+                <button
+                  data-testid={`agg-month-check-${m.label}`}
+                  className="agg-benefit-card__row-check"
+                  onClick={() => {
+                    onSetCycleUsed(
+                      item.card.id,
+                      item.benefit.id,
+                      m.cycleStart,
+                      m.cycleEnd,
+                      true,
+                      { actualValue: m.faceValue },
+                    );
+                  }}
+                  aria-label="标记使用"
+                >
+                  ✓
+                </button>
               ) : (
                 onToggleUsage && (
                   <button
