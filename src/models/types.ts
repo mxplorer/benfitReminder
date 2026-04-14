@@ -106,6 +106,8 @@ export interface AppSettings {
   reminderEnabled: boolean;
   reminderDays: number;
   dismissedDate: string | null;
+  /** Tray panel background opacity 0–100. */
+  trayOpacity: number;
 }
 
 export interface AppData {
