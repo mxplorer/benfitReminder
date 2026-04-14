@@ -256,16 +256,6 @@ describe("isBenefitUsedInPeriod", () => {
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
 
-  it("returns true for subscription with autoRecur=true regardless of records", () => {
-    const benefit = makeBenefit({
-      resetType: "subscription",
-      resetConfig: {},
-      autoRecur: true,
-      usageRecords: [],
-    });
-    expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(true);
-  });
-
   it("returns false for subscription with autoRecur=false when no records this month", () => {
     const benefit = makeBenefit({
       resetType: "subscription",
@@ -433,16 +423,6 @@ describe("getDeadline", () => {
     ).toBe("2027-03-14");
   });
 
-  it("returns null for subscription with autoRecur", () => {
-    expect(
-      getDeadline(d("2026-04-10"), {
-        resetType: "subscription",
-        resetConfig: {},
-        autoRecur: true,
-      }),
-    ).toBeNull();
-  });
-
   it("returns end of month for subscription without autoRecur", () => {
     expect(
       getDeadline(d("2026-04-10"), {
@@ -489,5 +469,48 @@ describe("getDaysRemaining", () => {
 
   it("returns negative for past deadline", () => {
     expect(getDaysRemaining(d("2026-04-10"), "2026-04-05")).toBe(-5);
+  });
+});
+
+describe("autoRecur monthly subscription — new behavior", () => {
+  const today = new Date(2026, 3, 14); // 2026-04-14
+
+  const makeSubBenefit = (
+    records: { usedDate: string; actualValue: number }[] = [],
+  ): Benefit => ({
+    id: "b",
+    name: "Netflix",
+    description: "",
+    faceValue: 20,
+    category: "streaming",
+    resetType: "subscription",
+    resetConfig: { period: "monthly" },
+    isHidden: false,
+    autoRecur: true,
+    rolloverable: false,
+    rolloverMaxYears: 0,
+    usageRecords: records.map((r) => ({ ...r, faceValue: 20 })),
+  });
+
+  it("isBenefitUsedInPeriod returns false when current month has no record (regression: previously true)", () => {
+    const benefit = makeSubBenefit([]);
+    expect(isBenefitUsedInPeriod(benefit, today)).toBe(false);
+  });
+
+  it("isBenefitUsedInPeriod returns true when current month has a record", () => {
+    const benefit = makeSubBenefit([
+      { usedDate: "2026-04-01", actualValue: 15 },
+    ]);
+    expect(isBenefitUsedInPeriod(benefit, today)).toBe(true);
+  });
+
+  it("getDeadline returns end-of-month for autoRecur monthly subscription (regression: previously null)", () => {
+    expect(
+      getDeadline(today, {
+        resetType: "subscription",
+        resetConfig: { period: "monthly" },
+        autoRecur: true,
+      }),
+    ).toBe("2026-04-30");
   });
 });

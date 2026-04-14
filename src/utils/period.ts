@@ -140,14 +140,10 @@ export const isBenefitUsedInPeriod = (
   today: Date,
   cardOpenDate?: string,
 ): boolean => {
-  const { resetType, resetConfig, usageRecords, autoRecur } = benefit;
+  const { resetType, resetConfig, usageRecords } = benefit;
 
   if (resetType === "one_time") {
     return usageRecords.length > 0;
-  }
-
-  if (resetType === "subscription" && autoRecur) {
-    return true;
   }
 
   if (resetType === "since_last_use") {
@@ -192,8 +188,6 @@ export interface DeadlineInput {
 
 export const getDeadline = (today: Date, input: DeadlineInput): string | null => {
   if (input.resetType === "since_last_use") return null;
-
-  if (input.resetType === "subscription" && input.autoRecur) return null;
 
   if (input.resetType === "one_time") {
     return input.resetConfig.expiresDate ?? null;
