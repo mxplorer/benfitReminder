@@ -1,0 +1,61 @@
+.agg-benefit-card {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.agg-benefit-card__summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+.agg-benefit-card__chevron {
+  color: var(--text-secondary);
+}
+.agg-benefit-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agg-benefit-card__row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-secondary);
+  align-items: center;
+}
+.agg-benefit-card__row--used {
+  color: var(--text-primary);
+}
+.agg-benefit-card__row-check {
+  padding: 2px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+}
+.agg-benefit-card__row-check:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.agg-benefit-card__row-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
