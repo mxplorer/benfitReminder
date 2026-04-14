@@ -2,15 +2,18 @@ import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { getCardDisplayName } from "../../models/types";
-import type { Benefit } from "../../models/types";
 import { calculateCardROI } from "../../utils/roi";
-import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
+import {
+  expandBenefitsForFilter,
+  type FilterMode,
+  type YearScope,
+} from "../../utils/benefitDisplay";
 import { GlassContainer } from "../shared/GlassContainer";
 import { BenefitCard } from "../shared/BenefitCard";
+import { BenefitFilterBar } from "../shared/BenefitFilterBar";
+import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
 import type { ActiveView } from "./MainWindow";
 import "./CardDetail.css";
-
-type FilterMode = "all" | "unused" | "used" | "hidden";
 
 interface CardDetailProps {
   cardId: string;
@@ -26,41 +29,22 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const toggleBenefitHidden = useCardStore((s) => s.toggleBenefitHidden);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
-  const [filter, setFilter] = useState<FilterMode>("all");
+  const [filter, setFilter] = useState<FilterMode>("available");
+  const [scope, setScope] = useState<YearScope>("calendar");
   const today = new Date();
 
   const card = cards.find((c) => c.id === cardId);
   if (!card) return <p>卡片未找到</p>;
 
   const roi = calculateCardROI(card, today);
+  const items = expandBenefitsForFilter(card, filter, today, scope);
 
-  const filterBenefit = (benefit: Benefit): boolean => {
-    if (filter === "hidden") return benefit.isHidden;
-    if (benefit.isHidden) return false;
-    if (filter === "all") return true;
-    const used = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
-    if (filter === "unused") return !used && isApplicableNow(benefit, today);
-    // filter === "used"
-    return used;
-  };
-
-  const filteredBenefits = card.benefits.filter(filterBenefit);
-
-  // Collect all usage records across all benefits for history table
   const allRecords = card.benefits
     .flatMap((b) =>
       b.usageRecords.map((r) => ({ ...r, benefitName: b.name, benefitId: b.id })),
     )
     .sort((a, b) => b.usedDate.localeCompare(a.usedDate));
 
-  const FILTERS: { key: FilterMode; label: string }[] = [
-    { key: "all", label: "全部" },
-    { key: "unused", label: "未使用" },
-    { key: "used", label: "已使用" },
-    { key: "hidden", label: "已隐藏" },
-  ];
-
-  // Renewal date: same month/day as cardOpenDate, next anniversary
   const openDate = new Date(card.cardOpenDate + "T00:00:00");
   const renewalYear =
     today >= new Date(today.getFullYear(), openDate.getMonth(), openDate.getDate())
@@ -134,30 +118,39 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
         </GlassContainer>
       </div>
 
-      <div className="card-detail__filters" data-testid="filter-pills">
-        {FILTERS.map(({ key, label }) => (
-          <button
-            key={key}
-            className={`card-detail__filter-pill${filter === key ? " card-detail__filter-pill--active" : ""}`}
-            onClick={() => { setFilter(key); }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <BenefitFilterBar
+        filter={filter}
+        onChange={setFilter}
+        scope={scope}
+        onScopeChange={setScope}
+      />
 
       <div className="card-detail__benefits-grid" data-testid="benefits-grid">
-        {filteredBenefits.map((benefit) => (
-          <BenefitCard
-            key={benefit.id}
-            benefit={benefit}
-            card={card}
-            onToggleUsage={toggleBenefitUsage}
-            onRollover={rolloverBenefit}
-            onToggleHidden={toggleBenefitHidden}
-            onDelete={removeBenefit}
-          />
-        ))}
+        {items.map((item) => {
+          if (item.variant === "aggregated") {
+            return (
+              <AggregatedBenefitCard
+                key={item.key}
+                item={item}
+                onToggleUsage={toggleBenefitUsage}
+              />
+            );
+          }
+          return (
+            <BenefitCard
+              key={item.key}
+              benefit={item.benefit}
+              card={item.card}
+              onToggleUsage={toggleBenefitUsage}
+              onRollover={rolloverBenefit}
+              onToggleHidden={toggleBenefitHidden}
+              onDelete={removeBenefit}
+              periodLabel={item.periodLabel}
+              cycleUsed={item.cycleUsed}
+              cycleRecord={item.cycleRecord}
+            />
+          );
+        })}
         <button
           className="card-detail__add-btn"
           onClick={() => { onNavigate({ type: "benefit-editor", cardId }); }}

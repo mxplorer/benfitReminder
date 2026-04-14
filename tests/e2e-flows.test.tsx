@@ -126,9 +126,9 @@ describe("E2E: Check off benefit → verify used state → uncheck", () => {
     expect(benefit.usageRecords[0].faceValue).toBe(25);
     expect(benefit.usageRecords[0].usedDate).toBe("2026-04-11");
 
-    // Uncheck: click again
-    const uncheckBtn = screen.getByLabelText("取消使用");
-    fireEvent.click(uncheckBtn);
+    // After marking used, default "可使用" filter excludes the now-used benefit.
+    // Uncheck via store (aggregated view in 已使用 has no inline uncheck button).
+    useCardStore.getState().toggleBenefitUsage(cardId, benefitId);
 
     const updated = useCardStore.getState().cards[0].benefits[0];
     expect(updated.usageRecords).toHaveLength(0);
@@ -264,29 +264,24 @@ describe("E2E: Filter pills in card detail", () => {
 
     const grid = screen.getByTestId("benefits-grid");
 
-    // Default "全部": shows non-hidden
-    expect(within(grid).getByText("Active Benefit")).toBeInTheDocument();
-    expect(within(grid).getByText("Used Benefit")).toBeInTheDocument();
-    expect(within(grid).queryByText("Hidden Benefit")).not.toBeInTheDocument();
-
-    // "未使用" filter
-    const filterPills = screen.getByTestId("filter-pills");
-    const unusedPill = within(filterPills).getByText("未使用");
-    fireEvent.click(unusedPill);
+    // Default "可使用": shows only currently-actionable, non-used, non-hidden benefits
     expect(within(grid).getByText("Active Benefit")).toBeInTheDocument();
     expect(within(grid).queryByText("Used Benefit")).not.toBeInTheDocument();
+    expect(within(grid).queryByText("Hidden Benefit")).not.toBeInTheDocument();
 
-    // "已使用" filter
-    const usedPill = within(filterPills).getByText("已使用");
-    fireEvent.click(usedPill);
+    // "已使用" filter: only used benefit appears (aggregated card)
+    fireEvent.click(screen.getByTestId("filter-pill-used"));
     expect(within(grid).queryByText("Active Benefit")).not.toBeInTheDocument();
-    expect(within(grid).getByText("Used Benefit")).toBeInTheDocument();
+    expect(within(grid).getByText(/Used Benefit/)).toBeInTheDocument();
 
     // "已隐藏" filter
-    const hiddenPill = within(filterPills).getByText("已隐藏");
-    fireEvent.click(hiddenPill);
+    fireEvent.click(screen.getByTestId("filter-pill-hidden"));
     expect(within(grid).queryByText("Active Benefit")).not.toBeInTheDocument();
     expect(within(grid).getByText("Hidden Benefit")).toBeInTheDocument();
+
+    // "全部" filter: includes hidden
+    fireEvent.click(screen.getByTestId("filter-pill-all"));
+    expect(within(grid).getByText(/Hidden Benefit/)).toBeInTheDocument();
   });
 });
 
