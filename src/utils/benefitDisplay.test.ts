@@ -171,3 +171,90 @@ describe("expandBenefitsForFilter — 已使用", () => {
     expect(items[0].aggregate?.usedCount).toBe(12);
   });
 });
+
+describe("expandBenefitsForFilter — 未使用", () => {
+  const today = new Date(2026, 3, 14); // April 2026
+
+  it("aggregates remaining unused months of monthly benefit in calendar scope", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 15,
+      usageRecords: [
+        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+        { usedDate: "2026-03-05", faceValue: 15, actualValue: 15 },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].variant).toBe("aggregated");
+    expect(items[0].aggregate?.kind).toBe("unused");
+    expect(items[0].aggregate?.unusedCount).toBe(10);
+  });
+
+  it("emits per-cycle items for each unused quarter in scope", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "quarterly" },
+      faceValue: 100,
+      usageRecords: [{ usedDate: "2026-02-10", faceValue: 100, actualValue: 100 }],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    expect(items.map((i) => i.periodLabel)).toEqual(["Q2 2026", "Q3 2026", "Q4 2026"]);
+    expect(items.every((i) => i.variant === "per-cycle" && i.cycleUsed === false)).toBe(true);
+  });
+
+  it("anniversary scope shows cycles crossing into next year", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "quarterly" },
+    });
+    const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2025-09-15" };
+    const items = expandBenefitsForFilter(card, "unused", today, "anniversary");
+    expect(items.map((i) => i.periodLabel)).toEqual([
+      "Q3 2025", "Q4 2025", "Q1 2026", "Q2 2026", "Q3 2026",
+    ]);
+  });
+
+  it("emits standard card for unused applicable one_time benefit", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "one_time",
+      resetConfig: { expiresDate: "2026-12-31" },
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].variant).toBe("standard");
+  });
+
+  it("skips expired one_time benefit", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "one_time",
+      resetConfig: { expiresDate: "2025-12-31" },
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    expect(items).toHaveLength(0);
+  });
+
+  it("excludes hidden benefits", () => {
+    const b = makeBenefit({ id: "b1", isHidden: true });
+    const card = makeCard([b]);
+    expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);
+  });
+
+  it("emits 0 items for autoRecur subscription (everything is used)", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      autoRecur: true,
+      resetConfig: {},
+    });
+    const card = makeCard([b]);
+    expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);
+  });
+});

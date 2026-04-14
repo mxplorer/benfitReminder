@@ -97,6 +97,45 @@ const perCycleItem = (
   cycleRecord: record,
 });
 
+const expandUnused = (
+  card: CreditCard,
+  today: Date,
+  scope: YearScope,
+): BenefitDisplayItem[] => {
+  const window = getScopeWindow(scope, today, card.cardOpenDate);
+  const items: BenefitDisplayItem[] = [];
+  for (const b of card.benefits) {
+    if (b.isHidden) continue;
+    if (isStandardOnly(b)) {
+      if (!isApplicableNow(b, today)) continue;
+      if (isBenefitUsedInPeriod(b, today, card.cardOpenDate)) continue;
+      items.push(standardItem(b, card));
+      continue;
+    }
+    if (b.resetType === "subscription" && b.autoRecur) continue; // never unused
+    const cycles = getScopeCycles(b, window, card.cardOpenDate);
+    if (isMonthlyLike(b)) {
+      const unusedCycles = cycles.filter((c) => !findCycleRecord(b, c));
+      if (unusedCycles.length === 0) continue;
+      const aggregate = buildAggregate(b, unusedCycles, "unused", false);
+      items.push({
+        benefit: b,
+        card,
+        key: `${b.id}::agg-unused`,
+        variant: "aggregated",
+        aggregate,
+      });
+    } else {
+      for (const cycle of cycles) {
+        if (!findCycleRecord(b, cycle)) {
+          items.push(perCycleItem(b, card, cycle, undefined));
+        }
+      }
+    }
+  }
+  return items;
+};
+
 const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
   const window = calendarYearScope(today, card.cardOpenDate);
   const items: BenefitDisplayItem[] = [];
@@ -138,7 +177,7 @@ export const expandBenefitsForFilter = (
   card: CreditCard,
   filter: FilterMode,
   today: Date,
-  _scope: YearScope,
+  scope: YearScope,
 ): BenefitDisplayItem[] => {
   if (filter === "hidden") {
     return card.benefits
@@ -156,6 +195,8 @@ export const expandBenefitsForFilter = (
 
   if (filter === "used") return expandUsed(card, today);
 
-  // unused / all — Tasks 6–7
+  if (filter === "unused") return expandUnused(card, today, scope);
+
+  // all — Task 7
   return [];
 };
