@@ -19,6 +19,16 @@ interface BenefitCardProps {
   periodLabel?: string;
   cycleRecord?: UsageRecord;
   cycleUsed?: boolean;
+  cycleStart?: string;
+  cycleEnd?: string;
+  onSetCycleUsed?: (
+    cardId: string,
+    benefitId: string,
+    cycleStart: string,
+    cycleEnd: string,
+    used: boolean,
+    opts?: { actualValue?: number; usedDate?: string },
+  ) => void;
 }
 
 const PERIOD_LABELS: Record<string, string> = {
@@ -48,15 +58,25 @@ export const BenefitCard = ({
   periodLabel,
   cycleRecord,
   cycleUsed,
+  cycleStart,
+  cycleEnd,
+  onSetCycleUsed,
 }: BenefitCardProps) => {
   const today = new Date();
   const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
   const availableValue = getAvailableValue(benefit, today);
   const displayValue = cycleRecord ? cycleRecord.actualValue : availableValue;
+  const cycleContext = cycleStart && cycleEnd ? { start: cycleStart, end: cycleEnd } : null;
+  const todayIso = formatDate(today);
+  const defaultPendingDate = cycleContext
+    ? todayIso >= cycleContext.start && todayIso <= cycleContext.end
+      ? todayIso
+      : cycleContext.start
+    : todayIso;
   // When not-yet-used benefit is clicked we open an inline prompt so the user
   // can record the *actual* amount redeemed (may differ from faceValue).
   const [pendingValue, setPendingValue] = useState<string | null>(null);
-  const [pendingDate, setPendingDate] = useState<string>(formatDate(today));
+  const [pendingDate, setPendingDate] = useState<string>(defaultPendingDate);
   const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);
 
   const deadline = getDeadline(today, {
@@ -77,11 +97,15 @@ export const BenefitCard = ({
 
   const handleClick = () => {
     if (isUsed) {
+      if (cycleContext && onSetCycleUsed) {
+        onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, false);
+        return;
+      }
       onToggleUsage(card.id, benefit.id);
       return;
     }
     setPendingValue(String(benefit.faceValue));
-    setPendingDate(formatDate(today));
+    setPendingDate(defaultPendingDate);
   };
 
   const handleConfirm = () => {
@@ -89,7 +113,14 @@ export const BenefitCard = ({
     const value = Number(pendingValue);
     if (isNaN(value) || value < 0) return;
     if (dateRequired && !pendingDate) return;
-    onToggleUsage(card.id, benefit.id, value, pendingDate || undefined);
+    if (cycleContext && onSetCycleUsed) {
+      onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, true, {
+        actualValue: value,
+        usedDate: pendingDate || undefined,
+      });
+    } else {
+      onToggleUsage(card.id, benefit.id, value, pendingDate || undefined);
+    }
     setPendingValue(null);
   };
 

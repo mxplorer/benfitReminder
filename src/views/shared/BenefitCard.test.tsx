@@ -274,3 +274,116 @@ describe("BenefitCard — per-cycle props", () => {
     expect(screen.getByText(benefit.name)).toBeInTheDocument();
   });
 });
+
+describe("BenefitCard — cycle-scoped toggle", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("unchecking a past used cycle routes through onSetCycleUsed, not onToggleUsage", () => {
+    const benefit = makeBenefit({ id: "b1", resetConfig: { period: "quarterly" } });
+    const card = makeCard({ id: "c1" });
+    const record: UsageRecord = { usedDate: "2026-02-05", faceValue: 100, actualValue: 100 };
+    const onToggle = vi.fn();
+    const setCycleUsed = vi.fn();
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={onToggle}
+        onSetCycleUsed={setCycleUsed}
+        periodLabel="Q1 2026"
+        cycleStart="2026-01-01"
+        cycleEnd="2026-03-31"
+        cycleUsed
+        cycleRecord={record}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("取消使用"));
+    expect(setCycleUsed).toHaveBeenCalledWith("c1", "b1", "2026-01-01", "2026-03-31", false);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("checking an unused past cycle defaults pendingDate to cycleStart and routes through onSetCycleUsed", () => {
+    const benefit = makeBenefit({ id: "b1", faceValue: 100, resetConfig: { period: "quarterly" } });
+    const card = makeCard({ id: "c1" });
+    const setCycleUsed = vi.fn();
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={setCycleUsed}
+        periodLabel="Q3 2026"
+        cycleStart="2026-07-01"
+        cycleEnd="2026-09-30"
+        cycleUsed={false}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const dateInput = screen.getByLabelText<HTMLInputElement>("使用日期");
+    expect(dateInput.value).toBe("2026-07-01");
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(setCycleUsed).toHaveBeenCalledWith(
+      "c1",
+      "b1",
+      "2026-07-01",
+      "2026-09-30",
+      true,
+      { actualValue: 100, usedDate: "2026-07-01" },
+    );
+  });
+
+  it("checking an unused current cycle defaults pendingDate to today", () => {
+    const benefit = makeBenefit({ id: "b1", faceValue: 50, resetConfig: { period: "quarterly" } });
+    const card = makeCard({ id: "c1" });
+    const setCycleUsed = vi.fn();
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={setCycleUsed}
+        periodLabel="Q2 2026"
+        cycleStart="2026-04-01"
+        cycleEnd="2026-06-30"
+        cycleUsed={false}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const dateInput = screen.getByLabelText<HTMLInputElement>("使用日期");
+    expect(dateInput.value).toBe("2026-04-25");
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(setCycleUsed).toHaveBeenCalledWith(
+      "c1",
+      "b1",
+      "2026-04-01",
+      "2026-06-30",
+      true,
+      { actualValue: 50, usedDate: "2026-04-25" },
+    );
+  });
+
+  it("falls back to onToggleUsage when no cycle context", () => {
+    const benefit = makeBenefit({ id: "b1", faceValue: 40 });
+    const card = makeCard({ id: "c1" });
+    const onToggle = vi.fn();
+    const setCycleUsed = vi.fn();
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={onToggle}
+        onSetCycleUsed={setCycleUsed}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(onToggle).toHaveBeenCalledWith("c1", "b1", 40, "2026-04-25");
+    expect(setCycleUsed).not.toHaveBeenCalled();
+  });
+});
