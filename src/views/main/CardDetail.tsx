@@ -23,6 +23,7 @@ interface CardDetailProps {
 export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const setBenefitCycleUsed = useCardStore((s) => s.setBenefitCycleUsed);
   const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const removeCard = useCardStore((s) => s.removeCard);
   const removeBenefit = useCardStore((s) => s.removeBenefit);
@@ -133,6 +134,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                 key={item.key}
                 item={item}
                 onToggleUsage={toggleBenefitUsage}
+                onSetCycleUsed={setBenefitCycleUsed}
               />
             );
           }
@@ -142,10 +144,13 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
               benefit={item.benefit}
               card={item.card}
               onToggleUsage={toggleBenefitUsage}
+              onSetCycleUsed={setBenefitCycleUsed}
               onRollover={rolloverBenefit}
               onToggleHidden={toggleBenefitHidden}
               onDelete={removeBenefit}
               periodLabel={item.periodLabel}
+              cycleStart={item.periodStart}
+              cycleEnd={item.periodEnd}
               cycleUsed={item.cycleUsed}
               cycleRecord={item.cycleRecord}
             />

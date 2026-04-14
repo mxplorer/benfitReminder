@@ -16,6 +16,7 @@ import "./TrayViews.css";
 export const ByCardView = () => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
+  const setBenefitCycleUsed = useCardStore((s) => s.setBenefitCycleUsed);
   const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
@@ -68,6 +69,7 @@ export const ByCardView = () => {
                       key={item.key}
                       item={item}
                       onToggleUsage={toggleBenefitUsage}
+                      onSetCycleUsed={setBenefitCycleUsed}
                     />
                   );
                 }
@@ -77,8 +79,11 @@ export const ByCardView = () => {
                     benefit={item.benefit}
                     card={item.card}
                     onToggleUsage={toggleBenefitUsage}
+                    onSetCycleUsed={setBenefitCycleUsed}
                     onRollover={rolloverBenefit}
                     periodLabel={item.periodLabel}
+                    cycleStart={item.periodStart}
+                    cycleEnd={item.periodEnd}
                     cycleUsed={item.cycleUsed}
                     cycleRecord={item.cycleRecord}
                     compact

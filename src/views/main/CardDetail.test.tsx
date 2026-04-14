@@ -139,3 +139,50 @@ describe("CardDetail filter integration", () => {
     expect(screen.queryByTestId("year-scope-toggle")).toBeNull();
   });
 });
+
+describe("CardDetail cycle-scoped toggle integration", () => {
+  it("unchecking a past quarterly cycle in 全部 removes that cycle's record, not today's", () => {
+    useCardStore.setState({
+      cards: [
+        {
+          id: "c1",
+          owner: "me",
+          cardTypeSlug: "amex-plat",
+          annualFee: 100,
+          cardOpenDate: "2024-01-01",
+          color: "#000",
+          isEnabled: true,
+          benefits: [
+            {
+              id: "bq",
+              name: "CLEAR",
+              description: "",
+              faceValue: 199,
+              category: "travel",
+              resetType: "calendar",
+              resetConfig: { period: "quarterly" },
+              isHidden: false,
+              autoRecur: false,
+              rolloverable: false,
+              rolloverMaxYears: 0,
+              usageRecords: [
+                { usedDate: "2026-02-10", faceValue: 199, actualValue: 199 }, // Q1
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+    fireEvent.click(screen.getByTestId("filter-pill-all"));
+
+    const q1Card = screen.getByText("Q1 2026").closest(".benefit-card");
+    if (!q1Card) throw new Error("Q1 card not found");
+    const uncheckBtn = q1Card.querySelector('[aria-label="取消使用"]');
+    if (!uncheckBtn) throw new Error("Q1 uncheck button not found");
+    fireEvent.click(uncheckBtn);
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(0);
+  });
+});
