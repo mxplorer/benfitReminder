@@ -1,5 +1,7 @@
 import type { Benefit, CreditCard, UsageRecord } from "../models/types";
 import { isApplicableNow, isBenefitUsedInPeriod } from "./period";
+import { getScopeWindow, getScopeCycles, findCycleRecord } from "./cycles";
+import type { PeriodCycle } from "./cycles";
 
 export type FilterMode = "available" | "unused" | "used" | "hidden" | "all";
 export type YearScope = "calendar" | "anniversary";
@@ -40,6 +42,98 @@ const standardItem = (benefit: Benefit, card: CreditCard): BenefitDisplayItem =>
   variant: "standard",
 });
 
+const calendarYearScope = (today: Date, cardOpenDate: string) =>
+  getScopeWindow("calendar", today, cardOpenDate);
+
+const isMonthlyLike = (b: Benefit): boolean =>
+  (b.resetType === "calendar" && b.resetConfig.period === "monthly") ||
+  b.resetType === "subscription";
+
+const isStandardOnly = (b: Benefit): boolean =>
+  b.resetType === "one_time" || b.resetType === "since_last_use";
+
+const buildAggregate = (
+  benefit: Benefit,
+  cycles: PeriodCycle[],
+  kind: "used" | "unused" | "all",
+  autoRecurUsedOverride: boolean,
+): BenefitDisplayItem["aggregate"] => {
+  const months: AggregatedMonth[] = cycles.map((cycle) => {
+    const record = findCycleRecord(benefit, cycle);
+    const used = autoRecurUsedOverride || record !== undefined;
+    return {
+      label: cycle.label,
+      used,
+      record,
+      faceValue: benefit.faceValue,
+      cycleStart: cycle.start,
+      cycleEnd: cycle.end,
+    };
+  });
+  const usedCount = months.filter((m) => m.used).length;
+  const unusedCount = months.length - usedCount;
+  const totalActualValue = months.reduce(
+    (s, m) => s + (m.record?.actualValue ?? 0),
+    0,
+  );
+  const totalFaceValue = months.reduce((s, m) => s + m.faceValue, 0);
+  return { kind, months, usedCount, unusedCount, totalActualValue, totalFaceValue };
+};
+
+const perCycleItem = (
+  benefit: Benefit,
+  card: CreditCard,
+  cycle: PeriodCycle,
+  record: UsageRecord | undefined,
+): BenefitDisplayItem => ({
+  benefit,
+  card,
+  key: `${benefit.id}::${cycle.label}`,
+  variant: "per-cycle",
+  periodLabel: cycle.label,
+  periodStart: cycle.start,
+  periodEnd: cycle.end,
+  cycleUsed: record !== undefined,
+  cycleRecord: record,
+});
+
+const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
+  const window = calendarYearScope(today, card.cardOpenDate);
+  const items: BenefitDisplayItem[] = [];
+  for (const b of card.benefits) {
+    if (b.isHidden) continue;
+    if (isStandardOnly(b)) {
+      const hasUseThisYear = b.usageRecords.some(
+        (r) => r.usedDate >= window.start && r.usedDate <= window.end,
+      );
+      if (hasUseThisYear) items.push(standardItem(b, card));
+      continue;
+    }
+    const cycles = getScopeCycles(b, window, card.cardOpenDate);
+    if (isMonthlyLike(b)) {
+      const autoRecur = b.resetType === "subscription" && b.autoRecur;
+      const usedCycles = autoRecur
+        ? cycles
+        : cycles.filter((c) => findCycleRecord(b, c));
+      if (usedCycles.length === 0) continue;
+      const aggregate = buildAggregate(b, usedCycles, "used", autoRecur);
+      items.push({
+        benefit: b,
+        card,
+        key: `${b.id}::agg-used`,
+        variant: "aggregated",
+        aggregate,
+      });
+    } else {
+      for (const cycle of cycles) {
+        const record = findCycleRecord(b, cycle);
+        if (record) items.push(perCycleItem(b, card, cycle, record));
+      }
+    }
+  }
+  return items;
+};
+
 export const expandBenefitsForFilter = (
   card: CreditCard,
   filter: FilterMode,
@@ -60,6 +154,8 @@ export const expandBenefitsForFilter = (
       .map((b) => standardItem(b, card));
   }
 
-  // unused / used / all — Tasks 5–7
+  if (filter === "used") return expandUsed(card, today);
+
+  // unused / all — Tasks 6–7
   return [];
 };

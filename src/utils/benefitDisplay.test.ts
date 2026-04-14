@@ -80,3 +80,94 @@ describe("expandBenefitsForFilter — 已隐藏", () => {
     expect(items[0].variant).toBe("standard");
   });
 });
+
+describe("expandBenefitsForFilter — 已使用", () => {
+  const today = new Date(2026, 3, 14);
+
+  it("aggregates monthly benefit usage in current calendar year", () => {
+    const b = makeBenefit({
+      id: "b1",
+      name: "Uber Eats",
+      faceValue: 15,
+      resetConfig: { period: "monthly" },
+      usageRecords: [
+        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+        { usedDate: "2026-03-05", faceValue: 15, actualValue: 12 },
+        { usedDate: "2025-12-10", faceValue: 15, actualValue: 15 },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "used", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].variant).toBe("aggregated");
+    expect(items[0].aggregate?.kind).toBe("used");
+    expect(items[0].aggregate?.usedCount).toBe(2);
+    expect(items[0].aggregate?.months).toHaveLength(2);
+    expect(items[0].aggregate?.totalActualValue).toBe(27);
+    expect(items[0].aggregate?.totalFaceValue).toBe(30);
+  });
+
+  it("returns no item for monthly benefit with zero uses this year", () => {
+    const b = makeBenefit({ id: "b1", resetConfig: { period: "monthly" } });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "used", today, "calendar");
+    expect(items).toHaveLength(0);
+  });
+
+  it("returns per-cycle item for each used quarter", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "quarterly" },
+      faceValue: 100,
+      usageRecords: [
+        { usedDate: "2026-02-10", faceValue: 100, actualValue: 100 },
+        { usedDate: "2026-05-20", faceValue: 100, actualValue: 80 },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "used", today, "calendar");
+    expect(items).toHaveLength(2);
+    expect(items.map((i) => i.periodLabel)).toEqual(["Q1 2026", "Q2 2026"]);
+    expect(items[0].variant).toBe("per-cycle");
+    expect(items[0].cycleUsed).toBe(true);
+    expect(items[0].cycleRecord?.actualValue).toBe(100);
+  });
+
+  it("returns standard item for used one_time benefit", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "one_time",
+      resetConfig: {},
+      usageRecords: [{ usedDate: "2026-03-01", faceValue: 50, actualValue: 50 }],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "used", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].variant).toBe("standard");
+  });
+
+  it("excludes hidden benefits", () => {
+    const b = makeBenefit({
+      id: "b1",
+      isHidden: true,
+      usageRecords: [{ usedDate: "2026-02-10", faceValue: 10, actualValue: 10 }],
+    });
+    const card = makeCard([b]);
+    expect(expandBenefitsForFilter(card, "used", today, "calendar")).toHaveLength(0);
+  });
+
+  it("aggregates autoRecur subscription as 12 used months for full year", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      autoRecur: true,
+      faceValue: 20,
+      resetConfig: {},
+      usageRecords: [],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "used", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].aggregate?.usedCount).toBe(12);
+  });
+});
