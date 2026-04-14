@@ -1,7 +1,8 @@
 import { formatDate, getAnniversaryRange, getMonthRange, lastDay } from "./period";
 import type { Benefit, UsageRecord } from "../models/types";
+import type { YearScope } from "./benefitDisplay";
 
-export type YearScope = "calendar" | "anniversary";
+export type { YearScope };
 
 export interface ScopeWindow {
   start: string; // ISO date, inclusive
