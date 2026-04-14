@@ -345,6 +345,138 @@ describe("useCardStore", () => {
     });
   });
 
+  describe("setBenefitCycleUsed", () => {
+    beforeEach(() => {
+      useCardStore.setState({
+        cards: [
+          {
+            id: "c1",
+            owner: "me",
+            cardTypeSlug: "x",
+            annualFee: 100,
+            cardOpenDate: "2024-01-01",
+            color: "#000",
+            isEnabled: true,
+            benefits: [
+              {
+                id: "b1",
+                name: "Quarterly",
+                description: "",
+                faceValue: 100,
+                category: "other",
+                resetType: "calendar",
+                resetConfig: { period: "quarterly" },
+                isHidden: false,
+                autoRecur: false,
+                rolloverable: false,
+                rolloverMaxYears: 0,
+                usageRecords: [
+                  { usedDate: "2026-02-05", faceValue: 100, actualValue: 100 }, // Q1
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("adds a record for unused cycle with cycleStart date when today outside cycle", () => {
+      useCardStore
+        .getState()
+        .setBenefitCycleUsed("c1", "b1", "2026-07-01", "2026-09-30", true, { actualValue: 90 });
+      const b = useCardStore.getState().cards[0].benefits[0];
+      expect(b.usageRecords).toHaveLength(2);
+      const q3 = b.usageRecords.find(
+        (r) => r.usedDate >= "2026-07-01" && r.usedDate <= "2026-09-30",
+      );
+      expect(q3).toEqual({ usedDate: "2026-07-01", faceValue: 100, actualValue: 90 });
+    });
+
+    it("uses explicit usedDate when provided", () => {
+      useCardStore
+        .getState()
+        .setBenefitCycleUsed("c1", "b1", "2026-07-01", "2026-09-30", true, {
+          actualValue: 90,
+          usedDate: "2026-08-15",
+        });
+      const b = useCardStore.getState().cards[0].benefits[0];
+      expect(b.usageRecords.some((r) => r.usedDate === "2026-08-15")).toBe(true);
+    });
+
+    it("is a no-op when used=true and cycle already has a record", () => {
+      useCardStore
+        .getState()
+        .setBenefitCycleUsed("c1", "b1", "2026-01-01", "2026-03-31", true, { actualValue: 100 });
+      const b = useCardStore.getState().cards[0].benefits[0];
+      expect(b.usageRecords).toHaveLength(1);
+    });
+
+    it("removes the record in the clicked cycle on used=false", () => {
+      useCardStore.getState().setBenefitCycleUsed("c1", "b1", "2026-01-01", "2026-03-31", false);
+      const b = useCardStore.getState().cards[0].benefits[0];
+      expect(b.usageRecords).toHaveLength(0);
+    });
+
+    it("removing a non-existent cycle record is a no-op", () => {
+      useCardStore.getState().setBenefitCycleUsed("c1", "b1", "2026-07-01", "2026-09-30", false);
+      const b = useCardStore.getState().cards[0].benefits[0];
+      expect(b.usageRecords).toHaveLength(1);
+      expect(b.usageRecords[0].usedDate).toBe("2026-02-05");
+    });
+
+    it("removes only the cycle's record, leaving others alone", () => {
+      useCardStore.setState({
+        cards: [
+          {
+            ...useCardStore.getState().cards[0],
+            benefits: [
+              {
+                ...useCardStore.getState().cards[0].benefits[0],
+                usageRecords: [
+                  { usedDate: "2026-02-05", faceValue: 100, actualValue: 100 }, // Q1
+                  { usedDate: "2026-05-10", faceValue: 100, actualValue: 80 }, // Q2
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      useCardStore.getState().setBenefitCycleUsed("c1", "b1", "2026-01-01", "2026-03-31", false);
+      const b = useCardStore.getState().cards[0].benefits[0];
+      expect(b.usageRecords).toEqual([
+        { usedDate: "2026-05-10", faceValue: 100, actualValue: 80 },
+      ]);
+    });
+
+    it("defaults usedDate to today when today falls inside cycle", () => {
+      useCardStore.setState({
+        cards: [
+          {
+            ...useCardStore.getState().cards[0],
+            benefits: [
+              {
+                ...useCardStore.getState().cards[0].benefits[0],
+                usageRecords: [],
+              },
+            ],
+          },
+        ],
+      });
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = today.getMonth() + 1;
+      const cycleStart = `${String(y)}-${String(m).padStart(2, "0")}-01`;
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const cycleEnd = `${String(y)}-${String(m).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+      useCardStore
+        .getState()
+        .setBenefitCycleUsed("c1", "b1", cycleStart, cycleEnd, true, { actualValue: 10 });
+      const b = useCardStore.getState().cards[0].benefits[0];
+      const iso = `${String(y)}-${String(m).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      expect(b.usageRecords[0].usedDate).toBe(iso);
+    });
+  });
+
   describe("generateAutoRecurRecords", () => {
     beforeEach(() => {
       vi.useFakeTimers();

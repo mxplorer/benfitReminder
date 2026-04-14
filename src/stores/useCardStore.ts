@@ -17,6 +17,14 @@ interface CardStoreActions {
   toggleBenefitHidden: (cardId: string, benefitId: string) => void;
   toggleBenefitAutoRecur: (cardId: string, benefitId: string) => void;
   toggleBenefitUsage: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
+  setBenefitCycleUsed: (
+    cardId: string,
+    benefitId: string,
+    cycleStart: string,
+    cycleEnd: string,
+    used: boolean,
+    opts?: { actualValue?: number; usedDate?: string },
+  ) => void;
   rolloverBenefit: (cardId: string, benefitId: string, usedDate?: string) => void;
   backfillBenefitUsage: (cardId: string, benefitId: string, records: UsageRecord[]) => void;
   getUnusedBenefitCount: () => number;
@@ -33,7 +41,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   reminderEnabled: true,
   reminderDays: 3,
   dismissedDate: null,
-  trayOpacity: 45,
 };
 
 const updateBenefitInCards = (
@@ -140,6 +147,45 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
           usageRecords: [...b.usageRecords, newRecord],
+        })),
+      };
+    });
+  },
+
+  setBenefitCycleUsed: (cardId, benefitId, cycleStart, cycleEnd, used, opts) => {
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit) return state;
+
+      const existingInCycle = benefit.usageRecords.find(
+        (r) => r.usedDate >= cycleStart && r.usedDate <= cycleEnd,
+      );
+
+      if (used) {
+        if (existingInCycle) return state;
+        const todayIso = formatDate(new Date());
+        const defaultDate =
+          todayIso >= cycleStart && todayIso <= cycleEnd ? todayIso : cycleStart;
+        const newRecord: UsageRecord = {
+          usedDate: opts?.usedDate ?? defaultDate,
+          faceValue: benefit.faceValue,
+          actualValue: opts?.actualValue ?? benefit.faceValue,
+        };
+        return {
+          cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+            ...b,
+            usageRecords: [...b.usageRecords, newRecord],
+          })),
+        };
+      }
+
+      if (!existingInCycle) return state;
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: b.usageRecords.filter((r) => r !== existingInCycle),
         })),
       };
     });
