@@ -8,6 +8,7 @@ import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import { useCardStore } from "../src/stores/useCardStore";
 import { useCardTypeStore } from "../src/stores/useCardTypeStore";
 import { MainWindow } from "../src/views/main/MainWindow";
+import { CardDetail } from "../src/views/main/CardDetail";
 
 beforeEach(() => {
   useCardStore.setState({ cards: [], settings: {
@@ -506,5 +507,52 @@ describe("E2E: Settings — reminder config and data management", () => {
     // Toggle back on
     fireEvent.click(toggle);
     expect(useCardStore.getState().settings.reminderEnabled).toBe(true);
+  });
+});
+
+describe("E2E: benefit filter switching", () => {
+  it("switches between all 5 filters and anniversary scope", () => {
+    useCardStore.setState({
+      cards: [
+        {
+          id: "c1", owner: "me", cardTypeSlug: "amex-plat",
+          annualFee: 695, cardOpenDate: "2024-01-01",
+          color: "#000", isEnabled: true,
+          benefits: [
+            {
+              id: "bm", name: "Monthly X", description: "",
+              faceValue: 10, category: "other",
+              resetType: "calendar", resetConfig: { period: "monthly" },
+              isHidden: false, autoRecur: false,
+              rolloverable: false, rolloverMaxYears: 0,
+              usageRecords: [{ usedDate: "2026-02-05", faceValue: 10, actualValue: 10 }],
+            },
+            {
+              id: "bh", name: "Hidden Y", description: "",
+              faceValue: 20, category: "other",
+              resetType: "calendar", resetConfig: { period: "annual" },
+              isHidden: true, autoRecur: false,
+              rolloverable: false, rolloverMaxYears: 0,
+              usageRecords: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+
+    fireEvent.click(screen.getByTestId("filter-pill-used"));
+    expect(screen.getAllByText(/Monthly X/).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByTestId("filter-pill-hidden"));
+    expect(screen.getAllByText(/Hidden Y/).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByTestId("filter-pill-all"));
+    expect(screen.getByTestId("year-scope-toggle")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("scope-anniversary"));
+
+    fireEvent.click(screen.getByTestId("filter-pill-unused"));
+    expect(screen.getByTestId("year-scope-toggle")).toBeInTheDocument();
   });
 });
