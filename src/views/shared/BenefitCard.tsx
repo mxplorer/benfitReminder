@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Benefit, CreditCard, ResetType } from "../../models/types";
+import type { Benefit, CreditCard, ResetType, UsageRecord } from "../../models/types";
 import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
 import { getAvailableValue } from "../../utils/rollover";
 import { GlassContainer } from "./GlassContainer";
@@ -16,6 +16,9 @@ interface BenefitCardProps {
   onToggleHidden?: (cardId: string, benefitId: string) => void;
   onDelete?: (cardId: string, benefitId: string) => void;
   compact?: boolean;
+  periodLabel?: string;
+  cycleRecord?: UsageRecord;
+  cycleUsed?: boolean;
 }
 
 const PERIOD_LABELS: Record<string, string> = {
@@ -34,10 +37,22 @@ const getResetLabel = (benefit: Benefit): string => {
   return PERIOD_LABELS[benefit.resetConfig.period ?? ""] ?? "";
 };
 
-export const BenefitCard = ({ benefit, card, onToggleUsage, onRollover, onToggleHidden, onDelete, compact = false }: BenefitCardProps) => {
+export const BenefitCard = ({
+  benefit,
+  card,
+  onToggleUsage,
+  onRollover,
+  onToggleHidden,
+  onDelete,
+  compact = false,
+  periodLabel,
+  cycleRecord,
+  cycleUsed,
+}: BenefitCardProps) => {
   const today = new Date();
-  const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
+  const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
   const availableValue = getAvailableValue(benefit, today);
+  const displayValue = cycleRecord ? cycleRecord.actualValue : availableValue;
   // When not-yet-used benefit is clicked we open an inline prompt so the user
   // can record the *actual* amount redeemed (may differ from faceValue).
   const [pendingValue, setPendingValue] = useState<string | null>(null);
@@ -86,7 +101,7 @@ export const BenefitCard = ({ benefit, card, onToggleUsage, onRollover, onToggle
     <GlassContainer className={`benefit-card ${cardClasses}`}>
       <div className="benefit-card__header">
         <StatusTag daysRemaining={daysRemaining} isUsed={isUsed} />
-        <span className="benefit-card__period">{getResetLabel(benefit)}</span>
+        <span className="benefit-card__period">{periodLabel ?? getResetLabel(benefit)}</span>
         {benefit.rolloverable && (
           <span className="benefit-card__rollover-badge">可Roll</span>
         )}
@@ -99,7 +114,7 @@ export const BenefitCard = ({ benefit, card, onToggleUsage, onRollover, onToggle
       )}
       <div className="benefit-card__footer">
         <span className="benefit-card__value">
-          {availableValue > 0 ? `$${String(availableValue)}` : "—"}
+          {displayValue > 0 ? `$${String(displayValue)}` : "—"}
         </span>
         {pendingValue === null ? (
           <div className="benefit-card__actions">

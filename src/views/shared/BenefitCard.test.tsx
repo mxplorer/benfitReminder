@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import type { Benefit, CreditCard } from "../../models/types";
+import type { Benefit, CreditCard, UsageRecord } from "../../models/types";
 import { BenefitCard } from "./BenefitCard";
 
 const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
@@ -224,5 +224,53 @@ describe("BenefitCard", () => {
     fireEvent.click(screen.getByLabelText("取消使用"));
     expect(handler).toHaveBeenCalledWith("c7", "b7");
     expect(screen.queryByLabelText("实际到手")).not.toBeInTheDocument();
+  });
+});
+
+describe("BenefitCard — per-cycle props", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows period label when periodLabel is set", () => {
+    const benefit = makeBenefit({ resetConfig: { period: "quarterly" } });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        periodLabel="Q2 2026"
+        cycleUsed={false}
+      />,
+    );
+    expect(screen.getByText("Q2 2026")).toBeInTheDocument();
+  });
+
+  it("shows used state when cycleUsed=true", () => {
+    const benefit = makeBenefit();
+    const record: UsageRecord = { usedDate: "2026-04-10", faceValue: 100, actualValue: 80 };
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        periodLabel="Q2 2026"
+        cycleUsed
+        cycleRecord={record}
+      />,
+    );
+    expect(screen.getByLabelText("取消使用")).toBeInTheDocument();
+  });
+
+  it("stays backward compatible without cycle props", () => {
+    const benefit = makeBenefit();
+    render(
+      <BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />,
+    );
+    expect(screen.getByText(benefit.name)).toBeInTheDocument();
   });
 });
