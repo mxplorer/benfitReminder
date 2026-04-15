@@ -33,6 +33,9 @@ export interface ResetConfig {
   applicableMonths?: number[];
   cooldownDays?: number;
   expiresDate?: string;
+  /** When resetType === "anniversary", align the cycle to the next statement
+   * close on-or-after the anniversary date. Requires CreditCard.statementClosingDay. */
+  resetsAtStatementClose?: boolean;
 }
 
 export interface BenefitTemplate {
@@ -98,6 +101,9 @@ export interface CreditCard {
   color: string;
   isEnabled: boolean;
   benefits: Benefit[];
+  /** Day of month (1-31) that the card's statement closes. Used by
+   * resetsAtStatementClose benefits. Clamped to last day of short months. */
+  statementClosingDay?: number;
 }
 
 export interface AppSettings {

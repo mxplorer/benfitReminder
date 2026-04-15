@@ -9,6 +9,7 @@ import {
   isApplicableNow,
   getDeadline,
   getDaysRemaining,
+  getAnniversaryStatementClosingRange,
 } from "./period";
 
 const d = (iso: string) => new Date(iso + "T00:00:00");
@@ -512,5 +513,78 @@ describe("autoRecur monthly subscription — new behavior", () => {
         autoRecur: true,
       }),
     ).toBe("2026-04-30");
+  });
+});
+
+describe("getAnniversaryStatementClosingRange", () => {
+  it("shifts both boundaries to the next statement close on or after anniversary", () => {
+    const today = new Date(2026, 5, 1);
+    const range = getAnniversaryStatementClosingRange(today, "2025-04-03", 7);
+    expect(range.start).toBe("2026-04-07");
+    expect(range.end).toBe("2027-04-06");
+  });
+
+  it("treats anniversary date that equals the closing day as the start (no shift)", () => {
+    const today = new Date(2026, 5, 1);
+    const range = getAnniversaryStatementClosingRange(today, "2025-04-07", 7);
+    expect(range.start).toBe("2026-04-07");
+    expect(range.end).toBe("2027-04-06");
+  });
+
+  it("clamps closing day 31 to last day of short months (Feb)", () => {
+    const today = new Date(2026, 2, 1);
+    const range = getAnniversaryStatementClosingRange(today, "2025-02-10", 31);
+    expect(range.start).toBe("2026-02-28");
+    expect(range.end).toBe("2027-02-27");
+  });
+
+  it("moves to next month when anniversary lands after that month's close", () => {
+    const today = new Date(2026, 5, 1);
+    const range = getAnniversaryStatementClosingRange(today, "2025-04-10", 7);
+    expect(range.start).toBe("2026-05-07");
+    expect(range.end).toBe("2027-05-06");
+  });
+
+  it("handles leap year anniversary + day 31 close", () => {
+    const today = new Date(2026, 5, 1);
+    const range = getAnniversaryStatementClosingRange(today, "2024-02-29", 31);
+    expect(range.start).toBe("2026-02-28");
+    expect(range.end).toBe("2027-02-27");
+  });
+});
+
+describe("getCurrentPeriodRange — statement-close routing", () => {
+  const today = new Date(2026, 5, 1);
+
+  it("uses statement-close helper when resetType=anniversary AND resetsAtStatementClose AND statementClosingDay set", () => {
+    const range = getCurrentPeriodRange(today, {
+      resetType: "anniversary",
+      resetConfig: { resetsAtStatementClose: true },
+      cardOpenDate: "2025-04-03",
+      statementClosingDay: 7,
+    });
+    expect(range?.start).toBe("2026-04-07");
+    expect(range?.end).toBe("2027-04-06");
+  });
+
+  it("falls back to pure anniversary when statementClosingDay is missing", () => {
+    const range = getCurrentPeriodRange(today, {
+      resetType: "anniversary",
+      resetConfig: { resetsAtStatementClose: true },
+      cardOpenDate: "2025-04-03",
+    });
+    expect(range?.start).toBe("2026-04-03");
+    expect(range?.end).toBe("2027-04-02");
+  });
+
+  it("falls back to pure anniversary when resetsAtStatementClose is false", () => {
+    const range = getCurrentPeriodRange(today, {
+      resetType: "anniversary",
+      resetConfig: {},
+      cardOpenDate: "2025-04-03",
+      statementClosingDay: 7,
+    });
+    expect(range?.start).toBe("2026-04-03");
+    expect(range?.end).toBe("2027-04-02");
   });
 });

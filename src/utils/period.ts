@@ -9,6 +9,7 @@ export interface PeriodInput {
   resetType: ResetType;
   resetConfig: ResetConfig;
   cardOpenDate?: string;
+  statementClosingDay?: number;
 }
 
 export const formatDate = (d: Date): string => {
@@ -106,6 +107,38 @@ export const getAnniversaryRange = (today: Date, cardOpenDate: string): DateRang
   return { start: formatDate(periodStart), end: formatDate(periodEnd) };
 };
 
+const firstCloseOnOrAfter = (anchor: Date, closingDay: number): Date => {
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  const thisMonthClose = clampDate(year, month, closingDay);
+  if (thisMonthClose >= anchor) return thisMonthClose;
+  return clampDate(year, month + 1, closingDay);
+};
+
+/**
+ * Shifts an anniversary-aligned window to align with statement close boundaries.
+ * The "statement close" for a given (year, month) is min(day, lastDay(year, month)).
+ * Both boundaries shift: start = first close on-or-after anniversaryStart;
+ * end = (first close on-or-after nextAnniversaryStart) - 1 day.
+ */
+export const getAnniversaryStatementClosingRange = (
+  today: Date,
+  cardOpenDate: string,
+  statementClosingDay: number,
+): DateRange => {
+  const anniversary = getAnniversaryRange(today, cardOpenDate);
+  const startAnchor = new Date(anniversary.start + "T00:00:00");
+  const endAnchorExclusive = new Date(anniversary.end + "T00:00:00");
+  endAnchorExclusive.setDate(endAnchorExclusive.getDate() + 1);
+
+  const shiftedStart = firstCloseOnOrAfter(startAnchor, statementClosingDay);
+  const shiftedEndExclusive = firstCloseOnOrAfter(endAnchorExclusive, statementClosingDay);
+  const shiftedEnd = new Date(shiftedEndExclusive);
+  shiftedEnd.setDate(shiftedEnd.getDate() - 1);
+
+  return { start: formatDate(shiftedStart), end: formatDate(shiftedEnd) };
+};
+
 export const getCurrentPeriodRange = (
   today: Date,
   input: PeriodInput,
@@ -120,6 +153,13 @@ export const getCurrentPeriodRange = (
 
     case "anniversary": {
       if (!input.cardOpenDate) return null;
+      if (input.resetConfig.resetsAtStatementClose && input.statementClosingDay) {
+        return getAnniversaryStatementClosingRange(
+          today,
+          input.cardOpenDate,
+          input.statementClosingDay,
+        );
+      }
       return getAnniversaryRange(today, input.cardOpenDate);
     }
 
