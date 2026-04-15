@@ -384,6 +384,38 @@ describe("isApplicableNow", () => {
     });
     expect(isApplicableNow(benefit, d("2026-04-10"))).toBe(true);
   });
+
+  it("returns false for one_time before availableFromDate", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    expect(isApplicableNow(benefit, d("2026-04-15"))).toBe(false);
+  });
+
+  it("returns true for one_time on availableFromDate", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    expect(isApplicableNow(benefit, d("2026-07-01"))).toBe(true);
+  });
+
+  it("returns true for one_time within [availableFromDate, expiresDate]", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    expect(isApplicableNow(benefit, d("2026-09-15"))).toBe(true);
+  });
+
+  it("returns false for one_time after expiresDate even when availableFromDate set", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    expect(isApplicableNow(benefit, d("2027-01-01"))).toBe(false);
+  });
 });
 
 describe("getDeadline", () => {

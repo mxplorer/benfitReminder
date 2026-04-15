@@ -211,8 +211,12 @@ export const isBenefitUsedInPeriod = (
 
 export const isApplicableNow = (benefit: Benefit, today: Date): boolean => {
   if (benefit.resetType === "one_time") {
-    if (benefit.resetConfig.expiresDate) {
-      return formatDate(today) <= benefit.resetConfig.expiresDate;
+    const todayIso = formatDate(today);
+    if (benefit.resetConfig.availableFromDate && todayIso < benefit.resetConfig.availableFromDate) {
+      return false;
+    }
+    if (benefit.resetConfig.expiresDate && todayIso > benefit.resetConfig.expiresDate) {
+      return false;
     }
     return true;
   }

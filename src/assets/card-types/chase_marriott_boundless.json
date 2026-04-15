@@ -26,7 +26,7 @@
       "faceValue": 50,
       "category": "airline",
       "resetType": "one_time",
-      "resetConfig": { "expiresDate": "2026-12-31" }
+      "resetConfig": { "availableFromDate": "2026-07-01", "expiresDate": "2026-12-31" }
     },
     {
       "name": "15 Elite Night Credits",
