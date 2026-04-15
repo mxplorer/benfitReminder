@@ -8,7 +8,7 @@ interface CardStoreState {
   cards: CreditCard[];
   settings: AppSettings;
   /** "Current moment" the UI reads for today-dependent calculations.
-   * Bumped by `recalculate()` so focus/midnight refreshes re-render. */
+   * Will be bumped by a `recalculate()` action on focus/midnight refresh. */
   now: Date;
 }
 
