@@ -21,8 +21,6 @@ interface FormState {
   applicableMonths: number[];
   // since_last_use
   cooldownDays: string;
-  // subscription
-  autoRecur: boolean;
   // one_time
   expiresDate: string;
   // rollover (calendar only)
@@ -64,7 +62,6 @@ const toFormState = (benefit?: Benefit): FormState => ({
   period: benefit?.resetConfig.period ?? "monthly",
   applicableMonths: benefit?.resetConfig.applicableMonths ?? [],
   cooldownDays: String(benefit?.resetConfig.cooldownDays ?? ""),
-  autoRecur: benefit?.autoRecur ?? false,
   expiresDate: benefit?.resetConfig.expiresDate ?? "",
   rolloverable: benefit?.rolloverable ?? false,
   rolloverMaxYears: String(benefit?.rolloverMaxYears ?? 2),
@@ -123,7 +120,7 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
       resetType: form.resetType,
       resetConfig,
       isHidden: benefit?.isHidden ?? false,
-      autoRecur: form.resetType === "subscription" ? form.autoRecur : false,
+      autoRecur: false, // stub until Benefit.autoRecur is removed in Task 10
       rolloverable: form.resetType === "calendar" ? form.rolloverable : false,
       rolloverMaxYears: form.rolloverable ? Number(form.rolloverMaxYears) : 2,
       usageRecords: benefit?.usageRecords ?? [],
@@ -318,18 +315,6 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
             onChange={(e) => { handleChange("cooldownDays", e.target.value); }}
             data-testid="cooldown-input"
           />
-        </label>
-      )}
-
-      {form.resetType === "subscription" && (
-        <label data-testid="auto-recur-field">
-          <input
-            type="checkbox"
-            checked={form.autoRecur}
-            onChange={(e) => { handleChange("autoRecur", e.target.checked); }}
-            data-testid="auto-recur-input"
-          />
-          自动续期
         </label>
       )}
 

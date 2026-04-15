@@ -68,14 +68,12 @@ describe("BenefitEditor", () => {
     expect(screen.queryByTestId("calendar-fields")).not.toBeInTheDocument();
   });
 
-  it("shows auto-recur checkbox when resetType is subscription", () => {
+  it("does not render the autoRecur field for subscription benefits", () => {
     render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
-
     fireEvent.change(screen.getByTestId("reset-type-select"), {
       target: { value: "subscription" },
     });
-
-    expect(screen.getByTestId("auto-recur-field")).toBeInTheDocument();
+    expect(screen.queryByTestId("auto-recur-field")).not.toBeInTheDocument();
   });
 
   it("submitting in create mode calls addBenefit and onDone", () => {
