@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
-import { formatDate, getMonthRange, isBenefitUsedInPeriod, isApplicableNow } from "../utils/period";
-import { resolveAutoRecurValue, formatMonthKey } from "../utils/subscription";
+import { formatDate, isBenefitUsedInPeriod, isApplicableNow } from "../utils/period";
+import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
 
 interface CardStoreState {
@@ -38,6 +38,7 @@ interface CardStoreActions {
   exportData: () => string;
   importData: (json: string) => void;
   generateAutoRecurRecords: () => void;
+  recalculate: () => void;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -323,33 +324,47 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
   },
 
   generateAutoRecurRecords: () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
-    const monthRange = getMonthRange(year, month);
-    const monthKey = formatMonthKey(today);
+    const today = get().now;
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const prevMonthKey = formatMonthKey(
+      new Date(today.getFullYear(), today.getMonth() - 1, 1),
+    );
+    const currentMonthKey = formatMonthKey(today);
+    const currentMonthStartIso = formatDate(currentMonthStart);
 
     set((state) => ({
       cards: state.cards.map((card) => ({
         ...card,
         benefits: card.benefits.map((benefit) => {
-          if (benefit.resetType !== "subscription" || !benefit.autoRecur) return benefit;
-          if (benefit.resetConfig.period !== "monthly") return benefit;
-          if (benefit.cancelledMonths?.includes(monthKey)) return benefit;
+          const isMonthlyLike =
+            benefit.resetType === "subscription" ||
+            (benefit.resetType === "calendar" && benefit.resetConfig.period === "monthly");
+          if (!isMonthlyLike) return benefit;
 
-          const hasRecordThisMonth = benefit.usageRecords.some(
-            (r) => r.usedDate >= monthRange.start && r.usedDate <= monthRange.end,
+          const hasCurrent = benefit.usageRecords.some(
+            (r) => formatMonthKey(new Date(r.usedDate + "T00:00:00")) === currentMonthKey,
           );
-          if (hasRecordThisMonth) return benefit;
+          if (hasCurrent) return benefit;
+
+          const prev = benefit.usageRecords.find(
+            (r) => formatMonthKey(new Date(r.usedDate + "T00:00:00")) === prevMonthKey,
+          );
+          if (!prev || prev.propagateNext !== true) return benefit;
 
           const newRecord: UsageRecord = {
-            usedDate: monthRange.start,
+            usedDate: currentMonthStartIso,
             faceValue: benefit.faceValue,
-            actualValue: resolveAutoRecurValue(benefit),
+            actualValue: prev.actualValue,
+            propagateNext: true,
           };
           return { ...benefit, usageRecords: [...benefit.usageRecords, newRecord] };
         }),
       })),
     }));
+  },
+
+  recalculate: () => {
+    set({ now: new Date() });
+    get().generateAutoRecurRecords();
   },
 }));

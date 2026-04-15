@@ -238,8 +238,9 @@ describe("Auto-recur + ROI integration", () => {
   });
 
   it("auto-recur generates records that contribute to dashboard ROI", () => {
-    useCardStore.getState().addCard(
-      makeCard({
+    // Seed a prev-month record with propagateNext=true so the new model propagates
+    useCardStore.setState({
+      cards: [makeCard({
         id: "c1",
         annualFee: 300,
         benefits: [
@@ -247,22 +248,26 @@ describe("Auto-recur + ROI integration", () => {
             id: "sub1",
             name: "$25/mo Streaming",
             resetType: "subscription",
-            autoRecur: true,
+            autoRecur: false,
             faceValue: 25,
+            usageRecords: [
+              { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true },
+            ],
           }),
         ],
-      }),
-    );
+      })],
+      now: new Date("2026-04-10T12:00:00"),
+    });
 
     // Generate auto-recur for April
     useCardStore.getState().generateAutoRecurRecords();
 
     const card = useCardStore.getState().cards[0];
-    expect(card.benefits[0].usageRecords).toHaveLength(1);
+    expect(card.benefits[0].usageRecords).toHaveLength(2);
 
-    // ROI should include auto-recur value
+    // ROI should include auto-recur values; both Mar and Apr records count for 2026
     const dashboard = calculateDashboardROI([card], 2026);
-    expect(dashboard.totalActualValue).toBe(25);
+    expect(dashboard.totalActualValue).toBe(50);
   });
 
   it("auto-recur monthly sub counts as unused when no record in current month", () => {
@@ -554,7 +559,7 @@ describe("auto-replicate subscription flow", () => {
     useCardStore.setState({ cards: [] });
   });
 
-  it("replicates previous month's actualValue + user can cancel + cancellation does not resurrect on re-run", () => {
+  it("replicates previous month's actualValue using propagateNext; uncheck removes record; re-run recreates from propagateNext", () => {
     const today = new Date();
     const yr = today.getFullYear();
     const mo = today.getMonth() + 1;
@@ -563,22 +568,21 @@ describe("auto-replicate subscription flow", () => {
     const lastMonthStart = `${String(lastMonthDate.getFullYear())}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
     const monthEndDay = new Date(yr, mo, 0).getDate();
     const monthEnd = `${String(yr)}-${String(mo).padStart(2, "0")}-${String(monthEndDay).padStart(2, "0")}`;
-    const monthKey = `${String(yr)}-${String(mo).padStart(2, "0")}`;
 
     const benefit: Benefit = {
       id: "b", name: "Netflix", description: "", faceValue: 20,
       category: "streaming", resetType: "subscription",
       resetConfig: { period: "monthly" },
-      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
-      usageRecords: [{ usedDate: lastMonthStart, faceValue: 20, actualValue: 13 }],
+      isHidden: false, autoRecur: false, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [{ usedDate: lastMonthStart, faceValue: 20, actualValue: 13, propagateNext: true }],
     };
     const card: CreditCard = {
       id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
       cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
     };
-    useCardStore.setState({ cards: [card] });
+    useCardStore.setState({ cards: [card], now: today });
 
-    // Step 1: generate replicates 13, not faceValue 20.
+    // Step 1: generate replicates actualValue=13, not faceValue=20.
     useCardStore.getState().generateAutoRecurRecords();
     let updated = useCardStore.getState().cards[0].benefits[0];
     expect(updated.usageRecords).toHaveLength(2);
@@ -586,21 +590,19 @@ describe("auto-replicate subscription flow", () => {
       updated.usageRecords.find((r) => r.usedDate === monthStart)?.actualValue,
     ).toBe(13);
 
-    // Step 2: user unchecks current month.
+    // Step 2: user unchecks current month → record removed.
     useCardStore.getState().setBenefitCycleUsed("c", "b", monthStart, monthEnd, false);
     updated = useCardStore.getState().cards[0].benefits[0];
-    expect(updated.cancelledMonths).toEqual([monthKey]);
     expect(updated.usageRecords.some((r) => r.usedDate === monthStart)).toBe(false);
 
-    // Step 3: generate runs again → no resurrection.
+    // Step 3: generate runs again → recreates because prev month still has propagateNext=true.
     useCardStore.getState().generateAutoRecurRecords();
     updated = useCardStore.getState().cards[0].benefits[0];
-    expect(updated.usageRecords.some((r) => r.usedDate === monthStart)).toBe(false);
+    expect(updated.usageRecords.some((r) => r.usedDate === monthStart)).toBe(true);
 
-    // Step 4: user re-checks → cancellation cleared, record restored for current month.
+    // Step 4: user re-checks → record present for current month.
     useCardStore.getState().setBenefitCycleUsed("c", "b", monthStart, monthEnd, true);
     updated = useCardStore.getState().cards[0].benefits[0];
-    expect(updated.cancelledMonths).toEqual([]);
     expect(
       updated.usageRecords.some(
         (r) => r.usedDate >= monthStart && r.usedDate <= monthEnd,

@@ -375,8 +375,10 @@ describe("E2E: Export and import data round-trip", () => {
 });
 
 describe("E2E: Subscription autoRecur generation", () => {
-  it("generates auto-recur records for subscription benefits", () => {
+  it("generates auto-recur records for subscription benefits via propagateNext", () => {
+    // Seed a prev-month record with propagateNext=true; store.now must match faked time
     useCardStore.setState({
+      now: new Date("2026-04-11T10:00:00"),
       cards: [{
         id: "sub-card",
         owner: "Grace",
@@ -394,8 +396,12 @@ describe("E2E: Subscription autoRecur generation", () => {
           resetType: "subscription",
           resetConfig: { period: "monthly" },
           isHidden: false,
-          autoRecur: true,
-          usageRecords: [],
+          autoRecur: false,
+          rolloverable: false,
+          rolloverMaxYears: 0,
+          usageRecords: [
+            { usedDate: "2026-03-01", faceValue: 14, actualValue: 14, propagateNext: true },
+          ],
         }],
       }],
     });
@@ -406,15 +412,15 @@ describe("E2E: Subscription autoRecur generation", () => {
     });
 
     const benefit = useCardStore.getState().cards[0].benefits[0];
-    expect(benefit.usageRecords).toHaveLength(1);
-    expect(benefit.usageRecords[0].faceValue).toBe(14);
-    expect(benefit.usageRecords[0].usedDate).toBe("2026-04-01");
+    expect(benefit.usageRecords).toHaveLength(2);
+    expect(benefit.usageRecords[1].faceValue).toBe(14);
+    expect(benefit.usageRecords[1].usedDate).toBe("2026-04-01");
 
     // Running again in same month should not add duplicate
     act(() => {
       useCardStore.getState().generateAutoRecurRecords();
     });
-    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(2);
   });
 });
 

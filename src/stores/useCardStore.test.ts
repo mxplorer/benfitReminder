@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type { Benefit, CreditCard } from "../models/types";
+import type { Benefit, CreditCard, UsageRecord } from "../models/types";
 import { useCardStore } from "./useCardStore";
 
 const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
@@ -477,176 +477,111 @@ describe("useCardStore", () => {
     });
   });
 
-  describe("generateAutoRecurRecords", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+});
+
+describe("generateAutoRecurRecords — per-record propagation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T10:00:00"));
+    // IMPORTANT: reset the store, including `now`, so tests see the faked time.
+    useCardStore.setState({ cards: [], now: new Date("2026-04-15T10:00:00") });
+  });
+  afterEach(() => { vi.useRealTimers(); });
+
+  const makeMonthlySub = (records: UsageRecord[]): Benefit => ({
+    id: "b1", name: "$25/mo", description: "", faceValue: 25,
+    category: "streaming", resetType: "subscription", resetConfig: {},
+    isHidden: false, autoRecur: false, rolloverable: false, rolloverMaxYears: 0,
+    usageRecords: records,
+  });
+
+  const seed = (benefit: Benefit) => {
+    useCardStore.setState({
+      cards: [{
+        id: "c1", owner: "me", cardTypeSlug: "amex_platinum",
+        annualFee: 695, cardOpenDate: "2024-01-01", color: "#000",
+        isEnabled: true, benefits: [benefit],
+      }],
+      now: new Date("2026-04-15T10:00:00"),
     });
+  };
 
-    afterEach(() => {
-      vi.useRealTimers();
+  it("creates current-month record when prev month has propagateNext=true", () => {
+    seed(makeMonthlySub([
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true },
+    ]));
+    useCardStore.getState().generateAutoRecurRecords();
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(2);
+    expect(records[1]).toMatchObject({
+      usedDate: "2026-04-01",
+      faceValue: 25,
+      actualValue: 22,
+      propagateNext: true,
     });
+  });
 
-    it("creates records for subscription autoRecur benefits without current month record", () => {
-      const card = makeCard({
-        benefits: [
-          makeBenefit({
-            id: "sub1",
-            resetType: "subscription",
-            autoRecur: true,
-            faceValue: 25,
-            usageRecords: [],
-          }),
-          makeBenefit({
-            id: "sub2",
-            resetType: "subscription",
-            autoRecur: false,
-            usageRecords: [],
-          }),
-          makeBenefit({ id: "reg", resetType: "calendar", usageRecords: [] }),
-        ],
-      });
-      useCardStore.getState().addCard(card);
-      useCardStore.getState().generateAutoRecurRecords();
+  it("does NOT create when prev month's propagateNext is false/absent", () => {
+    seed(makeMonthlySub([
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22 },
+    ]));
+    useCardStore.getState().generateAutoRecurRecords();
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
+  });
 
-      const benefits = useCardStore.getState().cards[0].benefits;
-      // sub1 (autoRecur=true) should have a record
-      expect(benefits[0].usageRecords).toHaveLength(1);
-      expect(benefits[0].usageRecords[0].usedDate).toBe("2026-04-01");
-      expect(benefits[0].usageRecords[0].faceValue).toBe(25);
-      // sub2 (autoRecur=false) and reg (calendar) should not
-      expect(benefits[1].usageRecords).toHaveLength(0);
-      expect(benefits[2].usageRecords).toHaveLength(0);
-    });
+  it("does NOT create when current month already has a record", () => {
+    seed(makeMonthlySub([
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true },
+      { usedDate: "2026-04-02", faceValue: 25, actualValue: 25 },
+    ]));
+    useCardStore.getState().generateAutoRecurRecords();
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(2);
+  });
 
-    it("does not duplicate if record already exists for current month", () => {
-      const card = makeCard({
-        benefits: [
-          makeBenefit({
-            id: "sub1",
-            resetType: "subscription",
-            autoRecur: true,
-            faceValue: 25,
-            usageRecords: [{ usedDate: "2026-04-01", faceValue: 25, actualValue: 25 }],
-          }),
-        ],
-      });
-      useCardStore.getState().addCard(card);
-      useCardStore.getState().generateAutoRecurRecords();
+  it("does NOT create when prev month is missing (two-month gap)", () => {
+    seed(makeMonthlySub([
+      { usedDate: "2026-02-10", faceValue: 25, actualValue: 22, propagateNext: true },
+    ]));
+    useCardStore.getState().generateAutoRecurRecords();
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
+  });
 
-      expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
-    });
+  it("is idempotent", () => {
+    seed(makeMonthlySub([
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true },
+    ]));
+    useCardStore.getState().generateAutoRecurRecords();
+    useCardStore.getState().generateAutoRecurRecords();
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(2);
+  });
+
+  it("skips non-monthly benefits", () => {
+    const benefit: Benefit = {
+      id: "b1", name: "quarterly", description: "", faceValue: 100,
+      category: "dining", resetType: "calendar", resetConfig: { period: "quarterly" },
+      isHidden: false, autoRecur: false, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [{ usedDate: "2026-03-10", faceValue: 100, actualValue: 100, propagateNext: true }],
+    };
+    seed(benefit);
+    useCardStore.getState().generateAutoRecurRecords();
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
   });
 });
 
-describe("generateAutoRecurRecords — smart replication", () => {
+describe("recalculate", () => {
   beforeEach(() => {
-    useCardStore.setState({
-      cards: [],
-      settings: {
-        logLevel: "info",
-        debugLogEnabled: false,
-        reminderEnabled: true,
-        reminderDays: 3,
-        dismissedDate: null,
-        trayOpacity: 90,
-      },
-    });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T10:00:00"));
   });
+  afterEach(() => { vi.useRealTimers(); });
 
-  it("inserts current month record using previous month's actualValue", () => {
-    const today = new Date();
-    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastMonthIso = `${String(lastMonth.getFullYear())}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}-01`;
-
-    const benefit: Benefit = {
-      id: "b", name: "Netflix", description: "", faceValue: 20,
-      category: "streaming", resetType: "subscription",
-      resetConfig: { period: "monthly" },
-      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
-      usageRecords: [{ usedDate: lastMonthIso, faceValue: 20, actualValue: 13 }],
-    };
-    const card: CreditCard = {
-      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
-      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
-    };
-    useCardStore.setState({ cards: [card] });
-
-    useCardStore.getState().generateAutoRecurRecords();
-
-    const updated = useCardStore.getState().cards[0].benefits[0];
-    expect(updated.usageRecords).toHaveLength(2);
-    const thisMonthRecord = updated.usageRecords.find((r) =>
-      r.usedDate.startsWith(
-        `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}`,
-      ),
-    );
-    expect(thisMonthRecord?.actualValue).toBe(13);
-  });
-
-  it("falls back to faceValue when no prior records exist", () => {
-    const benefit: Benefit = {
-      id: "b", name: "Netflix", description: "", faceValue: 20,
-      category: "streaming", resetType: "subscription",
-      resetConfig: { period: "monthly" },
-      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
-      usageRecords: [],
-    };
-    const card: CreditCard = {
-      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
-      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
-    };
-    useCardStore.setState({ cards: [card] });
-
-    useCardStore.getState().generateAutoRecurRecords();
-
-    const updated = useCardStore.getState().cards[0].benefits[0];
-    expect(updated.usageRecords).toHaveLength(1);
-    expect(updated.usageRecords[0].actualValue).toBe(20);
-  });
-
-  it("does not insert when current month is in cancelledMonths", () => {
-    const today = new Date();
-    const monthKey = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-
-    const benefit: Benefit = {
-      id: "b", name: "Netflix", description: "", faceValue: 20,
-      category: "streaming", resetType: "subscription",
-      resetConfig: { period: "monthly" },
-      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
-      usageRecords: [],
-      cancelledMonths: [monthKey],
-    };
-    const card: CreditCard = {
-      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
-      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
-    };
-    useCardStore.setState({ cards: [card] });
-
-    useCardStore.getState().generateAutoRecurRecords();
-
-    const updated = useCardStore.getState().cards[0].benefits[0];
-    expect(updated.usageRecords).toHaveLength(0);
-  });
-
-  it("ignores non-monthly autoRecur subscriptions", () => {
-    const benefit: Benefit = {
-      id: "b", name: "Yearly Sub", description: "", faceValue: 100,
-      category: "streaming", resetType: "subscription",
-      resetConfig: { period: "annual" },
-      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
-      usageRecords: [],
-    };
-    const card: CreditCard = {
-      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
-      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
-    };
-    useCardStore.setState({ cards: [card] });
-
-    useCardStore.getState().generateAutoRecurRecords();
-
-    const updated = useCardStore.getState().cards[0].benefits[0];
-    expect(updated.usageRecords).toHaveLength(0);
+  it("bumps store.now and runs generation", () => {
+    useCardStore.setState({ now: new Date("2026-04-15T10:00:00") });
+    const before = useCardStore.getState().now;
+    vi.setSystemTime(new Date("2026-04-15T10:05:00"));
+    useCardStore.getState().recalculate();
+    const after = useCardStore.getState().now;
+    expect(after.getTime()).toBeGreaterThan(before.getTime());
   });
 });
 
