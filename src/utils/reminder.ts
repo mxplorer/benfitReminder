@@ -20,7 +20,6 @@ export const getBenefitsDueForReminder = (
 
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
-      if (benefit.resetType === "subscription" && benefit.autoRecur) continue;
       if (!isApplicableNow(benefit, today)) continue;
       if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
 

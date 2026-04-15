@@ -61,11 +61,27 @@ describe("getBenefitsDueForReminder", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("excludes subscription with autoRecur=true", () => {
+  it("includes autoRecur monthly subscription when current month has no record and within window", () => {
+    // Apr 25 → Apr 30 deadline → 5 days remaining, window 7
     const benefit = makeBenefit({
       resetType: "subscription",
-      resetConfig: {},
+      resetConfig: { period: "monthly" },
       autoRecur: true,
+      usageRecords: [],
+    });
+    const card = makeCard([benefit]);
+    const result = getBenefitsDueForReminder([card], d("2026-04-25"), 7);
+    expect(result).toHaveLength(1);
+    expect(result[0].deadline).toBe("2026-04-30");
+    expect(result[0].daysRemaining).toBe(5);
+  });
+
+  it("excludes autoRecur monthly subscription when current month already has a record", () => {
+    const benefit = makeBenefit({
+      resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      autoRecur: true,
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
     });
     const card = makeCard([benefit]);
     const result = getBenefitsDueForReminder([card], d("2026-04-25"), 7);

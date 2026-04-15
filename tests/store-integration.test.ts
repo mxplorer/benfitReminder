@@ -283,10 +283,10 @@ describe("Auto-recur + ROI integration", () => {
     // Under new semantics, autoRecur monthly subs are countable when unused.
     expect(useCardStore.getState().getUnusedBenefitCount()).toBe(1);
 
-    // reminder.ts currently still filters out autoRecur subs — reminders stay empty.
-    // (reminder behavior changes are out of scope for this plan.)
+    // Reminders now fire for autoRecur monthly subs without a record this month
+    // (system time Apr 10 → deadline Apr 30 = 20 days, within reminderDays=30 window).
     const reminders = getBenefitsDueForReminder(useCardStore.getState().cards, new Date(), 30);
-    expect(reminders).toHaveLength(0);
+    expect(reminders).toHaveLength(1);
   });
 });
 
