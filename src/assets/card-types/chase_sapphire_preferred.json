@@ -10,7 +10,7 @@
       "faceValue": 50,
       "category": "hotel",
       "resetType": "anniversary",
-      "resetConfig": {}
+      "resetConfig": { "resetsAtStatementClose": true }
     },
     {
       "name": "$10/mo DashPass Promo Credit",
