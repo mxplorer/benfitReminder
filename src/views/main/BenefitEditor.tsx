@@ -28,6 +28,8 @@ interface FormState {
   // rollover (calendar only)
   rolloverable: boolean;
   rolloverMaxYears: string;
+  // anniversary
+  resetsAtStatementClose: boolean;
 }
 
 const CATEGORIES: BenefitCategory[] = [
@@ -66,6 +68,7 @@ const toFormState = (benefit?: Benefit): FormState => ({
   expiresDate: benefit?.resetConfig.expiresDate ?? "",
   rolloverable: benefit?.rolloverable ?? false,
   rolloverMaxYears: String(benefit?.rolloverMaxYears ?? 2),
+  resetsAtStatementClose: benefit?.resetConfig.resetsAtStatementClose ?? false,
 });
 
 export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) => {
@@ -74,6 +77,7 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
   const cards = useCardStore((s) => s.cards);
   const [form, setForm] = useState<FormState>(toFormState(benefit));
   const isEdit = !!benefit;
+  const cardStatementClosingDay = cards.find((c) => c.id === cardId)?.statementClosingDay;
 
   const handleChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [field]: value }));
@@ -99,6 +103,8 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
       resetConfig.cooldownDays = Number(form.cooldownDays);
     } else if (form.resetType === "one_time" && form.expiresDate) {
       resetConfig.expiresDate = form.expiresDate;
+    } else if (form.resetType === "anniversary" && form.resetsAtStatementClose) {
+      resetConfig.resetsAtStatementClose = true;
     }
 
     return {
@@ -246,6 +252,22 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
             </label>
           )}
         </div>
+      )}
+
+      {form.resetType === "anniversary" && (
+        <label data-testid="resets-at-statement-close-field">
+          <input
+            type="checkbox"
+            checked={form.resetsAtStatementClose}
+            onChange={(e) => { handleChange("resetsAtStatementClose", e.target.checked); }}
+            disabled={cardStatementClosingDay === undefined}
+            data-testid="resets-at-statement-close"
+          />
+          按账单结算日对齐周期
+          {cardStatementClosingDay === undefined && (
+            <span className="hint"> (请先在卡片编辑器中设置账单结算日)</span>
+          )}
+        </label>
       )}
 
       {form.resetType === "since_last_use" && (

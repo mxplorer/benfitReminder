@@ -148,4 +148,56 @@ describe("BenefitEditor", () => {
     expect(benefits[0].rolloverable).toBe(true);
     expect(benefits[0].rolloverMaxYears).toBe(3);
   });
+
+  it("shows resetsAtStatementClose checkbox only when resetType=anniversary", () => {
+    useCardStore.setState({ cards: [makeCard({ statementClosingDay: 7 })] });
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("reset-type-select"), { target: { value: "anniversary" } });
+    expect(screen.getByTestId("resets-at-statement-close")).toBeInTheDocument();
+  });
+
+  it("hides the checkbox when resetType is not anniversary", () => {
+    useCardStore.setState({ cards: [makeCard({ statementClosingDay: 7 })] });
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("reset-type-select"), { target: { value: "calendar" } });
+    expect(screen.queryByTestId("resets-at-statement-close")).not.toBeInTheDocument();
+  });
+
+  it("disables the checkbox when the parent card has no statementClosingDay", () => {
+    useCardStore.setState({ cards: [makeCard({ statementClosingDay: undefined })] });
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("reset-type-select"), { target: { value: "anniversary" } });
+    const checkbox = screen.getByTestId<HTMLInputElement>("resets-at-statement-close");
+    expect(checkbox.disabled).toBe(true);
+  });
+
+  it("persists resetsAtStatementClose=true into resetConfig on save", () => {
+    useCardStore.setState({ cards: [makeCard({ statementClosingDay: 7 })] });
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("name-input"), { target: { value: "Hotel" } });
+    fireEvent.change(screen.getByTestId("face-value-input"), { target: { value: "50" } });
+    fireEvent.change(screen.getByTestId("reset-type-select"), { target: { value: "anniversary" } });
+    fireEvent.click(screen.getByTestId("resets-at-statement-close"));
+    fireEvent.click(screen.getByTestId("submit-btn"));
+
+    const benefits = useCardStore.getState().cards[0].benefits;
+    expect(benefits[0].resetConfig.resetsAtStatementClose).toBe(true);
+  });
+
+  it("omits resetsAtStatementClose from resetConfig when unchecked", () => {
+    useCardStore.setState({ cards: [makeCard({ statementClosingDay: 7 })] });
+    render(<BenefitEditor cardId="c1" onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("name-input"), { target: { value: "Hotel" } });
+    fireEvent.change(screen.getByTestId("face-value-input"), { target: { value: "50" } });
+    fireEvent.change(screen.getByTestId("reset-type-select"), { target: { value: "anniversary" } });
+    fireEvent.click(screen.getByTestId("submit-btn"));
+
+    const benefits = useCardStore.getState().cards[0].benefits;
+    expect(benefits[0].resetConfig.resetsAtStatementClose).toBeUndefined();
+  });
 });
