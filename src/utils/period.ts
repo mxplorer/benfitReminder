@@ -179,6 +179,7 @@ export const isBenefitUsedInPeriod = (
   benefit: Benefit,
   today: Date,
   cardOpenDate?: string,
+  statementClosingDay?: number,
 ): boolean => {
   const { resetType, resetConfig, usageRecords } = benefit;
 
@@ -198,7 +199,12 @@ export const isBenefitUsedInPeriod = (
   }
 
   // calendar, anniversary, subscription(autoRecur=false)
-  const range = getCurrentPeriodRange(today, { resetType, resetConfig, cardOpenDate });
+  const range = getCurrentPeriodRange(today, {
+    resetType,
+    resetConfig,
+    cardOpenDate,
+    statementClosingDay,
+  });
   if (!range) return false;
   return usageRecords.some((r) => isDateInRange(r.usedDate, range));
 };
@@ -224,6 +230,7 @@ export interface DeadlineInput {
   resetConfig: ResetConfig;
   cardOpenDate?: string;
   autoRecur?: boolean;
+  statementClosingDay?: number;
 }
 
 export const getDeadline = (today: Date, input: DeadlineInput): string | null => {
@@ -237,6 +244,7 @@ export const getDeadline = (today: Date, input: DeadlineInput): string | null =>
     resetType: input.resetType,
     resetConfig: input.resetConfig,
     cardOpenDate: input.cardOpenDate,
+    statementClosingDay: input.statementClosingDay,
   });
   return range?.end ?? null;
 };

@@ -108,7 +108,7 @@ const expandUnused = (
     if (b.isHidden) continue;
     if (isStandardOnly(b)) {
       if (!isApplicableNow(b, today)) continue;
-      if (isBenefitUsedInPeriod(b, today, card.cardOpenDate)) continue;
+      if (isBenefitUsedInPeriod(b, today, card.cardOpenDate, card.statementClosingDay)) continue;
       items.push(standardItem(b, card));
       continue;
     }
@@ -223,7 +223,7 @@ export const expandBenefitsForFilter = (
     return card.benefits
       .filter((b) => !b.isHidden)
       .filter((b) => isApplicableNow(b, today))
-      .filter((b) => !isBenefitUsedInPeriod(b, today, card.cardOpenDate))
+      .filter((b) => !isBenefitUsedInPeriod(b, today, card.cardOpenDate, card.statementClosingDay))
       .map((b) => standardItem(b, card));
   }
 

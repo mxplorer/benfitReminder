@@ -124,7 +124,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       const benefit = card.benefits.find((b) => b.id === benefitId);
       if (!benefit) return state;
 
-      const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
+      const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay);
 
       if (isUsed) {
         // Remove most recent record
@@ -270,7 +270,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       for (const benefit of card.benefits) {
         if (benefit.isHidden) continue;
         if (!isApplicableNow(benefit, today)) continue;
-        if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
+        if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
         count++;
       }
     }

@@ -24,7 +24,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
       if (benefit.isHidden) continue;
       if (benefit.resetType === "subscription" && benefit.autoRecur) continue;
       if (!isApplicableNow(benefit, today)) continue;
-      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
+      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
       count++;
     }
     return count;

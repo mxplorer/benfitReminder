@@ -588,3 +588,47 @@ describe("getCurrentPeriodRange — statement-close routing", () => {
     expect(range?.end).toBe("2027-04-02");
   });
 });
+
+describe("isBenefitUsedInPeriod — statement close aware", () => {
+  const today = new Date(2026, 5, 1);
+  const base: Benefit = {
+    id: "b",
+    name: "Hotel",
+    description: "",
+    faceValue: 50,
+    category: "hotel",
+    resetType: "anniversary",
+    resetConfig: { resetsAtStatementClose: true },
+    isHidden: false,
+    autoRecur: false,
+    rolloverable: false,
+    rolloverMaxYears: 0,
+    usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],
+  };
+
+  it("treats a record dated 2026-04-05 as LAST cycle's usage (before shifted start 2026-04-07)", () => {
+    expect(isBenefitUsedInPeriod(base, today, "2025-04-03", 7)).toBe(false);
+  });
+
+  it("treats a record dated 2026-04-07 as CURRENT cycle's usage", () => {
+    const benefit = {
+      ...base,
+      usageRecords: [{ usedDate: "2026-04-07", faceValue: 50, actualValue: 50 }],
+    };
+    expect(isBenefitUsedInPeriod(benefit, today, "2025-04-03", 7)).toBe(true);
+  });
+});
+
+describe("getDeadline — statement close aware", () => {
+  it("returns shifted end date when both card and benefit opt in", () => {
+    const today = new Date(2026, 5, 1);
+    expect(
+      getDeadline(today, {
+        resetType: "anniversary",
+        resetConfig: { resetsAtStatementClose: true },
+        cardOpenDate: "2025-04-03",
+        statementClosingDay: 7,
+      }),
+    ).toBe("2027-04-06");
+  });
+});

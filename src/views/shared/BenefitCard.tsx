@@ -63,7 +63,7 @@ export const BenefitCard = ({
   onSetCycleUsed,
 }: BenefitCardProps) => {
   const today = new Date();
-  const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
+  const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay);
   const availableValue = getAvailableValue(benefit, today);
   const displayValue = cycleRecord ? cycleRecord.actualValue : availableValue;
   const cycleContext = cycleStart && cycleEnd ? { start: cycleStart, end: cycleEnd } : null;
@@ -84,6 +84,7 @@ export const BenefitCard = ({
     resetConfig: benefit.resetConfig,
     cardOpenDate: card.cardOpenDate,
     autoRecur: benefit.autoRecur,
+    statementClosingDay: card.statementClosingDay,
   });
   const daysRemaining = deadline ? getDaysRemaining(today, deadline) : null;
 
