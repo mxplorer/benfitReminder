@@ -672,3 +672,112 @@ describe("getUnusedBenefitCount — autoRecur subscriptions now countable", () =
     expect(useCardStore.getState().getUnusedBenefitCount()).toBe(1);
   });
 });
+
+describe("setBenefitCycleUsed — cancelledMonths maintenance for autoRecur subs", () => {
+  beforeEach(() => {
+    useCardStore.setState({ cards: [] });
+  });
+
+  const setupMonthlyAutoRecur = () => {
+    const today = new Date();
+    const monthStart = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const monthEndIso = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(monthEnd.getDate()).padStart(2, "0")}`;
+    const monthKey = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+    const benefit: Benefit = {
+      id: "b", name: "Netflix", description: "", faceValue: 20,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [{ usedDate: monthStart, faceValue: 20, actualValue: 13 }],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+    return { monthStart, monthEnd: monthEndIso, monthKey };
+  };
+
+  it("uncheck (used=false) on current month of monthly autoRecur adds monthKey to cancelledMonths", () => {
+    const { monthStart, monthEnd, monthKey } = setupMonthlyAutoRecur();
+
+    useCardStore.getState().setBenefitCycleUsed("c", "b", monthStart, monthEnd, false);
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.cancelledMonths).toEqual([monthKey]);
+    expect(updated.usageRecords).toHaveLength(0);
+  });
+
+  it("check (used=true) on current month of monthly autoRecur removes monthKey from cancelledMonths", () => {
+    const { monthStart, monthEnd, monthKey } = setupMonthlyAutoRecur();
+    // Seed cancelled state + no record.
+    useCardStore.setState((state) => ({
+      cards: state.cards.map((c) => ({
+        ...c,
+        benefits: c.benefits.map((b) => ({ ...b, usageRecords: [], cancelledMonths: [monthKey] })),
+      })),
+    }));
+
+    useCardStore.getState().setBenefitCycleUsed("c", "b", monthStart, monthEnd, true);
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.cancelledMonths).toEqual([]);
+    expect(updated.usageRecords).toHaveLength(1);
+  });
+
+  it("uncheck on non-monthly autoRecur subscription does not touch cancelledMonths", () => {
+    const today = new Date();
+    const yearStart = `${String(today.getFullYear())}-01-01`;
+    const yearEnd = `${String(today.getFullYear())}-12-31`;
+
+    const benefit: Benefit = {
+      id: "b", name: "YearlySub", description: "", faceValue: 100,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "annual" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [{ usedDate: yearStart, faceValue: 100, actualValue: 100 }],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    useCardStore.getState().setBenefitCycleUsed("c", "b", yearStart, yearEnd, false);
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.cancelledMonths).toBeUndefined();
+    expect(updated.usageRecords).toHaveLength(0);
+  });
+
+  it("uncheck on prior-month cycle of monthly autoRecur does not add monthKey for that prior month (only current month is tracked)", () => {
+    const today = new Date();
+    const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthStart = `${String(lastMonthDate.getFullYear())}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
+    const lastMonthEndDay = new Date(lastMonthDate.getFullYear(), lastMonthDate.getMonth() + 1, 0).getDate();
+    const lastMonthEnd = `${String(lastMonthDate.getFullYear())}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}-${String(lastMonthEndDay).padStart(2, "0")}`;
+
+    const benefit: Benefit = {
+      id: "b", name: "Netflix", description: "", faceValue: 20,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [{ usedDate: lastMonthStart, faceValue: 20, actualValue: 15 }],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    useCardStore.getState().setBenefitCycleUsed("c", "b", lastMonthStart, lastMonthEnd, false);
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    // Prior-month uncheck does not taint cancelledMonths for current month;
+    // record was still removed though.
+    expect(updated.cancelledMonths ?? []).toEqual([]);
+    expect(updated.usageRecords).toHaveLength(0);
+  });
+});
