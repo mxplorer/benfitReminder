@@ -28,9 +28,13 @@ interface BenefitCardProps {
     cycleStart: string,
     cycleEnd: string,
     used: boolean,
-    opts?: { actualValue?: number; usedDate?: string },
+    opts?: { actualValue?: number; usedDate?: string; propagateNext?: boolean },
   ) => void;
 }
+
+const isMonthlyLikeBenefit = (b: Benefit): boolean =>
+  b.resetType === "subscription" ||
+  (b.resetType === "calendar" && b.resetConfig.period === "monthly");
 
 const PERIOD_LABELS: Record<string, string> = {
   monthly: "每月",
@@ -78,7 +82,10 @@ export const BenefitCard = ({
   // can record the *actual* amount redeemed (may differ from faceValue).
   const [pendingValue, setPendingValue] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<string>(defaultPendingDate);
+  const [pendingPropagate, setPendingPropagate] = useState<boolean>(false);
+  const [editMode, setEditMode] = useState<"add" | "edit">("add");
   const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);
+  const monthlyLike = isMonthlyLikeBenefit(benefit);
 
   const deadline = getDeadline(today, {
     resetType: benefit.resetType,
@@ -98,6 +105,14 @@ export const BenefitCard = ({
 
   const handleClick = () => {
     if (isUsed) {
+      // Monthly-like benefits with cycle context: open edit prompt pre-filled
+      if (monthlyLike && cycleContext && onSetCycleUsed && cycleRecord) {
+        setPendingValue(String(cycleRecord.actualValue));
+        setPendingDate(cycleRecord.usedDate);
+        setPendingPropagate(cycleRecord.propagateNext === true);
+        setEditMode("edit");
+        return;
+      }
       if (cycleContext && onSetCycleUsed) {
         onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, false);
         return;
@@ -107,6 +122,8 @@ export const BenefitCard = ({
     }
     setPendingValue(String(benefit.faceValue));
     setPendingDate(defaultPendingDate);
+    setPendingPropagate(latestHasPropagate(benefit));
+    setEditMode("add");
   };
 
   const handleConfirm = () => {
@@ -114,13 +131,22 @@ export const BenefitCard = ({
     const value = Number(pendingValue);
     if (isNaN(value) || value < 0) return;
     if (dateRequired && !pendingDate) return;
+    const propagateOpt = monthlyLike ? { propagateNext: pendingPropagate } : {};
     if (cycleContext && onSetCycleUsed) {
       onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, true, {
         actualValue: value,
         usedDate: pendingDate || undefined,
+        ...propagateOpt,
       });
     } else {
       onToggleUsage(card.id, benefit.id, value, pendingDate || undefined);
+    }
+    setPendingValue(null);
+  };
+
+  const handleDelete = () => {
+    if (cycleContext && onSetCycleUsed) {
+      onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, false);
     }
     setPendingValue(null);
   };
@@ -236,7 +262,28 @@ export const BenefitCard = ({
                   className="benefit-card__prompt-input benefit-card__prompt-input--date"
                 />
               </label>
+              {monthlyLike && (
+                <label className="benefit-card__prompt-label benefit-card__prompt-label--checkbox">
+                  <input
+                    type="checkbox"
+                    checked={pendingPropagate}
+                    onChange={(e) => { setPendingPropagate(e.target.checked); }}
+                    aria-label="自动续期下月"
+                  />
+                  自动续期下月
+                </label>
+              )}
             </div>
+            {editMode === "edit" && cycleContext && onSetCycleUsed && (
+              <button
+                className="benefit-card__action-btn benefit-card__action-btn--danger"
+                onClick={handleDelete}
+                aria-label="删除记录"
+                title="删除记录"
+              >
+                ✕
+              </button>
+            )}
             <button
               className="benefit-card__action-btn benefit-card__action-btn--confirm"
               onClick={handleConfirm}

@@ -222,6 +222,13 @@
   color: var(--text-secondary);
 }
 
+.benefit-card__prompt-label--checkbox {
+  flex-direction: row;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
 .benefit-card__prompt-input {
   width: 64px;
   padding: 4px 6px;

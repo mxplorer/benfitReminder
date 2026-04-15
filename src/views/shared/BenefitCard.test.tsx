@@ -423,3 +423,180 @@ describe("BenefitCard — cycle-scoped toggle", () => {
     expect(setCycleUsed).not.toHaveBeenCalled();
   });
 });
+
+describe("BenefitCard — propagateNext prompt (Task 7)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("passes propagateNext=true when the checkbox is checked on confirm", () => {
+    const onSetCycleUsed = vi.fn();
+    const benefit = makeBenefit({
+      id: "b1",
+      name: "$25/mo",
+      description: "",
+      faceValue: 25,
+      category: "streaming",
+      resetType: "subscription",
+      resetConfig: {},
+      usageRecords: [],
+    });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={onSetCycleUsed}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-04-30"
+        cycleUsed={false}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.click(screen.getByLabelText("自动续期下月"));
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(onSetCycleUsed).toHaveBeenCalledWith(
+      expect.any(String),
+      "b1",
+      "2026-04-01",
+      "2026-04-30",
+      true,
+      expect.objectContaining({ propagateNext: true }),
+    );
+  });
+
+  it("does NOT render the propagate checkbox for non-monthly benefits", () => {
+    const benefit = makeBenefit({
+      id: "b1",
+      name: "Q credit",
+      faceValue: 50,
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+    });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={vi.fn()}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-06-30"
+        cycleUsed={false}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    expect(screen.queryByLabelText("自动续期下月")).not.toBeInTheDocument();
+  });
+
+  it("opens edit prompt (not uncheck) when clicking ✓ on a used monthly record", () => {
+    const onSetCycleUsed = vi.fn();
+    const benefit = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      resetConfig: {},
+      usageRecords: [],
+    });
+    const usedRecord: UsageRecord = {
+      usedDate: "2026-04-10",
+      faceValue: 25,
+      actualValue: 22,
+      propagateNext: true,
+    };
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={onSetCycleUsed}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-04-30"
+        cycleUsed={true}
+        cycleRecord={usedRecord}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("取消使用"));
+    expect(screen.getByLabelText<HTMLInputElement>("实际到手").value).toBe("22");
+    expect(screen.getByLabelText("自动续期下月")).toBeChecked();
+    expect(onSetCycleUsed).not.toHaveBeenCalled();
+  });
+
+  it("confirming in edit mode updates the record via setBenefitCycleUsed", () => {
+    const onSetCycleUsed = vi.fn();
+    const benefit = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      resetConfig: {},
+      usageRecords: [],
+    });
+    const usedRecord: UsageRecord = {
+      usedDate: "2026-04-10",
+      faceValue: 25,
+      actualValue: 22,
+      propagateNext: true,
+    };
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={onSetCycleUsed}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-04-30"
+        cycleUsed={true}
+        cycleRecord={usedRecord}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("取消使用"));
+    fireEvent.click(screen.getByLabelText("自动续期下月")); // uncheck
+    fireEvent.change(screen.getByLabelText("实际到手"), { target: { value: "18" } });
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(onSetCycleUsed).toHaveBeenCalledWith(
+      expect.any(String),
+      "b1",
+      "2026-04-01",
+      "2026-04-30",
+      true,
+      expect.objectContaining({ actualValue: 18, propagateNext: false }),
+    );
+  });
+
+  it("shows a delete button in edit mode that removes the record", () => {
+    const onSetCycleUsed = vi.fn();
+    const benefit = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      resetConfig: {},
+      usageRecords: [],
+    });
+    const usedRecord: UsageRecord = {
+      usedDate: "2026-04-10",
+      faceValue: 25,
+      actualValue: 22,
+    };
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={onSetCycleUsed}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-04-30"
+        cycleUsed={true}
+        cycleRecord={usedRecord}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("取消使用"));
+    fireEvent.click(screen.getByLabelText("删除记录"));
+    expect(onSetCycleUsed).toHaveBeenCalledWith(
+      expect.any(String),
+      "b1",
+      "2026-04-01",
+      "2026-04-30",
+      false,
+    );
+  });
+});
