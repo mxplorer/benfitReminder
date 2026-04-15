@@ -41,6 +41,7 @@ beforeEach(() => {
   });
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-04-11T10:00:00"));
+  useCardStore.getState().recalculate();
 });
 
 afterEach(() => {

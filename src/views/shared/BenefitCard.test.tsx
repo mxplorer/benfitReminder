@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { Benefit, CreditCard, UsageRecord } from "../../models/types";
 import { BenefitCard } from "./BenefitCard";
+import { useCardStore } from "../../stores/useCardStore";
 
 const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   id: "b1",
@@ -35,6 +36,7 @@ describe("BenefitCard", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    useCardStore.getState().recalculate();
   });
 
   afterEach(() => {
@@ -231,6 +233,7 @@ describe("BenefitCard — subscription reset label", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    useCardStore.getState().recalculate();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -267,6 +270,7 @@ describe("BenefitCard — per-cycle props", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    useCardStore.getState().recalculate();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -315,6 +319,7 @@ describe("BenefitCard — cycle-scoped toggle", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    useCardStore.getState().recalculate();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -428,6 +433,7 @@ describe("BenefitCard — propagateNext prompt (Task 7)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    useCardStore.getState().recalculate();
   });
   afterEach(() => {
     vi.useRealTimers();

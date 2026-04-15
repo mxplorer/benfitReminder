@@ -3,6 +3,7 @@ import type { Benefit, CreditCard, ResetType, UsageRecord } from "../../models/t
 import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
 import { getAvailableValue } from "../../utils/rollover";
 import { latestHasPropagate } from "../../utils/benefitDisplay";
+import { useToday } from "../../stores/useToday";
 import { GlassContainer } from "./GlassContainer";
 import { StatusTag } from "./StatusTag";
 
@@ -67,7 +68,7 @@ export const BenefitCard = ({
   cycleEnd,
   onSetCycleUsed,
 }: BenefitCardProps) => {
-  const today = new Date();
+  const today = useToday();
   const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay);
   const availableValue = getAvailableValue(benefit, today);
   const displayValue = cycleRecord ? cycleRecord.actualValue : availableValue;

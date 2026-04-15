@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
+import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { calculateDashboardROI, calculateCardROI } from "../../utils/roi";
 import { GlassContainer } from "../shared/GlassContainer";
@@ -28,7 +29,7 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
   const cards = useCardStore((s) => s.cards);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
-  const today = new Date();
+  const today = useToday();
   const currentYear = today.getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
 

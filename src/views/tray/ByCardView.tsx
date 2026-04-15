@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
+import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import {
   expandBenefitsForFilter,
@@ -22,7 +23,7 @@ export const ByCardView = () => {
   const getCardType = useCardTypeStore((s) => s.getCardType);
   const [filter, setFilter] = useState<FilterMode>("available");
   const [scope, setScope] = useState<YearScope>("calendar");
-  const today = new Date();
+  const today = useToday();
 
   const enabledCards = cards.filter((c) => c.isEnabled);
 

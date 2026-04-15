@@ -1,5 +1,6 @@
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
+import { useToday } from "../../stores/useToday";
 import "./TrayViews.css";
 import {
   getDeadline,
@@ -16,7 +17,7 @@ export const ByUrgencyView = () => {
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
   const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
-  const today = new Date();
+  const today = useToday();
 
   // Collect all unused, non-hidden, applicable benefits across enabled cards
   const items: Array<{ cardId: string; benefitId: string; daysRemaining: number | null }> = [];

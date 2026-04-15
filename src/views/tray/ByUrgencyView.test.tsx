@@ -38,6 +38,7 @@ beforeEach(() => {
   // April 10: monthly deadline is April 30 (20 days remaining)
   // quarterly deadline is June 30 (81 days remaining)
   vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+  useCardStore.getState().recalculate();
 });
 
 afterEach(() => {
