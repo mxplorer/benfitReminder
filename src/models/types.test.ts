@@ -87,3 +87,20 @@ describe("Benefit rollover fields", () => {
     expect(r.isRollover).toBe(true);
   });
 });
+
+describe("UsageRecord.propagateNext", () => {
+  it("accepts propagateNext=true", () => {
+    const r: UsageRecord = {
+      usedDate: "2026-03-01",
+      faceValue: 25,
+      actualValue: 25,
+      propagateNext: true,
+    };
+    expect(r.propagateNext).toBe(true);
+  });
+
+  it("accepts propagateNext omitted", () => {
+    const r: UsageRecord = { usedDate: "2026-03-01", faceValue: 25, actualValue: 25 };
+    expect(r.propagateNext).toBeUndefined();
+  });
+});

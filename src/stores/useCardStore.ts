@@ -7,6 +7,9 @@ import { migrateCards } from "../utils/migrations";
 interface CardStoreState {
   cards: CreditCard[];
   settings: AppSettings;
+  /** "Current moment" the UI reads for today-dependent calculations.
+   * Bumped by `recalculate()` so focus/midnight refreshes re-render. */
+  now: Date;
 }
 
 interface CardStoreActions {
@@ -62,6 +65,7 @@ const updateBenefitInCards = (
 export const useCardStore = create<CardStoreState & CardStoreActions>()((set, get) => ({
   cards: [],
   settings: { ...DEFAULT_SETTINGS },
+  now: new Date(),
 
   addCard: (card) => {
     set((state) => ({ cards: [...state.cards, card] }));

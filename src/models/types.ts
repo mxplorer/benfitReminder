@@ -69,6 +69,9 @@ export interface UsageRecord {
   faceValue: number;
   actualValue: number;
   isRollover?: boolean;
+  /** For monthly subscription / calendar-monthly benefits: if true, app
+   * auto-creates next month's record copying this record's actualValue. */
+  propagateNext?: boolean;
 }
 
 export interface Benefit {
