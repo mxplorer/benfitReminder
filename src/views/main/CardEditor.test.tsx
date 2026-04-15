@@ -95,4 +95,42 @@ describe("CardEditor", () => {
     expect(cards[0].owner).toBe("Charlie");
     expect(onDone).toHaveBeenCalled();
   });
+
+  it("persists statementClosingDay on create when user enters it", () => {
+    render(<CardEditor onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("template-select"), { target: { value: "amex_platinum" } });
+    fireEvent.change(screen.getByTestId("owner-input"), { target: { value: "Bob" } });
+    fireEvent.change(screen.getByTestId("statement-closing-day-input"), { target: { value: "7" } });
+    fireEvent.click(screen.getByTestId("submit-btn"));
+
+    const cards = useCardStore.getState().cards;
+    expect(cards).toHaveLength(1);
+    expect(cards[0].statementClosingDay).toBe(7);
+  });
+
+  it("omits statementClosingDay when input is empty on create", () => {
+    render(<CardEditor onDone={vi.fn()} />);
+
+    fireEvent.change(screen.getByTestId("template-select"), { target: { value: "amex_platinum" } });
+    fireEvent.change(screen.getByTestId("owner-input"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByTestId("submit-btn"));
+
+    const cards = useCardStore.getState().cards;
+    expect(cards).toHaveLength(1);
+    expect(cards[0].statementClosingDay).toBeUndefined();
+  });
+
+  it("pre-fills statementClosingDay in edit mode and updates it on save", () => {
+    const card = makeCard({ statementClosingDay: 12 });
+    useCardStore.setState({ cards: [card] });
+    render(<CardEditor card={card} onDone={vi.fn()} />);
+
+    expect(screen.getByTestId<HTMLInputElement>("statement-closing-day-input").value).toBe("12");
+
+    fireEvent.change(screen.getByTestId("statement-closing-day-input"), { target: { value: "28" } });
+    fireEvent.click(screen.getByTestId("submit-btn"));
+
+    expect(useCardStore.getState().cards[0].statementClosingDay).toBe(28);
+  });
 });

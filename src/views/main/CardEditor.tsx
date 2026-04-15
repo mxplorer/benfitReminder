@@ -202,6 +202,7 @@ interface FormState {
   annualFee: string;
   cardOpenDate: string;
   color: string;
+  statementClosingDay: string;
 }
 
 const toFormState = (card?: CreditCard): FormState => ({
@@ -212,7 +213,16 @@ const toFormState = (card?: CreditCard): FormState => ({
   annualFee: String(card?.annualFee ?? ""),
   cardOpenDate: card?.cardOpenDate ?? "",
   color: card?.color ?? "#8E9EAF",
+  statementClosingDay: card?.statementClosingDay?.toString() ?? "",
 });
+
+const parseStatementClosingDay = (raw: string): number | undefined => {
+  if (raw === "") return undefined;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return undefined;
+  const clamped = Math.min(31, Math.max(1, Math.trunc(n)));
+  return clamped;
+};
 
 export const CardEditor = ({ card, onDone }: CardEditorProps) => {
   const addCard = useCardStore((s) => s.addCard);
@@ -242,6 +252,8 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
 
+    const statementClosingDay = parseStatementClosingDay(form.statementClosingDay);
+
     if (isEdit) {
       updateCard(card.id, {
         owner: form.owner,
@@ -250,6 +262,7 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
         annualFee: Number(form.annualFee),
         cardOpenDate: form.cardOpenDate,
         color: form.color,
+        statementClosingDay,
       });
     } else {
       const template = cardTypes.find((t) => t.slug === form.templateSlug);
@@ -263,6 +276,7 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
         cardOpenDate: form.cardOpenDate,
         color: form.color,
         isEnabled: true,
+        statementClosingDay,
         benefits: template
           ? template.defaultBenefits.map((b) => ({
               ...b,
@@ -351,6 +365,19 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
         <RollingDatePicker
           value={form.cardOpenDate}
           onChange={(v) => { handleChange("cardOpenDate", v); }}
+        />
+      </label>
+
+      <label>
+        账单结算日 (1-31，可选)
+        <input
+          type="number"
+          min={1}
+          max={31}
+          value={form.statementClosingDay}
+          onChange={(e) => { handleChange("statementClosingDay", e.target.value); }}
+          data-testid="statement-closing-day-input"
+          placeholder="例如 7"
         />
       </label>
 
