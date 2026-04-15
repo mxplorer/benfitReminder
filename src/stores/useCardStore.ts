@@ -342,12 +342,12 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
           if (!isMonthlyLike) return benefit;
 
           const hasCurrent = benefit.usageRecords.some(
-            (r) => formatMonthKey(new Date(r.usedDate + "T00:00:00")) === currentMonthKey,
+            (r) => r.usedDate.slice(0, 7) === currentMonthKey,
           );
           if (hasCurrent) return benefit;
 
           const prev = benefit.usageRecords.find(
-            (r) => formatMonthKey(new Date(r.usedDate + "T00:00:00")) === prevMonthKey,
+            (r) => r.usedDate.slice(0, 7) === prevMonthKey,
           );
           if (!prev || prev.propagateNext !== true) return benefit;
 
