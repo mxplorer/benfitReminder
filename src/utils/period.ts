@@ -198,7 +198,7 @@ export const isBenefitUsedInPeriod = (
     return today < cooldownEnd;
   }
 
-  // calendar, anniversary, subscription(autoRecur=false)
+  // calendar, anniversary, subscription
   const range = getCurrentPeriodRange(today, {
     resetType,
     resetConfig,
@@ -233,7 +233,6 @@ export interface DeadlineInput {
   resetType: ResetType;
   resetConfig: ResetConfig;
   cardOpenDate?: string;
-  autoRecur?: boolean;
   statementClosingDay?: number;
 }
 

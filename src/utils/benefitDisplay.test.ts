@@ -156,14 +156,16 @@ describe("expandBenefitsForFilter — 已使用", () => {
     expect(expandBenefitsForFilter(card, "used", today, "calendar")).toHaveLength(0);
   });
 
-  it("aggregates autoRecur subscription as 12 used months for full year", () => {
+  it("aggregates subscription as 12 used months when latest record has propagateNext=true", () => {
     const b = makeBenefit({
       id: "b1",
       resetType: "subscription",
-      autoRecur: true,
+      autoRecur: false,
       faceValue: 20,
       resetConfig: {},
-      usageRecords: [],
+      usageRecords: [
+        { usedDate: "2026-03-15", faceValue: 20, actualValue: 20, propagateNext: true },
+      ],
     });
     const card = makeCard([b]);
     const items = expandBenefitsForFilter(card, "used", today, "calendar");
@@ -247,12 +249,15 @@ describe("expandBenefitsForFilter — 未使用", () => {
     expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);
   });
 
-  it("emits 0 items for autoRecur subscription (everything is used)", () => {
+  it("emits 0 items for subscription whose latest record has propagateNext=true (everything is used)", () => {
     const b = makeBenefit({
       id: "b1",
       resetType: "subscription",
-      autoRecur: true,
+      autoRecur: false,
       resetConfig: {},
+      usageRecords: [
+        { usedDate: "2026-03-10", faceValue: 10, actualValue: 10, propagateNext: true },
+      ],
     });
     const card = makeCard([b]);
     expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);

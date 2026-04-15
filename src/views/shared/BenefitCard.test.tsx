@@ -227,6 +227,42 @@ describe("BenefitCard", () => {
   });
 });
 
+describe("BenefitCard — subscription reset label", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows '订阅·自动' when the latest usage record has propagateNext=true", () => {
+    const benefit = makeBenefit({
+      resetType: "subscription",
+      resetConfig: {},
+      autoRecur: false, // field still required on type but no longer drives the label
+      usageRecords: [
+        { usedDate: "2026-03-15", faceValue: 100, actualValue: 100, propagateNext: true },
+      ],
+    });
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
+    expect(screen.getByText("订阅·自动")).toBeInTheDocument();
+  });
+
+  it("shows '订阅' when the latest record lacks propagateNext (even if autoRecur=true)", () => {
+    const benefit = makeBenefit({
+      resetType: "subscription",
+      resetConfig: {},
+      autoRecur: true, // autoRecur=true but no record with propagateNext
+      usageRecords: [
+        { usedDate: "2026-03-15", faceValue: 100, actualValue: 100 },
+      ],
+    });
+    render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
+    expect(screen.getByText("订阅")).toBeInTheDocument();
+  });
+});
+
 describe("BenefitCard — per-cycle props", () => {
   beforeEach(() => {
     vi.useFakeTimers();

@@ -3,6 +3,14 @@ import { isApplicableNow, isBenefitUsedInPeriod } from "./period";
 import { getScopeWindow, getScopeCycles, findCycleRecord } from "./cycles";
 import type { PeriodCycle } from "./cycles";
 
+export const latestHasPropagate = (benefit: Benefit): boolean => {
+  if (benefit.usageRecords.length === 0) return false;
+  const sorted = [...benefit.usageRecords].sort((a, b) =>
+    b.usedDate.localeCompare(a.usedDate),
+  );
+  return sorted[0].propagateNext === true;
+};
+
 export type FilterMode = "available" | "unused" | "used" | "hidden" | "all";
 export type YearScope = "calendar" | "anniversary";
 
@@ -112,7 +120,7 @@ const expandUnused = (
       items.push(standardItem(b, card));
       continue;
     }
-    if (b.resetType === "subscription" && b.autoRecur) continue; // never unused
+    if (b.resetType === "subscription" && latestHasPropagate(b)) continue; // never unused
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
       const unusedCycles = cycles.filter((c) => !findCycleRecord(b, c));
@@ -150,7 +158,7 @@ const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
     }
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
-      const autoRecur = b.resetType === "subscription" && b.autoRecur;
+      const autoRecur = b.resetType === "subscription" && latestHasPropagate(b);
       const usedCycles = autoRecur
         ? cycles
         : cycles.filter((c) => findCycleRecord(b, c));
@@ -189,7 +197,7 @@ const expandAll = (
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
       if (cycles.length === 0) continue;
-      const autoRecur = b.resetType === "subscription" && b.autoRecur;
+      const autoRecur = b.resetType === "subscription" && latestHasPropagate(b);
       const aggregate = buildAggregate(b, cycles, "all", autoRecur);
       items.push({
         benefit: b,

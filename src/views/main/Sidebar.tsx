@@ -3,6 +3,7 @@ import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { getCardDisplayName } from "../../models/types";
 import { CardChip } from "../shared/CardChip";
 import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
+import { latestHasPropagate } from "../../utils/benefitDisplay";
 import type { ActiveView } from "./MainWindow";
 
 interface SidebarProps {
@@ -22,7 +23,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
     let count = 0;
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
-      if (benefit.resetType === "subscription" && benefit.autoRecur) continue;
+      if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;
       if (!isApplicableNow(benefit, today)) continue;
       if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
       count++;

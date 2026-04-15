@@ -27,7 +27,6 @@ export const getBenefitsDueForReminder = (
         resetType: benefit.resetType,
         resetConfig: benefit.resetConfig,
         cardOpenDate: card.cardOpenDate,
-        autoRecur: benefit.autoRecur,
         statementClosingDay: card.statementClosingDay,
       });
       if (!deadline) continue;

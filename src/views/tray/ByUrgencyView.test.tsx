@@ -103,12 +103,15 @@ describe("ByUrgencyView", () => {
     expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100, "2026-04-10");
   });
 
-  it("excludes auto-recur subscription benefits", () => {
+  it("excludes subscription benefits whose latest record has propagateNext=true", () => {
     const autoSub = makeBenefit({
       id: "b1",
       name: "Auto Sub Benefit",
       resetType: "subscription",
-      autoRecur: true,
+      autoRecur: false, // autoRecur field stub; propagateNext drives the skip logic
+      usageRecords: [
+        { usedDate: "2026-03-10", faceValue: 50, actualValue: 50, propagateNext: true },
+      ],
     });
     const card = makeCard({ benefits: [autoSub] });
     useCardStore.setState({ cards: [card] });

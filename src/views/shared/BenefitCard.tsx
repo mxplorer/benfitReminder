@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Benefit, CreditCard, ResetType, UsageRecord } from "../../models/types";
 import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
 import { getAvailableValue } from "../../utils/rollover";
+import { latestHasPropagate } from "../../utils/benefitDisplay";
 import { GlassContainer } from "./GlassContainer";
 import { StatusTag } from "./StatusTag";
 
@@ -40,7 +41,7 @@ const PERIOD_LABELS: Record<string, string> = {
 };
 
 const getResetLabel = (benefit: Benefit): string => {
-  if (benefit.resetType === "subscription") return benefit.autoRecur ? "订阅·自动" : "订阅";
+  if (benefit.resetType === "subscription") return latestHasPropagate(benefit) ? "订阅·自动" : "订阅";
   if (benefit.resetType === "anniversary") return "周年";
   if (benefit.resetType === "since_last_use") return "按使用";
   if (benefit.resetType === "one_time") return "一次性";
@@ -83,7 +84,6 @@ export const BenefitCard = ({
     resetType: benefit.resetType,
     resetConfig: benefit.resetConfig,
     cardOpenDate: card.cardOpenDate,
-    autoRecur: benefit.autoRecur,
     statementClosingDay: card.statementClosingDay,
   });
   const daysRemaining = deadline ? getDaysRemaining(today, deadline) : null;
@@ -136,7 +136,7 @@ export const BenefitCard = ({
         <span
           className="benefit-card__period"
           title={
-            benefit.resetType === "subscription" && benefit.autoRecur
+            benefit.resetType === "subscription" && latestHasPropagate(benefit)
               ? "自动填充上月金额，可修改或取消"
               : undefined
           }
