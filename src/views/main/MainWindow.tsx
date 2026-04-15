@@ -57,7 +57,7 @@ export const MainWindow = () => {
   }, []);
 
   const renderView = () => {
-    if (activeView === "dashboard") return <div data-testid="view-dashboard"><Dashboard /></div>;
+    if (activeView === "dashboard") return <div data-testid="view-dashboard"><Dashboard onNavigate={setActiveView} /></div>;
     if (activeView === "history") return <div data-testid="view-history"><History /></div>;
     if (activeView === "settings") return <div data-testid="view-settings"><Settings /></div>;
     if (typeof activeView === "object") {

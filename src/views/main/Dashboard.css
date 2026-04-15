@@ -98,6 +98,7 @@
   align-items: center;
   gap: 12px;
   border-left: 3px solid transparent;
+  cursor: pointer;
 }
 
 .dashboard__card-row--not-recovered {

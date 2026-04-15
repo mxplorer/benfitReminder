@@ -5,6 +5,7 @@ import { getCardDisplayName } from "../../models/types";
 import { calculateDashboardROI, calculateCardROI } from "../../utils/roi";
 import { GlassContainer } from "../shared/GlassContainer";
 import { CardChip } from "../shared/CardChip";
+import type { ActiveView } from "./MainWindow";
 import "./Dashboard.css";
 
 const QUARTER_LABELS = ["Q1", "Q1", "Q1", "Q2", "Q2", "Q2", "Q3", "Q3", "Q3", "Q4", "Q4", "Q4"];
@@ -19,7 +20,11 @@ const getAvailableYears = (today: Date): number[] => {
   return [year, year - 1, year - 2];
 };
 
-export const Dashboard = () => {
+interface DashboardProps {
+  onNavigate?: (view: ActiveView) => void;
+}
+
+export const Dashboard = ({ onNavigate }: DashboardProps) => {
   const cards = useCardStore((s) => s.cards);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
@@ -90,6 +95,7 @@ export const Dashboard = () => {
             <GlassContainer
               key={card.id}
               className={`dashboard__card-row${!roi.isRecovered ? " dashboard__card-row--not-recovered" : ""}`}
+              onClick={() => { onNavigate?.({ type: "card", cardId: card.id }); }}
             >
               {getCardImage(card.cardTypeSlug) ? (
                 <img

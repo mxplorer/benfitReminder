@@ -5,9 +5,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Dropdown-style glass panel with rounded corners + translucent backdrop.
-     --tray-bg-alpha is injected via inline style from the trayOpacity setting. */
-  background: rgba(var(--bg-panel-rgb), var(--tray-bg-alpha, 0.45));
+  background: rgb(var(--bg-panel-rgb));
   border-radius: 12px;
   border: 0.5px solid rgba(255, 255, 255, 0.25);
   box-shadow:

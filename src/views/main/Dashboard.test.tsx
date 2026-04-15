@@ -85,4 +85,17 @@ describe("Dashboard", () => {
     const rows = document.querySelectorAll(".dashboard__card-row--not-recovered");
     expect(rows.length).toBe(1);
   });
+
+  it("navigates to card detail when card row is clicked", () => {
+    const card = makeCard({ id: "c42" });
+    useCardStore.setState({ cards: [card] });
+    const onNavigate = vi.fn();
+
+    render(<Dashboard onNavigate={onNavigate} />);
+
+    const row = document.querySelector(".dashboard__card-row");
+    expect(row).not.toBeNull();
+    fireEvent.click(row!);
+    expect(onNavigate).toHaveBeenCalledWith({ type: "card", cardId: "c42" });
+  });
 });

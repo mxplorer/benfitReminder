@@ -92,6 +92,13 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
     });
   };
 
+  const toggleAllMonths = () => {
+    setForm((f) => ({
+      ...f,
+      applicableMonths: f.applicableMonths.length === 12 ? [] : [...ALL_MONTHS],
+    }));
+  };
+
   const buildBenefit = (): Benefit => {
     const resetConfig: Benefit["resetConfig"] = {};
     if (form.resetType === "calendar") {
@@ -202,8 +209,34 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
 
       {form.resetType === "calendar" && (
         <div data-testid="calendar-fields">
-          <label>
-            周期
+          <div className="benefit-editor__period-group">
+            <div className="benefit-editor__period-row">
+              <span className="benefit-editor__period-heading">周期</span>
+              <label data-testid="rollover-field" className="benefit-editor__rollover-label">
+                <span className="benefit-editor__rollover-text">可累积 (Rollover)</span>
+                <svg
+                  className="benefit-editor__rollover-icon"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12a9 9 0 1 1-3-6.7" />
+                  <polyline points="21 3 21 9 15 9" />
+                </svg>
+                <input
+                  type="checkbox"
+                  checked={form.rolloverable}
+                  onChange={(e) => { handleChange("rolloverable", e.target.checked); }}
+                  data-testid="rollover-input"
+                />
+              </label>
+            </div>
             <select
               value={form.period}
               onChange={(e) => { handleChange("period", e.target.value as CalendarPeriod); }}
@@ -215,29 +248,35 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
                 </option>
               ))}
             </select>
-          </label>
-          <div data-testid="applicable-months">
-            <span>适用月份（留空=全年）</span>
-            {ALL_MONTHS.map((m) => (
-              <label key={m}>
-                <input
-                  type="checkbox"
-                  checked={form.applicableMonths.includes(m)}
-                  onChange={() => { toggleMonth(m); }}
-                />
-                {m}月
-              </label>
-            ))}
           </div>
-          <label data-testid="rollover-field">
-            <input
-              type="checkbox"
-              checked={form.rolloverable}
-              onChange={(e) => { handleChange("rolloverable", e.target.checked); }}
-              data-testid="rollover-input"
-            />
-            可累积 (Rollover)
-          </label>
+          {form.period === "monthly" && (
+            <div data-testid="applicable-months" className="benefit-editor__months-section">
+              <div className="benefit-editor__months-header">
+                <span>适用月份（留空=全年）</span>
+                <label className="benefit-editor__select-all">
+                  <input
+                    type="checkbox"
+                    checked={form.applicableMonths.length === 12}
+                    onChange={toggleAllMonths}
+                    data-testid="select-all-months"
+                  />
+                  全选
+                </label>
+              </div>
+              <div className="benefit-editor__months">
+                {ALL_MONTHS.map((m) => (
+                  <label key={m}>
+                    <input
+                      type="checkbox"
+                      checked={form.applicableMonths.includes(m)}
+                      onChange={() => { toggleMonth(m); }}
+                    />
+                    {m}月
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           {form.rolloverable && (
             <label>
               累积上限 (年)

@@ -9,7 +9,7 @@
 }
 
 .backfill-dialog {
-  background: var(--bg-primary);
+  background: rgb(var(--bg-panel-rgb));
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 24px;

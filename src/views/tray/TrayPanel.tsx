@@ -11,7 +11,6 @@ type Tab = "by-card" | "by-urgency";
 export const TrayPanel = () => {
   const [activeTab, setActiveTab] = useState<Tab>("by-card");
   const unusedCount = useCardStore((s) => s.getUnusedBenefitCount());
-  const trayOpacity = useCardStore((s) => s.settings.trayOpacity);
   const updateSettings = useCardStore((s) => s.updateSettings);
 
   useEffect(() => {
@@ -39,10 +38,7 @@ export const TrayPanel = () => {
   };
 
   return (
-    <div
-      className="tray-panel glass-panel"
-      style={{ "--tray-bg-alpha": String(trayOpacity / 100) } as React.CSSProperties}
-    >
+    <div className="tray-panel">
       <header className="tray-panel__header">
         <span className="tray-panel__count">
           {unusedCount > 0 ? `${String(unusedCount)} 项未使用权益` : "全部权益已使用"}

@@ -21,6 +21,45 @@
   color: var(--text-secondary);
 }
 
+.benefit-editor label:has(> input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.benefit-editor__period-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.benefit-editor__period-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.benefit-editor__period-heading {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.benefit-editor__rollover-label {
+  flex-shrink: 0;
+}
+
+.benefit-editor__rollover-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.benefit-editor__rollover-text {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 .benefit-editor input,
 .benefit-editor select {
   padding: 8px 12px;
@@ -44,11 +83,34 @@
   margin-right: 6px;
 }
 
+.benefit-editor__months-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.benefit-editor__months-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.benefit-editor__select-all {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .benefit-editor__months {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 4px;
 }
 
 .benefit-editor__months label {

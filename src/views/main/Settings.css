@@ -65,23 +65,6 @@
   color: var(--text-primary);
 }
 
-.settings__slider-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.settings__slider-value {
-  font-variant-numeric: tabular-nums;
-  min-width: 36px;
-  text-align: right;
-}
-
-.settings__section input[type="range"] {
-  width: 100%;
-  accent-color: var(--accent);
-}
-
 .settings__danger-zone {
   border: 1px solid var(--color-red);
 }

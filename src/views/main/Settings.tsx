@@ -98,22 +98,6 @@ export const Settings = () => {
       </GlassContainer>
 
       <GlassContainer className="settings__section">
-        <h3>外观</h3>
-        <label className="settings__slider-label">
-          Tray 面板透明度
-          <span className="settings__slider-value">{settings.trayOpacity}%</span>
-        </label>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={settings.trayOpacity}
-          onChange={(e) => { updateSettings({ trayOpacity: Number(e.target.value) }); }}
-          data-testid="tray-opacity-slider"
-        />
-      </GlassContainer>
-
-      <GlassContainer className="settings__section">
         <h3>调试</h3>
         <label>
           <input
