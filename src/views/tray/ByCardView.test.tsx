@@ -16,7 +16,7 @@ describe("ByCardView filter integration", () => {
               id: "b-u", name: "Uber Eats", description: "",
               faceValue: 15, category: "dining",
               resetType: "calendar", resetConfig: { period: "monthly" },
-              isHidden: false, autoRecur: false,
+              isHidden: false,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [
                 { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
@@ -33,7 +33,7 @@ describe("ByCardView filter integration", () => {
               id: "b-x", name: "All Hidden", description: "",
               faceValue: 200, category: "other",
               resetType: "calendar", resetConfig: { period: "annual" },
-              isHidden: true, autoRecur: false,
+              isHidden: true,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [],
             },

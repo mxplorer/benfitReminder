@@ -16,7 +16,6 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 2,
   usageRecords: [],
@@ -248,7 +247,6 @@ describe("Auto-recur + ROI integration", () => {
             id: "sub1",
             name: "$25/mo Streaming",
             resetType: "subscription",
-            autoRecur: false,
             faceValue: 25,
             usageRecords: [
               { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true },
@@ -270,7 +268,7 @@ describe("Auto-recur + ROI integration", () => {
     expect(dashboard.totalActualValue).toBe(50);
   });
 
-  it("auto-recur monthly sub counts as unused when no record in current month", () => {
+  it("monthly sub counts as unused when no record in current month", () => {
     useCardStore.getState().addCard(
       makeCard({
         id: "c1",
@@ -278,17 +276,16 @@ describe("Auto-recur + ROI integration", () => {
           makeBenefit({
             id: "sub1",
             resetType: "subscription",
-            autoRecur: true,
             faceValue: 25,
           }),
         ],
       }),
     );
 
-    // Under new semantics, autoRecur monthly subs are countable when unused.
+    // Monthly subs are countable when unused.
     expect(useCardStore.getState().getUnusedBenefitCount()).toBe(1);
 
-    // Reminders now fire for autoRecur monthly subs without a record this month
+    // Reminders fire for monthly subs without a record this month
     // (system time Apr 10 → deadline Apr 30 = 20 days, within reminderDays=30 window).
     const reminders = getBenefitsDueForReminder(useCardStore.getState().cards, new Date(), 30);
     expect(reminders).toHaveLength(1);
@@ -322,7 +319,6 @@ describe("JSON persistence round-trip", () => {
             id: "b2",
             name: "Streaming",
             resetType: "subscription",
-            autoRecur: false,
             faceValue: 25,
             usageRecords: [
               { usedDate: "2026-01-01", faceValue: 25, actualValue: 25, propagateNext: true },
@@ -493,7 +489,6 @@ describe("Statement-close aligned anniversary benefit (CSP $50 hotel credit)", (
       resetType: "anniversary",
       resetConfig: { resetsAtStatementClose: true },
       isHidden: false,
-      autoRecur: false,
       rolloverable: false,
       rolloverMaxYears: 0,
       usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],
@@ -531,7 +526,6 @@ describe("Statement-close aligned anniversary benefit (CSP $50 hotel credit)", (
       resetType: "anniversary",
       resetConfig: { resetsAtStatementClose: true },
       isHidden: false,
-      autoRecur: false,
       rolloverable: false,
       rolloverMaxYears: 0,
       usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],
@@ -573,7 +567,7 @@ describe("auto-replicate subscription flow", () => {
       id: "b", name: "Netflix", description: "", faceValue: 20,
       category: "streaming", resetType: "subscription",
       resetConfig: { period: "monthly" },
-      isHidden: false, autoRecur: false, rolloverable: false, rolloverMaxYears: 0,
+      isHidden: false, rolloverable: false, rolloverMaxYears: 0,
       usageRecords: [{ usedDate: lastMonthStart, faceValue: 20, actualValue: 13, propagateNext: true }],
     };
     const card: CreditCard = {

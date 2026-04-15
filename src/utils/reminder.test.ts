@@ -13,7 +13,6 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 2,
   usageRecords: [],
@@ -61,12 +60,11 @@ describe("getBenefitsDueForReminder", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("includes autoRecur monthly subscription when current month has no record and within window", () => {
+  it("includes monthly subscription when current month has no record and within window", () => {
     // Apr 25 → Apr 30 deadline → 5 days remaining, window 7
     const benefit = makeBenefit({
       resetType: "subscription",
       resetConfig: { period: "monthly" },
-      autoRecur: true,
       usageRecords: [],
     });
     const card = makeCard([benefit]);
@@ -76,11 +74,10 @@ describe("getBenefitsDueForReminder", () => {
     expect(result[0].daysRemaining).toBe(5);
   });
 
-  it("excludes autoRecur monthly subscription when current month already has a record", () => {
+  it("excludes monthly subscription when current month already has a record", () => {
     const benefit = makeBenefit({
       resetType: "subscription",
       resetConfig: { period: "monthly" },
-      autoRecur: true,
       usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
     });
     const card = makeCard([benefit]);
@@ -157,11 +154,10 @@ describe("getBenefitsDueForReminder", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("includes subscription with autoRecur=false within reminder window", () => {
+  it("includes subscription within reminder window", () => {
     const benefit = makeBenefit({
       resetType: "subscription",
       resetConfig: {},
-      autoRecur: false,
     });
     const card = makeCard([benefit]);
     // Deadline is Apr 30, 5 days remaining

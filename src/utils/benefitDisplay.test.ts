@@ -11,7 +11,6 @@ const makeBenefit = (overrides: Partial<Benefit>): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 0,
   usageRecords: [],
@@ -160,7 +159,6 @@ describe("expandBenefitsForFilter — 已使用", () => {
     const b = makeBenefit({
       id: "b1",
       resetType: "subscription",
-      autoRecur: false,
       faceValue: 20,
       resetConfig: {},
       usageRecords: [
@@ -253,7 +251,6 @@ describe("expandBenefitsForFilter — 未使用", () => {
     const b = makeBenefit({
       id: "b1",
       resetType: "subscription",
-      autoRecur: false,
       resetConfig: {},
       usageRecords: [
         { usedDate: "2026-03-10", faceValue: 10, actualValue: 10, propagateNext: true },

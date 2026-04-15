@@ -235,7 +235,6 @@ const makeBenefit = (overrides: Partial<Benefit>): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 2,
   usageRecords: [],
@@ -257,11 +256,10 @@ describe("isBenefitUsedInPeriod", () => {
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
 
-  it("returns false for subscription with autoRecur=false when no records this month", () => {
+  it("returns false for subscription when no records this month", () => {
     const benefit = makeBenefit({
       resetType: "subscription",
       resetConfig: {},
-      autoRecur: false,
       usageRecords: [],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
@@ -456,12 +454,11 @@ describe("getDeadline", () => {
     ).toBe("2027-03-14");
   });
 
-  it("returns end of month for subscription without autoRecur", () => {
+  it("returns end of month for subscription", () => {
     expect(
       getDeadline(d("2026-04-10"), {
         resetType: "subscription",
         resetConfig: {},
-        autoRecur: false,
       }),
     ).toBe("2026-04-30");
   });
@@ -505,7 +502,7 @@ describe("getDaysRemaining", () => {
   });
 });
 
-describe("autoRecur monthly subscription — new behavior", () => {
+describe("monthly subscription — current-month usage", () => {
   const today = new Date(2026, 3, 14); // 2026-04-14
 
   const makeSubBenefit = (
@@ -519,7 +516,6 @@ describe("autoRecur monthly subscription — new behavior", () => {
     resetType: "subscription",
     resetConfig: { period: "monthly" },
     isHidden: false,
-    autoRecur: true,
     rolloverable: false,
     rolloverMaxYears: 0,
     usageRecords: records.map((r) => ({ ...r, faceValue: 20 })),
@@ -537,12 +533,11 @@ describe("autoRecur monthly subscription — new behavior", () => {
     expect(isBenefitUsedInPeriod(benefit, today)).toBe(true);
   });
 
-  it("getDeadline returns end-of-month for autoRecur monthly subscription (regression: previously null)", () => {
+  it("getDeadline returns end-of-month for monthly subscription (regression: previously null)", () => {
     expect(
       getDeadline(today, {
         resetType: "subscription",
         resetConfig: { period: "monthly" },
-        autoRecur: true,
       }),
     ).toBe("2026-04-30");
   });
@@ -632,7 +627,6 @@ describe("isBenefitUsedInPeriod — statement close aware", () => {
     resetType: "anniversary",
     resetConfig: { resetsAtStatementClose: true },
     isHidden: false,
-    autoRecur: false,
     rolloverable: false,
     rolloverMaxYears: 0,
     usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],

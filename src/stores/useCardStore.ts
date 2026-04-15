@@ -20,7 +20,6 @@ interface CardStoreActions {
   addBenefit: (cardId: string, benefit: Benefit) => void;
   removeBenefit: (cardId: string, benefitId: string) => void;
   toggleBenefitHidden: (cardId: string, benefitId: string) => void;
-  toggleBenefitAutoRecur: (cardId: string, benefitId: string) => void;
   toggleBenefitUsage: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
   setBenefitCycleUsed: (
     cardId: string,
@@ -109,15 +108,6 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
         ...b,
         isHidden: !b.isHidden,
-      })),
-    }));
-  },
-
-  toggleBenefitAutoRecur: (cardId, benefitId) => {
-    set((state) => ({
-      cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
-        ...b,
-        autoRecur: !b.autoRecur,
       })),
     }));
   },

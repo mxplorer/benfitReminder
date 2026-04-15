@@ -9,7 +9,7 @@ Pure functions for computing benefit period ranges, usage status, applicability,
 ```ts
 DateRange = { start: string; end: string }  // ISO date strings
 PeriodInput = { resetType, resetConfig, cardOpenDate? }
-DeadlineInput = { resetType, resetConfig, cardOpenDate?, autoRecur? }
+DeadlineInput = { resetType, resetConfig, cardOpenDate? }
 ```
 
 ## Functions
@@ -32,8 +32,7 @@ DeadlineInput = { resetType, resetConfig, cardOpenDate?, autoRecur? }
 | calendar annual | Jan 1 – Dec 31 | Record in range | Dec 31 |
 | calendar every_4_years | 4-year blocks (year % 4 == 0) | Record in range | End of block |
 | anniversary | cardOpenDate anniversary to next - 1 day | Record in range | Day before next anniversary |
-| subscription (autoRecur) | Monthly | Always true | null |
-| subscription (manual) | Monthly | Record in range | End of month |
+| subscription | Monthly | Record in range | End of month (propagation of prior month's record is handled separately in the store) |
 | since_last_use | null (no period) | Cooldown check | null |
 | one_time | null (no period) | Any record exists | expiresDate or null |
 

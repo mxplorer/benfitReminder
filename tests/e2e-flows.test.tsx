@@ -100,7 +100,6 @@ describe("E2E: Check off benefit → verify used state → uncheck", () => {
           resetType: "calendar",
           resetConfig: { period: "monthly" },
           isHidden: false,
-          autoRecur: false,
           usageRecords: [],
         }],
       }],
@@ -226,7 +225,6 @@ describe("E2E: Filter pills in card detail", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
-            autoRecur: false,
             usageRecords: [],
           },
           {
@@ -238,7 +236,6 @@ describe("E2E: Filter pills in card detail", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
-            autoRecur: false,
             usageRecords: [{ usedDate: "2026-04-05", faceValue: 30, actualValue: 30 }],
           },
           {
@@ -250,7 +247,6 @@ describe("E2E: Filter pills in card detail", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: true,
-            autoRecur: false,
             usageRecords: [],
           },
         ],
@@ -330,7 +326,6 @@ describe("E2E: Export and import data round-trip", () => {
           resetType: "calendar",
           resetConfig: { period: "monthly" },
           isHidden: false,
-          autoRecur: false,
           usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 50 }],
         }],
       }],
@@ -375,7 +370,7 @@ describe("E2E: Export and import data round-trip", () => {
   });
 });
 
-describe("E2E: Subscription autoRecur generation", () => {
+describe("E2E: Subscription auto-recur record generation", () => {
   it("generates auto-recur records for subscription benefits via propagateNext", () => {
     // Seed a prev-month record with propagateNext=true; store.now must match faked time
     useCardStore.setState({
@@ -397,7 +392,6 @@ describe("E2E: Subscription autoRecur generation", () => {
           resetType: "subscription",
           resetConfig: { period: "monthly" },
           isHidden: false,
-          autoRecur: false,
           rolloverable: false,
           rolloverMaxYears: 0,
           usageRecords: [
@@ -446,7 +440,6 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
-            autoRecur: false,
             usageRecords: [],
           },
           {
@@ -458,7 +451,6 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
-            autoRecur: false,
             usageRecords: [],
           },
           {
@@ -470,7 +462,6 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
-            autoRecur: false,
             usageRecords: [{ usedDate: "2026-04-10", faceValue: 30, actualValue: 30 }],
           },
           {
@@ -482,7 +473,6 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: true,
-            autoRecur: false,
             usageRecords: [],
           },
         ],
@@ -530,7 +520,7 @@ describe("E2E: benefit filter switching", () => {
               id: "bm", name: "Monthly X", description: "",
               faceValue: 10, category: "other",
               resetType: "calendar", resetConfig: { period: "monthly" },
-              isHidden: false, autoRecur: false,
+              isHidden: false,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [{ usedDate: "2026-02-05", faceValue: 10, actualValue: 10 }],
             },
@@ -538,7 +528,7 @@ describe("E2E: benefit filter switching", () => {
               id: "bh", name: "Hidden Y", description: "",
               faceValue: 20, category: "other",
               resetType: "calendar", resetConfig: { period: "annual" },
-              isHidden: true, autoRecur: false,
+              isHidden: true,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [],
             },

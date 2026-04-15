@@ -13,7 +13,6 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 2,
   usageRecords: [],
@@ -84,7 +83,7 @@ describe("CardDetail filter integration", () => {
               id: "b-uber", name: "Uber Eats", description: "",
               faceValue: 15, category: "dining",
               resetType: "calendar", resetConfig: { period: "monthly" },
-              isHidden: false, autoRecur: false,
+              isHidden: false,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [
                 { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
@@ -94,7 +93,7 @@ describe("CardDetail filter integration", () => {
               id: "b-hidden", name: "Hidden One", description: "",
               faceValue: 50, category: "other",
               resetType: "calendar", resetConfig: { period: "annual" },
-              isHidden: true, autoRecur: false,
+              isHidden: true,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [],
             },
@@ -162,7 +161,6 @@ describe("CardDetail cycle-scoped toggle integration", () => {
               resetType: "calendar",
               resetConfig: { period: "quarterly" },
               isHidden: false,
-              autoRecur: false,
               rolloverable: false,
               rolloverMaxYears: 0,
               usageRecords: [

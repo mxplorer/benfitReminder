@@ -11,7 +11,6 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 2,
   usageRecords: [],
@@ -94,11 +93,6 @@ describe("useCardStore", () => {
       expect(useCardStore.getState().cards[0].benefits[0].isHidden).toBe(true);
     });
 
-    it("toggleBenefitAutoRecur flips autoRecur", () => {
-      useCardStore.getState().addBenefit("card-1", makeBenefit({ autoRecur: false }));
-      useCardStore.getState().toggleBenefitAutoRecur("card-1", "b1");
-      expect(useCardStore.getState().cards[0].benefits[0].autoRecur).toBe(true);
-    });
   });
 
   describe("toggleBenefitUsage", () => {
@@ -152,12 +146,12 @@ describe("useCardStore", () => {
       vi.useRealTimers();
     });
 
-    it("counts unused, non-hidden benefits on enabled cards (autoRecur monthly sub now counts when unused)", () => {
+    it("counts unused, non-hidden benefits on enabled cards (monthly sub with no record now counts when unused)", () => {
       const card = makeCard({
         benefits: [
           makeBenefit({ id: "b1" }), // unused → count
           makeBenefit({ id: "b2", isHidden: true }), // hidden → skip
-          makeBenefit({ id: "b3", resetType: "subscription", autoRecur: true }), // autoRecur monthly, no record → count
+          makeBenefit({ id: "b3", resetType: "subscription" }), // monthly sub, no record → count
           makeBenefit({
             id: "b4",
             usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100 }],
@@ -367,7 +361,6 @@ describe("useCardStore", () => {
                 resetType: "calendar",
                 resetConfig: { period: "quarterly" },
                 isHidden: false,
-                autoRecur: false,
                 rolloverable: false,
                 rolloverMaxYears: 0,
                 usageRecords: [
@@ -492,7 +485,7 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
   const makeMonthlySub = (records: UsageRecord[]): Benefit => ({
     id: "b1", name: "$25/mo", description: "", faceValue: 25,
     category: "streaming", resetType: "subscription", resetConfig: {},
-    isHidden: false, autoRecur: false, rolloverable: false, rolloverMaxYears: 0,
+    isHidden: false, rolloverable: false, rolloverMaxYears: 0,
     usageRecords: records,
   });
 
@@ -560,7 +553,7 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
     const benefit: Benefit = {
       id: "b1", name: "quarterly", description: "", faceValue: 100,
       category: "dining", resetType: "calendar", resetConfig: { period: "quarterly" },
-      isHidden: false, autoRecur: false, rolloverable: false, rolloverMaxYears: 0,
+      isHidden: false, rolloverable: false, rolloverMaxYears: 0,
       usageRecords: [{ usedDate: "2026-03-10", faceValue: 100, actualValue: 100, propagateNext: true }],
     };
     seed(benefit);
@@ -586,17 +579,17 @@ describe("recalculate", () => {
   });
 });
 
-describe("getUnusedBenefitCount — autoRecur subscriptions now countable", () => {
+describe("getUnusedBenefitCount — monthly subscriptions countable", () => {
   beforeEach(() => {
     useCardStore.setState({ cards: [] });
   });
 
-  it("counts autoRecur monthly subscription as unused when current month has no record", () => {
+  it("counts monthly subscription as unused when current month has no record", () => {
     const benefit: Benefit = {
       id: "b", name: "Netflix", description: "", faceValue: 20,
       category: "streaming", resetType: "subscription",
       resetConfig: { period: "monthly" },
-      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      isHidden: false, rolloverable: false, rolloverMaxYears: 0,
       usageRecords: [],
     };
     const card: CreditCard = {
@@ -619,7 +612,7 @@ describe("setBenefitCycleUsed with propagateNext", () => {
         benefits: [{
           id: "b1", name: "$25/mo", description: "", faceValue: 25,
           category: "streaming", resetType: "subscription", resetConfig: {},
-          isHidden: false, autoRecur: false, rolloverable: false,
+          isHidden: false, rolloverable: false,
           rolloverMaxYears: 0, usageRecords: [],
         }],
       }],
@@ -656,7 +649,7 @@ describe("setBenefitCycleUsed with propagateNext", () => {
     expect(records[0].propagateNext).toBe(false);
   });
 
-  it("removes the record when used=false (no cancelledMonths bookkeeping)", () => {
+  it("removes the record when used=false", () => {
     useCardStore.setState((s) => ({
       cards: s.cards.map((c) => ({
         ...c,
@@ -670,6 +663,5 @@ describe("setBenefitCycleUsed with propagateNext", () => {
       "c1", "b1", "2026-04-01", "2026-04-30", false,
     );
     expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(0);
-    expect(useCardStore.getState().cards[0].benefits[0].cancelledMonths).toBeUndefined();
   });
 });

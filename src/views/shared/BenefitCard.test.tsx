@@ -13,7 +13,6 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 2,
   usageRecords: [],
@@ -243,7 +242,6 @@ describe("BenefitCard — subscription reset label", () => {
     const benefit = makeBenefit({
       resetType: "subscription",
       resetConfig: {},
-      autoRecur: false, // field still required on type but no longer drives the label
       usageRecords: [
         { usedDate: "2026-03-15", faceValue: 100, actualValue: 100, propagateNext: true },
       ],
@@ -252,11 +250,10 @@ describe("BenefitCard — subscription reset label", () => {
     expect(screen.getByText("订阅·自动")).toBeInTheDocument();
   });
 
-  it("shows '订阅' when the latest record lacks propagateNext (even if autoRecur=true)", () => {
+  it("shows '订阅' when the latest record lacks propagateNext", () => {
     const benefit = makeBenefit({
       resetType: "subscription",
       resetConfig: {},
-      autoRecur: true, // autoRecur=true but no record with propagateNext
       usageRecords: [
         { usedDate: "2026-03-15", faceValue: 100, actualValue: 100 },
       ],

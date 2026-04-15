@@ -282,7 +282,6 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
               ...b,
               id: crypto.randomUUID(),
               isHidden: false,
-              autoRecur: false,
               rolloverable: b.rolloverable ?? false,
               rolloverMaxYears: b.rolloverMaxYears ?? 2,
               usageRecords: [],

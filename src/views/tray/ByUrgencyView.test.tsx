@@ -13,7 +13,6 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "monthly" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 2,
   usageRecords: [],
@@ -109,7 +108,6 @@ describe("ByUrgencyView", () => {
       id: "b1",
       name: "Auto Sub Benefit",
       resetType: "subscription",
-      autoRecur: false, // autoRecur field stub; propagateNext drives the skip logic
       usageRecords: [
         { usedDate: "2026-03-10", faceValue: 50, actualValue: 50, propagateNext: true },
       ],

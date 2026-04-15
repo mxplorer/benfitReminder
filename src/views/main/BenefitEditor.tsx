@@ -120,7 +120,6 @@ export const BenefitEditor = ({ cardId, benefit, onDone }: BenefitEditorProps) =
       resetType: form.resetType,
       resetConfig,
       isHidden: benefit?.isHidden ?? false,
-      autoRecur: false, // superseded by per-record propagateNext; field stays on type until a later cleanup
       rolloverable: form.resetType === "calendar" ? form.rolloverable : false,
       rolloverMaxYears: form.rolloverable ? Number(form.rolloverMaxYears) : 2,
       usageRecords: benefit?.usageRecords ?? [],

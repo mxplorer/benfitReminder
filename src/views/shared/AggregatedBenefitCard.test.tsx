@@ -8,7 +8,7 @@ const benefit: Benefit = {
   id: "b1", name: "Uber Eats", description: "",
   faceValue: 15, category: "dining",
   resetType: "calendar", resetConfig: { period: "monthly" },
-  isHidden: false, autoRecur: false,
+  isHidden: false,
   rolloverable: false, rolloverMaxYears: 0,
   usageRecords: [],
 };

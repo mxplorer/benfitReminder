@@ -28,7 +28,7 @@ React components organized by window: `tray/` for the menu bar panel, `main/` fo
 | `Dashboard` | Period info bar, year selector, 3-column ROI summary, per-card progress rows |
 | `CardDetail` | Card header, 4-cell ROI strip, benefits grid with filter pills, usage history table |
 | `CardEditor` | Form: template selector pre-fills fee+color+benefits. Create or edit mode. |
-| `BenefitEditor` | Form: conditional fields per resetType (calendar→period/months, since_last_use→cooldown, subscription→autoRecur, one_time→expiresDate) |
+| `BenefitEditor` | Form: conditional fields per resetType (calendar→period/months, since_last_use→cooldown, one_time→expiresDate). Subscription auto-replicate is per-record via the usage prompt's `propagateNext` checkbox, not a benefit-level field. |
 | `Settings` | Reminder toggle+days, debug toggle, export/import (native dialog in Tauri, file input fallback in browser), danger zone reset |
 | `History` | Per-card membership year ROI browser with year offset selector |
 

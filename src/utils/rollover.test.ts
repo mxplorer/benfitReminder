@@ -19,7 +19,6 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "calendar",
   resetConfig: { period: "semi_annual" },
   isHidden: false,
-  autoRecur: false,
   rolloverable: true,
   rolloverMaxYears: 2,
   usageRecords: [],

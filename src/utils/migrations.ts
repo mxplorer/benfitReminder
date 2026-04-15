@@ -1,5 +1,12 @@
 import type { Benefit, CreditCard } from "../models/types";
 
+/**
+ * Legacy benefit shape — `autoRecur` and `cancelledMonths` were removed from
+ * the live `Benefit` interface, but disk data from older versions still carries
+ * them. This migration is the sole reader that understands those fields.
+ */
+type LegacyBenefit = Benefit & { autoRecur?: boolean; cancelledMonths?: string[] };
+
 /** Returns a shallow copy of obj without the given key. */
 function omitKey<T extends object, K extends keyof T>(obj: T, key: K): Omit<T, K> {
   const result = { ...obj };
@@ -10,32 +17,38 @@ function omitKey<T extends object, K extends keyof T>(obj: T, key: K): Omit<T, K
 
 /**
  * Converts legacy autoRecur=true + cancelledMonths pattern to per-record
- * propagateNext flags. Sets autoRecur to false and strips cancelledMonths
- * so the old "set once forever" behavior no longer fires.
+ * propagateNext flags, then strips both legacy fields. Without this, old JSON
+ * files would silently lose their "recurring subscription" intent after the
+ * benefit-level flags were removed from the type.
  */
 const migrateAutoRecur = (benefit: Benefit): Benefit => {
-  if (!benefit.autoRecur) {
-    // If cancelledMonths hangs around without autoRecur, still drop it.
-    if (benefit.cancelledMonths === undefined) return benefit;
-    return omitKey(benefit, "cancelledMonths") as Benefit;
+  const legacy = benefit as LegacyBenefit;
+  if (!legacy.autoRecur) {
+    // Drop an orphan cancelledMonths so stale JSON doesn't carry dead state forward.
+    if (legacy.cancelledMonths === undefined) {
+      return "autoRecur" in legacy ? (omitKey(legacy, "autoRecur") as Benefit) : benefit;
+    }
+    const stripped = omitKey(legacy, "cancelledMonths") as LegacyBenefit;
+    return ("autoRecur" in stripped ? omitKey(stripped, "autoRecur") : stripped) as Benefit;
   }
 
-  const cancelled = new Set(benefit.cancelledMonths ?? []);
+  const cancelled = new Set(legacy.cancelledMonths ?? []);
   const isMonthlyLike =
-    benefit.resetType === "subscription" ||
-    (benefit.resetType === "calendar" && benefit.resetConfig.period === "monthly");
+    legacy.resetType === "subscription" ||
+    (legacy.resetType === "calendar" && legacy.resetConfig.period === "monthly");
 
   const records = isMonthlyLike
-    ? benefit.usageRecords.map((r) =>
+    ? legacy.usageRecords.map((r) =>
         cancelled.has(r.usedDate.slice(0, 7)) || r.propagateNext !== undefined
           ? r
           : { ...r, propagateNext: true },
       )
-    : benefit.usageRecords;
+    : legacy.usageRecords;
 
+  const withoutCancelled = omitKey(legacy, "cancelledMonths") as LegacyBenefit;
+  const withoutAutoRecur = omitKey(withoutCancelled, "autoRecur");
   return {
-    ...omitKey(benefit, "cancelledMonths"),
-    autoRecur: false,
+    ...withoutAutoRecur,
     usageRecords: records,
   } as Benefit;
 };

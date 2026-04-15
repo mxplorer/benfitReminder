@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { Benefit, CreditCard } from "../models/types";
 import { migrateCards } from "./migrations";
 
-const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
+// Legacy benefits on disk still carry autoRecur/cancelledMonths; tests feed
+// them through migrateCards to verify the reader strips and converts them.
+type LegacyBenefit = Benefit & { autoRecur?: boolean; cancelledMonths?: string[] };
+
+const makeBenefit = (overrides: Partial<LegacyBenefit> = {}): LegacyBenefit => ({
   id: "b1",
   name: "benefit",
   description: "",
@@ -11,14 +15,13 @@ const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   resetType: "one_time",
   resetConfig: {},
   isHidden: false,
-  autoRecur: false,
   rolloverable: false,
   rolloverMaxYears: 0,
   usageRecords: [],
   ...overrides,
 });
 
-const makeCard = (benefits: Benefit[]): CreditCard => ({
+const makeCard = (benefits: LegacyBenefit[]): CreditCard => ({
   id: "c1",
   owner: "me",
   cardTypeSlug: "chase_marriott_boundless",
@@ -26,7 +29,7 @@ const makeCard = (benefits: Benefit[]): CreditCard => ({
   cardOpenDate: "2024-01-01",
   color: "#000",
   isEnabled: true,
-  benefits,
+  benefits: benefits as Benefit[],
 });
 
 describe("migrateCards - Marriott H2 airline credit availableFromDate", () => {
@@ -93,8 +96,9 @@ describe("migrateCards - autoRecur → propagateNext", () => {
     expect(r1.propagateNext).toBe(true);
     expect(r2.propagateNext).toBeUndefined();
     expect(r3.propagateNext).toBe(true);
-    expect(card.benefits[0].autoRecur).toBe(false);
-    expect(card.benefits[0].cancelledMonths).toBeUndefined();
+    const migrated = card.benefits[0] as LegacyBenefit;
+    expect(migrated.autoRecur).toBeUndefined();
+    expect(migrated.cancelledMonths).toBeUndefined();
   });
 
   it("drops cancelledMonths even on autoRecur=false benefits", () => {
@@ -105,7 +109,7 @@ describe("migrateCards - autoRecur → propagateNext", () => {
       usageRecords: [{ usedDate: "2026-01-05", faceValue: 25, actualValue: 25 }],
     });
     const [card] = migrateCards([makeCard([benefit])]);
-    expect(card.benefits[0].cancelledMonths).toBeUndefined();
+    expect((card.benefits[0] as LegacyBenefit).cancelledMonths).toBeUndefined();
     expect(card.benefits[0].usageRecords[0].propagateNext).toBeUndefined();
   });
 

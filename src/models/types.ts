@@ -83,16 +83,9 @@ export interface Benefit {
   resetType: ResetType;
   resetConfig: ResetConfig;
   isHidden: boolean;
-  autoRecur: boolean;
   rolloverable: boolean;
   rolloverMaxYears: number;
   usageRecords: UsageRecord[];
-  /**
-   * Months (YYYY-MM) where the user explicitly cancelled the auto-replicate
-   * record for a monthly autoRecur subscription. Only meaningful when
-   * resetType === "subscription" && autoRecur === true && resetConfig.period === "monthly".
-   */
-  cancelledMonths?: string[];
 }
 
 export interface CreditCard {

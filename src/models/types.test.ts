@@ -75,7 +75,7 @@ describe("Benefit rollover fields", () => {
       id: "b1", name: "FHR", description: "", faceValue: 300,
       category: "hotel", resetType: "calendar",
       resetConfig: { period: "semi_annual" },
-      isHidden: false, autoRecur: false,
+      isHidden: false,
       rolloverable: true, rolloverMaxYears: 2, usageRecords: [],
     };
     expect(b.rolloverable).toBe(true);
