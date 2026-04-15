@@ -1,5 +1,6 @@
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
+import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { CardChip } from "../shared/CardChip";
 import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
@@ -15,7 +16,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
   const cards = useCardStore((s) => s.cards);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
-  const today = new Date();
+  const today = useToday();
 
   const enabledCards = cards.filter((c) => c.isEnabled);
 

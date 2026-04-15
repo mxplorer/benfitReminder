@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
+import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { calculateCardROI } from "../../utils/roi";
 import { GlassContainer } from "../shared/GlassContainer";
@@ -10,7 +11,7 @@ import "./History.css";
 export const History = () => {
   const cards = useCardStore((s) => s.cards);
   const getCardType = useCardTypeStore((s) => s.getCardType);
-  const today = new Date();
+  const today = useToday();
   // yearOffset per card: 0 = current membership year, -1 = previous, -2 = two years ago
   const [offsets, setOffsets] = useState<Record<string, number>>({});
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
+import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { calculateCardROI } from "../../utils/roi";
 import {
@@ -32,7 +33,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const getCardType = useCardTypeStore((s) => s.getCardType);
   const [filter, setFilter] = useState<FilterMode>("available");
   const [scope, setScope] = useState<YearScope>("calendar");
-  const today = new Date();
+  const today = useToday();
 
   const card = cards.find((c) => c.id === cardId);
   if (!card) return <p>卡片未找到</p>;
