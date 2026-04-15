@@ -28,7 +28,7 @@ interface CardStoreActions {
     cycleStart: string,
     cycleEnd: string,
     used: boolean,
-    opts?: { actualValue?: number; usedDate?: string },
+    opts?: { actualValue?: number; usedDate?: string; propagateNext?: boolean },
   ) => void;
   rolloverBenefit: (cardId: string, benefitId: string, usedDate?: string) => void;
   backfillBenefitUsage: (cardId: string, benefitId: string, records: UsageRecord[]) => void;
@@ -170,36 +170,24 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         (r) => r.usedDate >= cycleStart && r.usedDate <= cycleEnd,
       );
 
-      // Determine if we should also maintain cancelledMonths.
-      // Only monthly autoRecur subscriptions track cancellation, and only for
-      // the cycle that equals the CURRENT month (which is the only cycle
-      // `generateAutoRecurRecords` ever inserts into).
-      const today = new Date();
-      const currentMonthKey = formatMonthKey(today);
-      const cycleMonthKey = cycleStart.slice(0, 7);
-      const isMonthlyAutoRecurSub =
-        benefit.resetType === "subscription" &&
-        benefit.autoRecur &&
-        benefit.resetConfig.period === "monthly";
-      const tracksCancellation = isMonthlyAutoRecurSub && cycleMonthKey === currentMonthKey;
-
-      const applyCancelledMonths = (b: Benefit): Benefit => {
-        if (!tracksCancellation) return b;
-        const current = b.cancelledMonths ?? [];
-        if (used) {
-          const next = current.filter((m) => m !== currentMonthKey);
-          return { ...b, cancelledMonths: next };
-        }
-        if (current.includes(currentMonthKey)) return { ...b, cancelledMonths: current };
-        return { ...b, cancelledMonths: [...current, currentMonthKey] };
-      };
-
       if (used) {
         if (existingInCycle) {
+          const updated: UsageRecord = {
+            ...existingInCycle,
+            actualValue: opts?.actualValue ?? existingInCycle.actualValue,
+            usedDate: opts?.usedDate ?? existingInCycle.usedDate,
+            propagateNext:
+              opts?.propagateNext !== undefined
+                ? opts.propagateNext
+                : existingInCycle.propagateNext,
+          };
           return {
-            cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) =>
-              applyCancelledMonths(b),
-            ),
+            cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+              ...b,
+              usageRecords: b.usageRecords.map((r) =>
+                r === existingInCycle ? updated : r,
+              ),
+            })),
           };
         }
         const todayIso = formatDate(new Date());
@@ -209,28 +197,22 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
           usedDate: opts?.usedDate ?? defaultDate,
           faceValue: benefit.faceValue,
           actualValue: opts?.actualValue ?? benefit.faceValue,
+          ...(opts?.propagateNext !== undefined ? { propagateNext: opts.propagateNext } : {}),
         };
         return {
-          cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) =>
-            applyCancelledMonths({ ...b, usageRecords: [...b.usageRecords, newRecord] }),
-          ),
+          cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+            ...b,
+            usageRecords: [...b.usageRecords, newRecord],
+          })),
         };
       }
 
-      if (!existingInCycle) {
-        return {
-          cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) =>
-            applyCancelledMonths(b),
-          ),
-        };
-      }
+      if (!existingInCycle) return state;
       return {
-        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) =>
-          applyCancelledMonths({
-            ...b,
-            usageRecords: b.usageRecords.filter((r) => r !== existingInCycle),
-          }),
-        ),
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: b.usageRecords.filter((r) => r !== existingInCycle),
+        })),
       };
     });
   },
