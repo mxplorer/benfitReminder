@@ -118,8 +118,8 @@ export const initPersistence = async (): Promise<void> => {
     void emitDataChanged(json);
   });
 
-  // 3. Generate auto-recur records for subscription benefits (triggers subscribe → save).
-  useCardStore.getState().generateAutoRecurRecords();
+  // 3. Initial recalculate (generation + now bump) after data load (triggers subscribe → save).
+  useCardStore.getState().recalculate();
 
   // 4. Listen for cross-window data changes.
   void subscribeDataChanged();

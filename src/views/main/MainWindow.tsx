@@ -46,14 +46,35 @@ export const MainWindow = () => {
     return unsubscribe;
   }, []);
 
-  // Re-send reminders when window is focused (per spec)
+  // Refresh "today" and reminders on focus; schedule a daily tick just past midnight
+  // so long-running sessions pick up the new day without a manual focus event.
   useEffect(() => {
     const onFocus = () => {
+      useCardStore.getState().recalculate();
       const { cards, settings } = useCardStore.getState();
       void checkAndSendReminders(cards, settings);
     };
     window.addEventListener("focus", onFocus);
-    return () => { window.removeEventListener("focus", onFocus); };
+
+    let timer: number | null = null;
+    const schedule = () => {
+      const now = new Date();
+      const nextMidnight = new Date(
+        now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5,
+      );
+      // Floor to 60s to avoid a pathological tight loop if the clock jumps.
+      const ms = Math.max(60_000, nextMidnight.getTime() - now.getTime());
+      timer = window.setTimeout(() => {
+        useCardStore.getState().recalculate();
+        schedule();
+      }, ms);
+    };
+    schedule();
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      if (timer !== null) window.clearTimeout(timer);
+    };
   }, []);
 
   const renderView = () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { CreditCard } from "../../models/types";
 import { useCardStore } from "../../stores/useCardStore";
@@ -48,5 +48,26 @@ describe("MainWindow", () => {
     if (!sidebarCardBtn) throw new Error("Sidebar card button not found");
     fireEvent.click(sidebarCardBtn);
     expect(screen.getByTestId("view-card-c1")).toBeInTheDocument();
+  });
+});
+
+describe("MainWindow today-refresh wiring", () => {
+  it("calls recalculate() on window focus", () => {
+    const spy = vi.spyOn(useCardStore.getState(), "recalculate");
+    render(<MainWindow />);
+    window.dispatchEvent(new FocusEvent("focus"));
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("schedules a midnight timer on mount", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T23:59:00"));
+    const spy = vi.spyOn(useCardStore.getState(), "recalculate");
+    render(<MainWindow />);
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    expect(spy).toHaveBeenCalled();
+    vi.useRealTimers();
+    spy.mockRestore();
   });
 });
