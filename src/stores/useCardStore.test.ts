@@ -611,8 +611,6 @@ describe("getUnusedBenefitCount — autoRecur subscriptions now countable", () =
 
 describe("setBenefitCycleUsed with propagateNext", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-04-15T10:00:00"));
     useCardStore.setState({
       cards: [{
         id: "c1", owner: "me", cardTypeSlug: "amex_platinum",
@@ -627,7 +625,6 @@ describe("setBenefitCycleUsed with propagateNext", () => {
       }],
     });
   });
-  afterEach(() => { vi.useRealTimers(); });
 
   it("writes propagateNext onto the new record", () => {
     useCardStore.getState().setBenefitCycleUsed(

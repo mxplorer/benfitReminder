@@ -176,6 +176,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
             ...existingInCycle,
             actualValue: opts?.actualValue ?? existingInCycle.actualValue,
             usedDate: opts?.usedDate ?? existingInCycle.usedDate,
+            // `!== undefined` (not `??`) so an explicit `false` override wins.
             propagateNext:
               opts?.propagateNext !== undefined
                 ? opts.propagateNext
