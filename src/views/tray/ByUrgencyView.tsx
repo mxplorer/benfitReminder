@@ -8,7 +8,7 @@ import {
   isBenefitUsedInPeriod,
   isApplicableNow,
 } from "../../utils/period";
-import { latestHasPropagate } from "../../utils/benefitDisplay";
+import { latestHasPropagate } from "../../utils/usageRecords";
 import { CardChip } from "../shared/CardChip";
 import { BenefitCard } from "../shared/BenefitCard";
 

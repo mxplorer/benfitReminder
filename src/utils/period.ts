@@ -1,4 +1,5 @@
 import type { Benefit, CalendarPeriod, ResetConfig, ResetType } from "../models/types";
+import { getLatestRecord } from "./usageRecords";
 
 export interface DateRange {
   start: string;
@@ -191,8 +192,9 @@ export const isBenefitUsedInPeriod = (
     if (usageRecords.length === 0) return false;
     const cooldown = resetConfig.cooldownDays ?? 0;
     if (cooldown === 0) return false;
-    const sorted = [...usageRecords].sort((a, b) => b.usedDate.localeCompare(a.usedDate));
-    const lastUsed = new Date(sorted[0].usedDate + "T00:00:00");
+    const latest = getLatestRecord(usageRecords);
+    if (!latest) return false;
+    const lastUsed = new Date(latest.usedDate + "T00:00:00");
     const cooldownEnd = new Date(lastUsed);
     cooldownEnd.setDate(cooldownEnd.getDate() + cooldown);
     return today < cooldownEnd;

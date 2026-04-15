@@ -4,7 +4,7 @@ import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { CardChip } from "../shared/CardChip";
 import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
-import { latestHasPropagate } from "../../utils/benefitDisplay";
+import { latestHasPropagate } from "../../utils/usageRecords";
 import type { ActiveView } from "./MainWindow";
 
 interface SidebarProps {

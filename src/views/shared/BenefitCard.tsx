@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Benefit, CreditCard, ResetType, UsageRecord } from "../../models/types";
 import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
 import { getAvailableValue } from "../../utils/rollover";
-import { latestHasPropagate } from "../../utils/benefitDisplay";
+import { latestHasPropagate } from "../../utils/usageRecords";
 import { useToday } from "../../stores/useToday";
 import { GlassContainer } from "./GlassContainer";
 import { StatusTag } from "./StatusTag";

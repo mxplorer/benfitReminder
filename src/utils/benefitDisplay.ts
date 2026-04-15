@@ -2,14 +2,7 @@ import type { Benefit, CreditCard, UsageRecord } from "../models/types";
 import { isApplicableNow, isBenefitUsedInPeriod } from "./period";
 import { getScopeWindow, getScopeCycles, findCycleRecord } from "./cycles";
 import type { PeriodCycle } from "./cycles";
-
-export const latestHasPropagate = (benefit: Benefit): boolean => {
-  if (benefit.usageRecords.length === 0) return false;
-  const sorted = [...benefit.usageRecords].sort((a, b) =>
-    b.usedDate.localeCompare(a.usedDate),
-  );
-  return sorted[0].propagateNext === true;
-};
+import { latestHasPropagate } from "./usageRecords";
 
 export type FilterMode = "available" | "unused" | "used" | "hidden" | "all";
 export type YearScope = "calendar" | "anniversary";
@@ -64,11 +57,11 @@ const buildAggregate = (
   benefit: Benefit,
   cycles: PeriodCycle[],
   kind: "used" | "unused" | "all",
-  autoRecurUsedOverride: boolean,
+  propagatesForwardOverride: boolean,
 ): BenefitDisplayItem["aggregate"] => {
   const months: AggregatedMonth[] = cycles.map((cycle) => {
     const record = findCycleRecord(benefit, cycle);
-    const used = autoRecurUsedOverride || record !== undefined;
+    const used = propagatesForwardOverride || record !== undefined;
     return {
       label: cycle.label,
       used,
@@ -158,12 +151,12 @@ const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
     }
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
-      const autoRecur = b.resetType === "subscription" && latestHasPropagate(b);
-      const usedCycles = autoRecur
+      const propagatesForward = b.resetType === "subscription" && latestHasPropagate(b);
+      const usedCycles = propagatesForward
         ? cycles
         : cycles.filter((c) => findCycleRecord(b, c));
       if (usedCycles.length === 0) continue;
-      const aggregate = buildAggregate(b, usedCycles, "used", autoRecur);
+      const aggregate = buildAggregate(b, usedCycles, "used", propagatesForward);
       items.push({
         benefit: b,
         card,
@@ -197,8 +190,8 @@ const expandAll = (
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
       if (cycles.length === 0) continue;
-      const autoRecur = b.resetType === "subscription" && latestHasPropagate(b);
-      const aggregate = buildAggregate(b, cycles, "all", autoRecur);
+      const propagatesForward = b.resetType === "subscription" && latestHasPropagate(b);
+      const aggregate = buildAggregate(b, cycles, "all", propagatesForward);
       items.push({
         benefit: b,
         card,
