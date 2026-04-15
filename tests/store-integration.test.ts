@@ -466,3 +466,63 @@ describe("Cross-module period + store integration", () => {
     expect(useCardStore.getState().getUnusedBenefitCount()).toBe(1);
   });
 });
+
+describe("auto-replicate subscription flow", () => {
+  beforeEach(() => {
+    useCardStore.setState({ cards: [] });
+  });
+
+  it("replicates previous month's actualValue + user can cancel + cancellation does not resurrect on re-run", () => {
+    const today = new Date();
+    const yr = today.getFullYear();
+    const mo = today.getMonth() + 1;
+    const monthStart = `${String(yr)}-${String(mo).padStart(2, "0")}-01`;
+    const lastMonthDate = new Date(yr, mo - 2, 1);
+    const lastMonthStart = `${String(lastMonthDate.getFullYear())}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}-01`;
+    const monthEndDay = new Date(yr, mo, 0).getDate();
+    const monthEnd = `${String(yr)}-${String(mo).padStart(2, "0")}-${String(monthEndDay).padStart(2, "0")}`;
+    const monthKey = `${String(yr)}-${String(mo).padStart(2, "0")}`;
+
+    const benefit: Benefit = {
+      id: "b", name: "Netflix", description: "", faceValue: 20,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [{ usedDate: lastMonthStart, faceValue: 20, actualValue: 13 }],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    // Step 1: generate replicates 13, not faceValue 20.
+    useCardStore.getState().generateAutoRecurRecords();
+    let updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.usageRecords).toHaveLength(2);
+    expect(
+      updated.usageRecords.find((r) => r.usedDate === monthStart)?.actualValue,
+    ).toBe(13);
+
+    // Step 2: user unchecks current month.
+    useCardStore.getState().setBenefitCycleUsed("c", "b", monthStart, monthEnd, false);
+    updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.cancelledMonths).toEqual([monthKey]);
+    expect(updated.usageRecords.some((r) => r.usedDate === monthStart)).toBe(false);
+
+    // Step 3: generate runs again → no resurrection.
+    useCardStore.getState().generateAutoRecurRecords();
+    updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.usageRecords.some((r) => r.usedDate === monthStart)).toBe(false);
+
+    // Step 4: user re-checks → cancellation cleared, record restored for current month.
+    useCardStore.getState().setBenefitCycleUsed("c", "b", monthStart, monthEnd, true);
+    updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.cancelledMonths).toEqual([]);
+    expect(
+      updated.usageRecords.some(
+        (r) => r.usedDate >= monthStart && r.usedDate <= monthEnd,
+      ),
+    ).toBe(true);
+  });
+});

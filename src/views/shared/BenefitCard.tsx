@@ -132,7 +132,16 @@ export const BenefitCard = ({
     <GlassContainer className={`benefit-card ${cardClasses}`}>
       <div className="benefit-card__header">
         <StatusTag daysRemaining={daysRemaining} isUsed={isUsed} />
-        <span className="benefit-card__period">{periodLabel ?? getResetLabel(benefit)}</span>
+        <span
+          className="benefit-card__period"
+          title={
+            benefit.resetType === "subscription" && benefit.autoRecur
+              ? "自动填充上月金额，可修改或取消"
+              : undefined
+          }
+        >
+          {periodLabel ?? getResetLabel(benefit)}
+        </span>
         {benefit.rolloverable && (
           <span className="benefit-card__rollover-badge">可Roll</span>
         )}
