@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
 import { formatDate, getMonthRange, isBenefitUsedInPeriod, isApplicableNow } from "../utils/period";
 import { resolveAutoRecurValue, formatMonthKey } from "../utils/subscription";
+import { migrateCards } from "../utils/migrations";
 
 interface CardStoreState {
   cards: CreditCard[];
@@ -312,7 +313,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
     }
 
     set({
-      cards: data.cards as CreditCard[],
+      cards: migrateCards(data.cards as CreditCard[]),
       settings: (data.settings as AppSettings | undefined) ?? { ...DEFAULT_SETTINGS },
     });
   },
