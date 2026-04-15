@@ -73,3 +73,67 @@ describe("migrateCards - Marriott H2 airline credit availableFromDate", () => {
     expect(twice).toEqual(once);
   });
 });
+
+describe("migrateCards - autoRecur → propagateNext", () => {
+  it("sets propagateNext=true on monthly records for autoRecur=true benefits, except cancelledMonths", () => {
+    const benefit = makeBenefit({
+      name: "$25/mo Digital",
+      resetType: "subscription",
+      resetConfig: {},
+      autoRecur: true,
+      cancelledMonths: ["2026-02"],
+      usageRecords: [
+        { usedDate: "2026-01-05", faceValue: 25, actualValue: 25 },
+        { usedDate: "2026-02-10", faceValue: 25, actualValue: 20 },
+        { usedDate: "2026-03-03", faceValue: 25, actualValue: 25 },
+      ],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    const [r1, r2, r3] = card.benefits[0].usageRecords;
+    expect(r1.propagateNext).toBe(true);
+    expect(r2.propagateNext).toBeUndefined();
+    expect(r3.propagateNext).toBe(true);
+    expect(card.benefits[0].autoRecur).toBe(false);
+    expect(card.benefits[0].cancelledMonths).toBeUndefined();
+  });
+
+  it("drops cancelledMonths even on autoRecur=false benefits", () => {
+    const benefit = makeBenefit({
+      resetType: "subscription",
+      autoRecur: false,
+      cancelledMonths: ["2026-01"],
+      usageRecords: [{ usedDate: "2026-01-05", faceValue: 25, actualValue: 25 }],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    expect(card.benefits[0].cancelledMonths).toBeUndefined();
+    expect(card.benefits[0].usageRecords[0].propagateNext).toBeUndefined();
+  });
+
+  it("leaves already-propagated records untouched (idempotent)", () => {
+    const benefit = makeBenefit({
+      resetType: "subscription",
+      autoRecur: false,
+      usageRecords: [
+        { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true },
+      ],
+    });
+    const once = migrateCards([makeCard([benefit])]);
+    const twice = migrateCards(once);
+    expect(twice).toEqual(once);
+  });
+
+  it("is idempotent when legacy fields already stripped", () => {
+    const benefit = makeBenefit({
+      resetType: "subscription",
+      autoRecur: true,
+      cancelledMonths: ["2026-02"],
+      usageRecords: [
+        { usedDate: "2026-01-05", faceValue: 25, actualValue: 25 },
+        { usedDate: "2026-02-10", faceValue: 25, actualValue: 20 },
+      ],
+    });
+    const once = migrateCards([makeCard([benefit])]);
+    const twice = migrateCards(once);
+    expect(twice).toEqual(once);
+  });
+});
