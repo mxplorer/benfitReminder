@@ -152,12 +152,12 @@ describe("useCardStore", () => {
       vi.useRealTimers();
     });
 
-    it("counts unused, non-hidden, non-autoRecur benefits on enabled cards", () => {
+    it("counts unused, non-hidden benefits on enabled cards (autoRecur monthly sub now counts when unused)", () => {
       const card = makeCard({
         benefits: [
           makeBenefit({ id: "b1" }), // unused → count
           makeBenefit({ id: "b2", isHidden: true }), // hidden → skip
-          makeBenefit({ id: "b3", resetType: "subscription", autoRecur: true }), // autoRecur → skip
+          makeBenefit({ id: "b3", resetType: "subscription", autoRecur: true }), // autoRecur monthly, no record → count
           makeBenefit({
             id: "b4",
             usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100 }],
@@ -165,7 +165,7 @@ describe("useCardStore", () => {
         ],
       });
       useCardStore.getState().addCard(card);
-      expect(useCardStore.getState().getUnusedBenefitCount()).toBe(1);
+      expect(useCardStore.getState().getUnusedBenefitCount()).toBe(2);
     });
 
     it("excludes disabled cards", () => {
@@ -536,5 +536,139 @@ describe("useCardStore", () => {
 
       expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
     });
+  });
+});
+
+describe("generateAutoRecurRecords — smart replication", () => {
+  beforeEach(() => {
+    useCardStore.setState({
+      cards: [],
+      settings: {
+        logLevel: "info",
+        debugLogEnabled: false,
+        reminderEnabled: true,
+        reminderDays: 3,
+        dismissedDate: null,
+        trayOpacity: 90,
+      },
+    });
+  });
+
+  it("inserts current month record using previous month's actualValue", () => {
+    const today = new Date();
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthIso = `${String(lastMonth.getFullYear())}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}-01`;
+
+    const benefit: Benefit = {
+      id: "b", name: "Netflix", description: "", faceValue: 20,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [{ usedDate: lastMonthIso, faceValue: 20, actualValue: 13 }],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    useCardStore.getState().generateAutoRecurRecords();
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.usageRecords).toHaveLength(2);
+    const thisMonthRecord = updated.usageRecords.find((r) =>
+      r.usedDate.startsWith(
+        `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}`,
+      ),
+    );
+    expect(thisMonthRecord?.actualValue).toBe(13);
+  });
+
+  it("falls back to faceValue when no prior records exist", () => {
+    const benefit: Benefit = {
+      id: "b", name: "Netflix", description: "", faceValue: 20,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    useCardStore.getState().generateAutoRecurRecords();
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.usageRecords).toHaveLength(1);
+    expect(updated.usageRecords[0].actualValue).toBe(20);
+  });
+
+  it("does not insert when current month is in cancelledMonths", () => {
+    const today = new Date();
+    const monthKey = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+    const benefit: Benefit = {
+      id: "b", name: "Netflix", description: "", faceValue: 20,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [],
+      cancelledMonths: [monthKey],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    useCardStore.getState().generateAutoRecurRecords();
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.usageRecords).toHaveLength(0);
+  });
+
+  it("ignores non-monthly autoRecur subscriptions", () => {
+    const benefit: Benefit = {
+      id: "b", name: "Yearly Sub", description: "", faceValue: 100,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "annual" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    useCardStore.getState().generateAutoRecurRecords();
+
+    const updated = useCardStore.getState().cards[0].benefits[0];
+    expect(updated.usageRecords).toHaveLength(0);
+  });
+});
+
+describe("getUnusedBenefitCount — autoRecur subscriptions now countable", () => {
+  beforeEach(() => {
+    useCardStore.setState({ cards: [] });
+  });
+
+  it("counts autoRecur monthly subscription as unused when current month has no record", () => {
+    const benefit: Benefit = {
+      id: "b", name: "Netflix", description: "", faceValue: 20,
+      category: "streaming", resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false, autoRecur: true, rolloverable: false, rolloverMaxYears: 0,
+      usageRecords: [],
+    };
+    const card: CreditCard = {
+      id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,
+      cardOpenDate: "2024-01-01", color: "#000", isEnabled: true, benefits: [benefit],
+    };
+    useCardStore.setState({ cards: [card] });
+
+    expect(useCardStore.getState().getUnusedBenefitCount()).toBe(1);
   });
 });

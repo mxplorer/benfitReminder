@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
 import { formatDate, getMonthRange, isBenefitUsedInPeriod, isApplicableNow } from "../utils/period";
+import { resolveAutoRecurValue, formatMonthKey } from "../utils/subscription";
 
 interface CardStoreState {
   cards: CreditCard[];
@@ -231,7 +232,6 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       if (!card.isEnabled) continue;
       for (const benefit of card.benefits) {
         if (benefit.isHidden) continue;
-        if (benefit.resetType === "subscription" && benefit.autoRecur) continue;
         if (!isApplicableNow(benefit, today)) continue;
         if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
         count++;
@@ -285,13 +285,15 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
     const year = today.getFullYear();
     const month = today.getMonth() + 1;
     const monthRange = getMonthRange(year, month);
-    const firstOfMonth = monthRange.start;
+    const monthKey = formatMonthKey(today);
 
     set((state) => ({
       cards: state.cards.map((card) => ({
         ...card,
         benefits: card.benefits.map((benefit) => {
           if (benefit.resetType !== "subscription" || !benefit.autoRecur) return benefit;
+          if (benefit.resetConfig.period !== "monthly") return benefit;
+          if (benefit.cancelledMonths?.includes(monthKey)) return benefit;
 
           const hasRecordThisMonth = benefit.usageRecords.some(
             (r) => r.usedDate >= monthRange.start && r.usedDate <= monthRange.end,
@@ -299,9 +301,9 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
           if (hasRecordThisMonth) return benefit;
 
           const newRecord: UsageRecord = {
-            usedDate: firstOfMonth,
+            usedDate: monthRange.start,
             faceValue: benefit.faceValue,
-            actualValue: benefit.faceValue,
+            actualValue: resolveAutoRecurValue(benefit),
           };
           return { ...benefit, usageRecords: [...benefit.usageRecords, newRecord] };
         }),

@@ -392,7 +392,7 @@ describe("E2E: Subscription autoRecur generation", () => {
           faceValue: 14,
           category: "streaming",
           resetType: "subscription",
-          resetConfig: {},
+          resetConfig: { period: "monthly" },
           isHidden: false,
           autoRecur: true,
           usageRecords: [],
