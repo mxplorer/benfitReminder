@@ -159,3 +159,98 @@ describe("AggregatedBenefitCard — uncheck used row", () => {
     expect(screen.queryByTestId("agg-month-uncheck-1月")).toBeNull();
   });
 });
+
+describe("AggregatedBenefitCard — pending mode", () => {
+  const pendingItem: BenefitDisplayItem = {
+    benefit, card, key: "agg-pending", variant: "aggregated",
+    aggregate: {
+      kind: "unused",
+      months: [
+        { label: "2026-01", used: false, faceValue: 15, cycleStart: "2026-01-01", cycleEnd: "2026-01-31" },
+        { label: "2026-02", used: false, faceValue: 15, cycleStart: "2026-02-01", cycleEnd: "2026-02-28" },
+        { label: "2026-03", used: false, faceValue: 15, cycleStart: "2026-03-01", cycleEnd: "2026-03-31" },
+      ],
+      usedCount: 0, unusedCount: 3, totalActualValue: 0, totalFaceValue: 45,
+    },
+  };
+
+  it("renders pending summary with N/total months and respects defaultExpanded", () => {
+    render(
+      <AggregatedBenefitCard
+        item={pendingItem}
+        pending={{
+          checkedMonths: new Set([2]),
+          values: { 2: 15 },
+          onToggleMonth: vi.fn(),
+          onValueChange: vi.fn(),
+          defaultExpanded: true,
+        }}
+      />,
+    );
+    expect(screen.getByText(/已选 1 \/ 3 个月/)).toBeInTheDocument();
+    // defaultExpanded=true → rows should be visible without clicking expand
+    expect(screen.getByTestId("agg-pending-row-2026-02")).toBeInTheDocument();
+  });
+
+  it("calls onToggleMonth with the month number (derived from cycleStart) on checkbox click", () => {
+    const onToggleMonth = vi.fn();
+    render(
+      <AggregatedBenefitCard
+        item={pendingItem}
+        pending={{
+          checkedMonths: [],
+          values: {},
+          onToggleMonth,
+          onValueChange: vi.fn(),
+          defaultExpanded: true,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("agg-pending-check-2026-02"));
+    expect(onToggleMonth).toHaveBeenCalledWith(2);
+  });
+
+  it("calls onValueChange with month and new value on value input change", () => {
+    const onValueChange = vi.fn();
+    render(
+      <AggregatedBenefitCard
+        item={pendingItem}
+        pending={{
+          checkedMonths: new Set([3]),
+          values: { 3: 15 },
+          onToggleMonth: vi.fn(),
+          onValueChange,
+          defaultExpanded: true,
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByTestId("agg-pending-value-2026-03"), {
+      target: { value: "9" },
+    });
+    expect(onValueChange).toHaveBeenCalledWith(3, 9);
+  });
+
+  it("does NOT fire live-store callbacks (onToggleUsage / onSetCycleUsed) when pending is active", () => {
+    const onToggleUsage = vi.fn();
+    const onSetCycleUsed = vi.fn();
+    const onToggleMonth = vi.fn();
+    render(
+      <AggregatedBenefitCard
+        item={pendingItem}
+        onToggleUsage={onToggleUsage}
+        onSetCycleUsed={onSetCycleUsed}
+        pending={{
+          checkedMonths: [],
+          values: {},
+          onToggleMonth,
+          onValueChange: vi.fn(),
+          defaultExpanded: true,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("agg-pending-check-2026-01"));
+    expect(onToggleMonth).toHaveBeenCalledWith(1);
+    expect(onToggleUsage).not.toHaveBeenCalled();
+    expect(onSetCycleUsed).not.toHaveBeenCalled();
+  });
+});

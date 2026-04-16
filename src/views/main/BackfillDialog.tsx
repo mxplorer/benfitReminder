@@ -3,6 +3,8 @@ import type { Benefit, CreditCard, UsageRecord } from "../../models/types";
 import type { DateRange } from "../../utils/period";
 import { getPastPeriods, generateRolloverRecords } from "../../utils/rollover";
 import { useCardStore } from "../../stores/useCardStore";
+import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
+import type { BenefitDisplayItem } from "../../utils/benefitDisplay";
 import "./BackfillDialog.css";
 
 type StepType = "non_rollover" | "rollover" | "summary";
@@ -73,6 +75,78 @@ const buildNonRolloverEntries = (
     }
   }
   return entries;
+};
+
+const isMonthlyBenefit = (b: Benefit): boolean =>
+  b.resetType === "calendar" && b.resetConfig.period === "monthly";
+
+interface MonthlyGroup {
+  benefit: Benefit;
+  items: { entryIndex: number; month: number }[];
+}
+
+type DisplayUnit =
+  | { kind: "flat"; entryIndex: number }
+  | { kind: "monthly"; group: MonthlyGroup };
+
+const buildDisplayUnits = (
+  entries: NonRolloverEntry[],
+  benefits: Benefit[],
+): DisplayUnit[] => {
+  const benefitById = new Map(benefits.map((b) => [b.id, b]));
+  const units: DisplayUnit[] = [];
+  const groupByBenefit = new Map<string, MonthlyGroup>();
+
+  entries.forEach((entry, entryIndex) => {
+    const benefit = benefitById.get(entry.benefitId);
+    if (benefit && isMonthlyBenefit(benefit)) {
+      let group = groupByBenefit.get(entry.benefitId);
+      if (!group) {
+        group = { benefit, items: [] };
+        groupByBenefit.set(entry.benefitId, group);
+        units.push({ kind: "monthly", group });
+      }
+      group.items.push({
+        entryIndex,
+        month: Number(entry.period.start.slice(5, 7)),
+      });
+    } else {
+      units.push({ kind: "flat", entryIndex });
+    }
+  });
+
+  return units;
+};
+
+const buildAggregatedItem = (
+  card: CreditCard,
+  group: MonthlyGroup,
+  entries: NonRolloverEntry[],
+): BenefitDisplayItem => {
+  const months = group.items.map(({ entryIndex }) => {
+    const e = entries[entryIndex];
+    return {
+      label: e.periodLabel,
+      used: false,
+      faceValue: e.faceValue,
+      cycleStart: e.period.start,
+      cycleEnd: e.period.end,
+    };
+  });
+  return {
+    benefit: group.benefit,
+    card,
+    key: `${group.benefit.id}::backfill-agg`,
+    variant: "aggregated",
+    aggregate: {
+      kind: "unused",
+      months,
+      usedCount: 0,
+      unusedCount: months.length,
+      totalActualValue: 0,
+      totalFaceValue: months.reduce((s, m) => s + m.faceValue, 0),
+    },
+  };
 };
 
 export const BackfillDialog = ({ card, onDone }: BackfillDialogProps) => {
@@ -172,33 +246,70 @@ export const BackfillDialog = ({ card, onDone }: BackfillDialogProps) => {
             <p className="backfill-dialog__hint">
               勾选过去已使用的权益期间，可修改实际使用金额。
             </p>
-            {entries.map((entry, i) => (
-              <div key={`${entry.benefitId}-${entry.period.start}`} className="backfill-dialog__entry">
-                <label className="backfill-dialog__entry-label">
-                  <input
-                    type="checkbox"
-                    checked={entry.checked}
-                    onChange={() => { toggleEntry(i); }}
-                  />
-                  <span className="backfill-dialog__benefit-name">
-                    {entry.benefitName}
-                  </span>
-                  <span className="backfill-dialog__period-label">
-                    {entry.periodLabel}
-                  </span>
-                </label>
-                {entry.checked && (
-                  <input
-                    type="number"
-                    className="backfill-dialog__value-input"
-                    value={entry.actualValue}
-                    onChange={(e) => {
-                      updateEntryValue(i, Number(e.target.value));
+            {buildDisplayUnits(entries, card.benefits).map((unit) => {
+              if (unit.kind === "flat") {
+                const i = unit.entryIndex;
+                const entry = entries[i];
+                return (
+                  <div key={`${entry.benefitId}-${entry.period.start}`} className="backfill-dialog__entry">
+                    <label className="backfill-dialog__entry-label">
+                      <input
+                        type="checkbox"
+                        checked={entry.checked}
+                        onChange={() => { toggleEntry(i); }}
+                      />
+                      <span className="backfill-dialog__benefit-name">
+                        {entry.benefitName}
+                      </span>
+                      <span className="backfill-dialog__period-label">
+                        {entry.periodLabel}
+                      </span>
+                    </label>
+                    {entry.checked && (
+                      <input
+                        type="number"
+                        className="backfill-dialog__value-input"
+                        value={entry.actualValue}
+                        onChange={(e) => {
+                          updateEntryValue(i, Number(e.target.value));
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              }
+              const { group } = unit;
+              const item = buildAggregatedItem(card, group, entries);
+              const checkedMonths = new Set<number>();
+              const values: Record<number, number> = {};
+              for (const { entryIndex, month } of group.items) {
+                values[month] = entries[entryIndex].actualValue;
+                if (entries[entryIndex].checked) checkedMonths.add(month);
+              }
+              return (
+                <div
+                  key={`${group.benefit.id}-monthly-agg`}
+                  className="backfill-dialog__entry"
+                  data-testid={`backfill-monthly-agg-${group.benefit.id}`}
+                >
+                  <AggregatedBenefitCard
+                    item={item}
+                    pending={{
+                      checkedMonths,
+                      values,
+                      onToggleMonth: (month) => {
+                        const found = group.items.find((it) => it.month === month);
+                        if (found) toggleEntry(found.entryIndex);
+                      },
+                      onValueChange: (month, value) => {
+                        const found = group.items.find((it) => it.month === month);
+                        if (found) updateEntryValue(found.entryIndex, value);
+                      },
                     }}
                   />
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
             <div className="backfill-dialog__actions">
               <button
                 className="backfill-dialog__btn"

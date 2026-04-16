@@ -73,3 +73,22 @@
   color: #fff;
   border-color: var(--danger);
 }
+.agg-benefit-card__pending-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  grid-column: 1 / span 2;
+  cursor: pointer;
+}
+.agg-benefit-card__pending-value {
+  width: 72px;
+  padding: 2px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: right;
+  grid-column: 3 / span 2;
+  justify-self: end;
+}

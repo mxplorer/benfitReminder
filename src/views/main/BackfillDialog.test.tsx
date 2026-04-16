@@ -89,3 +89,83 @@ describe("BackfillDialog", () => {
     expect(screen.getByText("完成")).toBeInTheDocument();
   });
 });
+
+describe("BackfillDialog — monthly benefit aggregation", () => {
+  const makeCardWithMonthly = (): CreditCard => ({
+    id: "c1",
+    owner: "Test",
+    cardTypeSlug: "amex_platinum",
+    annualFee: 695,
+    cardOpenDate: "2024-10-01",
+    color: "#8E9EAF",
+    isEnabled: true,
+    benefits: [
+      {
+        id: "m1",
+        name: "DoorDash",
+        description: "",
+        faceValue: 10,
+        category: "dining",
+        resetType: "calendar",
+        resetConfig: { period: "monthly" },
+        isHidden: false,
+        rolloverable: false,
+        rolloverMaxYears: 0,
+        usageRecords: [],
+      },
+      {
+        id: "q1",
+        name: "Dining Credit",
+        description: "",
+        faceValue: 100,
+        category: "dining",
+        resetType: "calendar",
+        resetConfig: { period: "quarterly" },
+        isHidden: false,
+        rolloverable: false,
+        rolloverMaxYears: 0,
+        usageRecords: [],
+      },
+    ],
+  });
+
+  it("renders ONE aggregated row for a monthly benefit instead of 12 flat rows", () => {
+    render(<BackfillDialog card={makeCardWithMonthly()} onDone={vi.fn()} />);
+    // Single aggregated container for the monthly benefit
+    expect(screen.getByTestId("backfill-monthly-agg-m1")).toBeInTheDocument();
+    // No flat checkbox rows for any monthly period (all 12 months are behind the aggregator)
+    expect(screen.queryByText("2026-03")).toBeNull();
+    expect(screen.queryByText("2025-12")).toBeNull();
+    // Summary should show "已选 0 / N 个月"
+    expect(screen.getByText(/DoorDash · 已选 0 \//)).toBeInTheDocument();
+  });
+
+  it("keeps non-monthly benefits as flat rows on the same card", () => {
+    render(<BackfillDialog card={makeCardWithMonthly()} onDone={vi.fn()} />);
+    // Quarterly benefit still gets per-period flat rows (Dining Credit repeated)
+    const diningMatches = screen.getAllByText(/Dining Credit/);
+    expect(diningMatches.length).toBeGreaterThan(1);
+  });
+
+  it("toggling a month checkbox in the aggregated card flips the underlying entry state", () => {
+    render(<BackfillDialog card={makeCardWithMonthly()} onDone={vi.fn()} />);
+    // Expand the aggregated card
+    fireEvent.click(screen.getAllByTestId("agg-expand")[0]);
+    // Tick a specific month
+    fireEvent.click(screen.getByTestId("agg-pending-check-2026-03"));
+    // Summary should now reflect 1 checked
+    expect(screen.getByText(/DoorDash · 已选 1 \//)).toBeInTheDocument();
+    // Value input for that month should appear
+    expect(screen.getByTestId("agg-pending-value-2026-03")).toBeInTheDocument();
+  });
+
+  it("changing the value input for a checked month updates actualValue for that entry", () => {
+    render(<BackfillDialog card={makeCardWithMonthly()} onDone={vi.fn()} />);
+    fireEvent.click(screen.getAllByTestId("agg-expand")[0]);
+    fireEvent.click(screen.getByTestId("agg-pending-check-2026-03"));
+    const input = screen.getByTestId<HTMLInputElement>("agg-pending-value-2026-03");
+    expect(input.value).toBe("10");
+    fireEvent.change(input, { target: { value: "7" } });
+    expect(screen.getByTestId<HTMLInputElement>("agg-pending-value-2026-03").value).toBe("7");
+  });
+});

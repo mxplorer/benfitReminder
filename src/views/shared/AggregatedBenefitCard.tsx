@@ -3,6 +3,14 @@ import type { BenefitDisplayItem } from "../../utils/benefitDisplay";
 import { GlassContainer } from "./GlassContainer";
 import "./AggregatedBenefitCard.css";
 
+export interface AggregatedBenefitPending {
+  checkedMonths: Set<number> | number[];
+  values: Record<number, number>;
+  onToggleMonth: (month: number) => void;
+  onValueChange: (month: number, value: number) => void;
+  defaultExpanded?: boolean;
+}
+
 interface AggregatedBenefitCardProps {
   item: BenefitDisplayItem;
   onToggleUsage?: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
@@ -14,7 +22,14 @@ interface AggregatedBenefitCardProps {
     used: boolean,
     opts?: { actualValue?: number; usedDate?: string },
   ) => void;
+  pending?: AggregatedBenefitPending;
 }
+
+const monthNumFromCycleStart = (cycleStart: string): number =>
+  Number(cycleStart.slice(5, 7));
+
+const toCheckedSet = (m: Set<number> | number[]): Set<number> =>
+  m instanceof Set ? m : new Set(m);
 
 const buildSummary = (item: BenefitDisplayItem): string => {
   const agg = item.aggregate;
@@ -32,14 +47,27 @@ const buildSummary = (item: BenefitDisplayItem): string => {
   return `${name} · ${String(agg.months.length)} 个月 · 已用 ${String(agg.usedCount)} · 未用 ${String(agg.unusedCount)} · $${String(agg.totalActualValue)} / $${String(agg.totalFaceValue)}`;
 };
 
+const buildPendingSummary = (
+  item: BenefitDisplayItem,
+  pending: AggregatedBenefitPending,
+): string => {
+  const total = item.aggregate?.months.length ?? 0;
+  const checked = toCheckedSet(pending.checkedMonths).size;
+  return `${item.benefit.name} · 已选 ${String(checked)} / ${String(total)} 个月`;
+};
+
 export const AggregatedBenefitCard = ({
   item,
   onToggleUsage,
   onSetCycleUsed,
+  pending,
 }: AggregatedBenefitCardProps) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(pending?.defaultExpanded ?? false);
   const agg = item.aggregate;
   if (!agg) return null;
+
+  const pendingChecked = pending ? toCheckedSet(pending.checkedMonths) : null;
+  const summary = pending ? buildPendingSummary(item, pending) : buildSummary(item);
 
   return (
     <GlassContainer className="agg-benefit-card">
@@ -48,10 +76,49 @@ export const AggregatedBenefitCard = ({
         data-testid="agg-expand"
         onClick={() => { setExpanded((e) => !e); }}
       >
-        <span className="agg-benefit-card__summary-text">{buildSummary(item)}</span>
+        <span className="agg-benefit-card__summary-text">{summary}</span>
         <span className="agg-benefit-card__chevron">{expanded ? "▴" : "▾"}</span>
       </button>
-      {expanded && (
+      {expanded && pending && pendingChecked && (
+        <ul className="agg-benefit-card__rows">
+          {agg.months.map((m) => {
+            const monthNum = monthNumFromCycleStart(m.cycleStart);
+            const isChecked = pendingChecked.has(monthNum);
+            const value = pending.values[monthNum] ?? m.faceValue;
+            return (
+              <li
+                key={m.label}
+                data-testid={`agg-pending-row-${m.label}`}
+                className={`agg-benefit-card__row${isChecked ? " agg-benefit-card__row--used" : ""}`}
+              >
+                <label className="agg-benefit-card__row-label agg-benefit-card__pending-label">
+                  <input
+                    type="checkbox"
+                    data-testid={`agg-pending-check-${m.label}`}
+                    checked={isChecked}
+                    onChange={() => { pending.onToggleMonth(monthNum); }}
+                  />
+                  <span>{m.label}</span>
+                </label>
+                {isChecked ? (
+                  <input
+                    type="number"
+                    data-testid={`agg-pending-value-${m.label}`}
+                    className="agg-benefit-card__pending-value"
+                    value={value}
+                    onChange={(e) => {
+                      pending.onValueChange(monthNum, Number(e.target.value));
+                    }}
+                  />
+                ) : (
+                  <span className="agg-benefit-card__row-value">${String(m.faceValue)}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {expanded && !pending && (
         <ul className="agg-benefit-card__rows">
           {agg.months.map((m) => (
             <li
