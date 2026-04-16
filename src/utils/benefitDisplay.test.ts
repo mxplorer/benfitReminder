@@ -259,6 +259,42 @@ describe("expandBenefitsForFilter — 未使用", () => {
     const card = makeCard([b]);
     expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);
   });
+
+  it("excludes already-ended anniversary cycles (prior year's credit is forfeit)", () => {
+    // Regression: CSP-style hotel credit. Anniversary reset, card opened Feb 3.
+    // Today is April 16, 2026 — past the Feb 3 anniversary renewal, so the
+    // Feb 2025 – Feb 2 2026 cycle has ended. In calendar-2026 scope the old
+    // cycle still *overlaps* Jan 1 – Feb 2 2026, but its credit is no longer
+    // redeemable, so it must not appear in "未使用".
+    const apr16 = new Date(2026, 3, 16);
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "anniversary",
+      resetConfig: {},
+      faceValue: 50,
+      usageRecords: [{ usedDate: "2026-04-15", faceValue: 50, actualValue: 50 }],
+    });
+    const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2015-02-03" };
+    const items = expandBenefitsForFilter(card, "unused", apr16, "calendar");
+    // Neither 2025年度 (ended) nor 2026年度 (used) should appear as unused
+    expect(items).toHaveLength(0);
+  });
+
+  it("still shows current anniversary cycle as unused when no record", () => {
+    // Complement to the previous test: once the anniversary has renewed, the
+    // current cycle (no record yet) must appear as unused.
+    const apr16 = new Date(2026, 3, 16);
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "anniversary",
+      resetConfig: {},
+      faceValue: 50,
+      usageRecords: [],
+    });
+    const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2015-02-03" };
+    const items = expandBenefitsForFilter(card, "unused", apr16, "calendar");
+    expect(items.map((i) => i.periodLabel)).toEqual(["2026年度"]);
+  });
 });
 
 describe("expandBenefitsForFilter — 全部", () => {

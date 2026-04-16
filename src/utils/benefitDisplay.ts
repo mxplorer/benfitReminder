@@ -1,5 +1,5 @@
 import type { Benefit, CreditCard, UsageRecord } from "../models/types";
-import { isApplicableNow, isBenefitUsedInPeriod } from "./period";
+import { formatDate, isApplicableNow, isBenefitUsedInPeriod } from "./period";
 import { getScopeWindow, getScopeCycles, findCycleRecord } from "./cycles";
 import type { PeriodCycle } from "./cycles";
 import { latestHasPropagate } from "./usageRecords";
@@ -127,7 +127,12 @@ const expandUnused = (
         aggregate,
       });
     } else {
+      const todayIso = formatDate(today);
       for (const cycle of cycles) {
+        // Anniversary benefits allocate one credit per cycle. Once the cycle
+        // ends, that year's credit is forfeit and the cycle is no longer
+        // actionable — hide past cycles from "未使用".
+        if (b.resetType === "anniversary" && cycle.end < todayIso) continue;
         if (!findCycleRecord(b, cycle)) {
           items.push(perCycleItem(b, card, cycle, undefined));
         }
