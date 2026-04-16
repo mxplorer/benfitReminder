@@ -2,7 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let users view and edit a rollover benefit's accumulated amount on an already-created card, using a dedicated dialog launched from the BenefitCard row, while making the underlying `UsageRecord` discriminator unambiguous.
+**Goal:** Let users view and edit a rollover benefit's accumulated amount on an already-created card, using a dedicated dialog launched from the BenefitCard row, and replace the ambiguous `isRollover` flag on `UsageRecord` with a first-class `kind` discriminator.
+
+**Architecture:** A pure-function `generateRolloverRecords` already converts "accumulated amount" into N `kind: "rollover"` records. The new `RolloverEditDialog` wraps that function behind an atomic store action (`replaceRolloverRecords`) that deletes prior rollover records and emits a fresh set. Readers (`findCycleRecord`, `isBenefitUsedInPeriod`, `getAvailableValue`) are updated to branch on `record.kind`. A one-shot migration inside `migrateCards` converts legacy `isRollover: true` records, snaps their `usedDate` to the containing cycle start, dedupes duplicates, and deletes the legacy field.
+
+**Tech Stack:** TypeScript, React 19, Zustand, Vitest + React Testing Library.
 
 **Spec:** `docs/superpowers/specs/backlog-rollover-amount-edit.md`
 
@@ -14,15 +18,19 @@ After initial card creation there is no UI to revisit rollover amounts — `Back
 
 ---
 
-## 2. UI Approach — Recommendation
+## 2. UI Approach
 
-**Recommended: Dedicated `RolloverEditDialog` launched from a `⚙` button next to `↗` on rolloverable `BenefitCard` rows in the main desktop view.** The spec lists three candidates:
+**Decision: the existing `↗` button on `BenefitCard` is rewired to open the new `RolloverEditDialog` pre-filled with the current accumulated rollover amount.** No new `⚙` gear button is added — one entry point per rolloverable benefit row keeps the card visually clean and avoids splitting semantics across two controls. The spec's three candidates were: (1) repurpose `BackfillDialog`'s rollover step from a CardDetail entry point, (2) turn the `↗` button into an input prompt, (3) a full `BenefitDetail` page. Option 1 couples rollover editing to a multi-step card-onboarding flow we don't want to reopen. A bare `↗` prompt (option 2) can't show the `rolloverMaxYears` cap or a live preview. Option 3 is disproportionate for a single field. A dedicated dialog reuses `generateRolloverRecords`, reuses the input control shape from `BackfillDialog.tsx:229-238`, and gives room to show the max-years constraint and the derived record preview inline.
 
-1. Reuse `BackfillDialog`'s rollover step from a CardDetail entry point.
-2. Turn the `↗` button into a prompt.
-3. A full `BenefitDetail` page.
+### Pre-fill behaviour
 
-Option 2 forces a modal mindset on what is today a one-click shortcut, and a bare prompt cannot show `rolloverMaxYears` caps or a live record preview. Option 3 is disproportionate — rollover is the only property worth editing per-benefit right now. Option 1 couples rollover editing to a multi-step card-onboarding flow we don't want to reopen. A standalone dialog reuses `generateRolloverRecords` and the existing input control from `BackfillDialog.tsx:229-238`, keeps the `↗` quick-action intact, and gives us room to show the max-years constraint and the derived record list inline.
+When the dialog opens, the amount input is seeded from the current rollover state:
+`prefillAmount = (count of kind === "rollover" records) × benefit.faceValue`.
+Result: clicking `↗` on a benefit with no existing rollover shows an empty-state `0`; clicking on one already showing accumulated `$600` at `$300/year` seeds `600` and previews the two existing records.
+
+### Max-years reduction behaviour
+
+When the user types a lower amount (or when `benefit.rolloverMaxYears` has been reduced via the benefit editor), the preview regenerates via `generateRolloverRecords(benefit, newAmount, today)`, which already clamps to `rolloverMaxYears * PERIOD_MULTIPLIER[period]`. On save, `replaceRolloverRecords` atomically drops all prior `kind === "rollover"` records and appends the new set — **oldest over-cap records are silently pruned, no confirm prompt**. This is an explicit decision (see §7 Decisions).
 
 ### ASCII Mockup
 
@@ -44,13 +52,13 @@ Option 2 forces a modal mindset on what is today a one-click shortcut, and a bar
 └──────────────────────────────────────────────┘
 ```
 
-`BenefitCard` gains a `⚙` button only when `benefit.rolloverable === true`; clicking it opens the dialog. The `↗` quick button continues to mark the current cycle as rolled (see open question 1 for its long-term fate).
+The `↗` button remains on rolloverable `BenefitCard` rows (in `CardDetail` — tray views will continue to not pass `onEditRollover`) but its `onClick` now opens this dialog rather than writing a zero-value record. The old one-click "mark current cycle rolled" shortcut is subsumed: typing `faceValue` into the amount field and saving produces the equivalent single-record state, and doing so goes through the same validated code path as multi-year input.
 
 ---
 
 ## 3. Data Model Changes
 
-Add an unambiguous discriminator `kind` to `UsageRecord` so rollover records are first-class, and keep the legacy `isRollover` for one release to ease rollout.
+Replace the ambiguous optional `isRollover` boolean on `UsageRecord` with a first-class required `kind` discriminator. Legacy data is upgraded at load time by the migration (§4), so nothing in runtime code reads `isRollover`.
 
 ### Before (`src/models/types.ts:69-77`)
 
@@ -74,10 +82,6 @@ export interface UsageRecord {
   faceValue: number;
   actualValue: number;
   kind: UsageRecordKind;
-  /** @deprecated Use `kind === "rollover"`. Removed in the release after
-   *  2026-04-16-rollover-amount-edit ships. Retained one release for
-   *  JSON-file compatibility; migrations fill `kind` from it. */
-  isRollover?: boolean;
   propagateNext?: boolean;
 }
 ```
@@ -96,11 +100,11 @@ export interface UsageRecord {
 Extend `migrateCards` in `src/utils/migrations.ts` (mirror the `migrateAutoRecur` style, idempotent, one record at a time). Add a helper `migrateRolloverKind(benefit)`:
 
 1. For every `usageRecord` on every benefit:
-   - If `record.kind` is already set, leave it alone (idempotent short-circuit).
-   - If `record.isRollover === true`, set `kind = "rollover"`, force `faceValue = 0`, `actualValue = 0`, and snap `usedDate` to `getPeriodRangeAt(new Date(usedDate), benefit.resetConfig.period).start`. Skip the snap when `benefit.resetConfig.period` is undefined (non-calendar benefit — log a warn; such records should not exist but may be present in old test fixtures).
-   - Otherwise, set `kind = "usage"`.
-2. After the per-record pass, dedupe rollover records per cycle: group by `usedDate` within rollover records, keep the oldest `usedDate` occurrence, drop the rest (log a `debug`).
-3. Leave the legacy `isRollover` boolean in place — downstream code reads `kind`, migration keeps both until the field is dropped in a follow-up release.
+   - If `record.kind` is already set, leave it alone (idempotent short-circuit for already-migrated data).
+   - If `record.isRollover === true` (legacy input shape), produce a new record with `kind: "rollover"`, force `faceValue = 0` and `actualValue = 0`, snap `usedDate` to `getPeriodRangeAt(new Date(usedDate), benefit.resetConfig.period).start`, and **delete the `isRollover` property** (uses the same `omitKey` helper as `migrateAutoRecur`). Skip the snap when `benefit.resetConfig.period` is undefined (non-calendar benefit — log a warn; such records should not exist but may be present in old test fixtures).
+   - Otherwise (legacy usage record), produce a new record with `kind: "usage"`, preserve `usedDate` and values, delete any orphan `isRollover: false` property.
+2. After the per-record pass, dedupe rollover records per cycle: group by `usedDate` within `kind === "rollover"` records, keep the oldest `usedDate` occurrence, drop the rest (log `debug`).
+3. Legacy `isRollover` is deleted from every record as a side effect of the mapping in step 1 — no shadow field remains in live data.
 
 Migration runs inside `migrateCards` alongside `migrateAutoRecur` so it executes on every load and is a no-op once data is converted.
 
@@ -113,29 +117,30 @@ Each task is a single commit under 500 LOC of non-test changes, tests-first (see
 ### Task 1 — `UsageRecord.kind` type + constructor helpers
 
 **Files:**
-- Modify: `src/models/types.ts` (add `UsageRecordKind`, `kind` field, deprecation comment on `isRollover`)
-- Create: `src/utils/usageRecords.ts` additions — `makeUsageRecord()`, `makeRolloverRecord()` factories that enforce invariants.
-- Modify: `src/utils/usageRecords.test.ts` (factory unit tests)
+- Modify: `src/models/types.ts` (remove `isRollover`, add `UsageRecordKind` and required `kind` field)
+- Modify: `src/utils/usageRecords.ts` (add `makeUsageRecord()` and `makeRolloverRecord()` factories that enforce invariants)
+- Modify: `src/utils/usageRecords.test.ts`
 
 **Tests (Layer 1):**
-- Rollover factory rejects non-zero face/actual value.
-- Rollover factory snaps `usedDate` to period start.
-- Usage factory preserves input `usedDate`, rejects `kind` mismatch.
+- `makeRolloverRecord` rejects non-zero face/actual value.
+- `makeRolloverRecord` snaps `usedDate` to period start.
+- `makeUsageRecord` preserves input `usedDate`, rejects `kind` mismatch.
+- Type-level: removing `isRollover` is a compile break for any caller still reading it — fixed downstream in Task 3/4.
 
-### Task 2 — Migration: backfill `kind`, snap dates, dedupe
+### Task 2 — Migration: backfill `kind`, snap dates, dedupe, strip legacy field
 
 **Files:**
 - Modify: `src/utils/migrations.ts` (add `migrateRolloverKind`)
 - Modify: `src/utils/migrations.test.ts`
 
 **Tests (Layer 1):**
-- Legacy `isRollover: true` → `kind: "rollover"` + `usedDate` snapped to cycle start.
-- Legacy usage record → `kind: "usage"`, `usedDate` untouched.
+- Legacy `{ isRollover: true, usedDate: "2025-03-14" }` → `{ kind: "rollover", usedDate: <cycle start> }` with `isRollover` property deleted.
+- Legacy usage record → `{ kind: "usage", ...rest }`, `usedDate` untouched, `isRollover: false` stripped if present.
 - Two legacy rollover records in the same cycle → collapsed to one.
-- Idempotency: running migration twice yields identical output.
-- Record already tagged with `kind` is not mutated.
+- Idempotency: running migration twice yields identical output and property set.
+- Already-tagged record (`kind` present) is not mutated.
 
-### Task 3 — Read-side consumers stop treating rollover as usage
+### Task 3 — Read-side consumers branch on `kind`
 
 **Files:**
 - Modify: `src/utils/cycles.ts` — `findCycleRecord` gains an option `{ includeRollover?: boolean }` defaulting to `false`; existing callers opt in only where they need the rollover row.
@@ -150,9 +155,9 @@ Each task is a single commit under 500 LOC of non-test changes, tests-first (see
 ### Task 4 — Writers emit `kind`
 
 **Files:**
-- Modify: `src/stores/useCardStore.ts` — `rolloverBenefit` writes `kind: "rollover"`, snaps `usedDate` to current period start, and refuses to create a duplicate in the same cycle (silent no-op, returns state unchanged with a debug log).
-- Modify: `src/utils/rollover.ts` — `generateRolloverRecords` emits `kind: "rollover"` alongside `isRollover: true` for the deprecation window.
-- Modify: `src/views/main/BackfillDialog.tsx` — no behavior change, pass records through unchanged; add test that emitted records have `kind`.
+- Modify: `src/stores/useCardStore.ts` — `rolloverBenefit` is deprecated in favour of dialog-driven writes (kept for back-compat during the same commit window, but it now writes `kind: "rollover"`, snaps `usedDate` to current period start, and refuses to create a duplicate in the same cycle — silent no-op, debug log).
+- Modify: `src/utils/rollover.ts` — `generateRolloverRecords` emits `kind: "rollover"` (no `isRollover` field anywhere).
+- Modify: `src/views/main/BackfillDialog.tsx` — no behavior change; add a test asserting emitted records carry `kind`.
 
 **Tests (Layer 2 — store integration):**
 - `rolloverBenefit` twice in the same cycle → only one record.
@@ -162,14 +167,15 @@ Each task is a single commit under 500 LOC of non-test changes, tests-first (see
 
 **Files:**
 - Modify: `src/stores/useCardStore.ts` — add:
-  - `replaceRolloverRecords(cardId, benefitId, rolloverAmount)` — atomically drop all existing `kind === "rollover"` records on that benefit, then append the output of `generateRolloverRecords(benefit, rolloverAmount, today)`.
-  - `clearRolloverRecords(cardId, benefitId)` — drop all `kind === "rollover"` records.
+  - `replaceRolloverRecords(cardId, benefitId, rolloverAmount)` — atomically drops all existing `kind === "rollover"` records on that benefit, then appends the output of `generateRolloverRecords(benefit, rolloverAmount, today)`. Natural consequence: when `rolloverAmount` implies fewer cycles than currently stored, oldest records are pruned by virtue of regeneration.
+  - `clearRolloverRecords(cardId, benefitId)` — drops all `kind === "rollover"` records.
 - Modify: `src/stores/useCardStore.test.ts`
 
 **Tests (Layer 2):**
 - `replaceRolloverRecords` is idempotent on identical amount.
-- `replaceRolloverRecords` clamps to `rolloverMaxYears * PERIOD_MULTIPLIER[period]` (delegated to `generateRolloverRecords`).
-- Reducing the amount removes oldest rollover records first (implicit via regeneration).
+- `replaceRolloverRecords` clamps to `rolloverMaxYears * PERIOD_MULTIPLIER[period]`.
+- Reducing the amount removes oldest rollover records (regression for the max-years prune decision).
+- Reducing `rolloverMaxYears` below existing rollover-record count and then calling `replaceRolloverRecords` with the prior amount silently prunes records beyond the new cap (no error, no confirm).
 - `clearRolloverRecords` leaves non-rollover records intact.
 
 ### Task 6 — `RolloverEditDialog` component
@@ -180,29 +186,31 @@ Each task is a single commit under 500 LOC of non-test changes, tests-first (see
 - Create: `src/views/main/RolloverEditDialog.css`
 
 **Tests (Layer 3):**
+- Opens with amount seeded from `(rollover record count × faceValue)`.
 - Preview list updates when amount changes.
 - Save invokes `replaceRolloverRecords` with the typed amount.
 - Cancel closes without dispatching.
 - Clear invokes `clearRolloverRecords`.
 - Amount above `rolloverMaxYears * faceValue * periodsPerYear` is capped in the preview (delegates to `generateRolloverRecords`).
-- Non-rolloverable benefit rendering is blocked by an invariant check (dev warning, renders nothing).
+- Lowering implicit years via amount reduction → preview shrinks, save prunes; dialog never prompts.
+- **Non-rolloverable guard:** the component contract requires `benefit.rolloverable === true`. Mechanism: in development (`import.meta.env.DEV`) the component asserts on mount and throws to fail tests loudly; in production it logs a `warn` via `createLogger("views.rollover-dialog")` and renders `null`. Test covers both branches by toggling `import.meta.env.DEV`.
 
-### Task 7 — Entry point in `CardDetail` / `BenefitCard`
+### Task 7 — Entry point: `↗` button rewired in `CardDetail`
 
 **Files:**
-- Modify: `src/views/shared/BenefitCard.tsx` — add optional `onEditRollover?: (cardId, benefitId) => void` prop; render `⚙` action button only when `benefit.rolloverable` and the handler is supplied.
-- Modify: `src/views/main/CardDetail.tsx` — wire the new handler; own dialog open state.
-- Modify: `src/views/shared/BenefitCard.test.tsx` — button appears only for rolloverable benefits, clicking it calls the handler.
+- Modify: `src/views/shared/BenefitCard.tsx` — add optional `onEditRollover?: (cardId, benefitId) => void` prop; when supplied, the existing `↗` button's `onClick` calls it instead of `onRollover`. The `↗` button remains visually identical. Tray views (which do not pass `onEditRollover`) fall back to the legacy `onRollover` path until they are retired.
+- Modify: `src/views/main/CardDetail.tsx` — owns dialog open state and wires `onEditRollover`; removes the direct `rolloverBenefit` prop passthrough for the main view.
+- Modify: `src/views/shared/BenefitCard.test.tsx` — click on `↗` invokes the new handler when supplied.
 
 **Tests (Layer 3):**
-- `⚙` button only visible on rolloverable benefits.
-- Click opens dialog with correct pre-filled amount (sum of existing rollover records × faceValue).
-- Tray-view `BenefitCard` (`ByUrgencyView.tsx`) is unchanged because it does not pass `onEditRollover` — explicit test that the gear is absent there.
+- In `CardDetail`, clicking `↗` opens the dialog pre-filled with current accumulated amount.
+- In tray `ByUrgencyView`, `↗` still marks the cycle as rolled (no regression) because `onEditRollover` is not supplied.
+- Dialog close returns focus to the `↗` button (keyboard-navigable).
 
 ### Task 8 — Docs
 
 **Files:**
-- Modify: `docs/dev/modules/rollover.md` (or create if missing) — document `kind` discriminator, invariants, writer/reader contracts, deprecation schedule for `isRollover`.
+- Modify: `docs/dev/modules/rollover.md` (or create if missing) — document `kind` discriminator, invariants, writer/reader contracts, and the `↗`-opens-dialog entry point.
 - Modify: `docs/dev/architecture.md` — add `RolloverEditDialog` to the main-view module map.
 - Modify: `docs/superpowers/specs/backlog-rollover-amount-edit.md` — mark as shipped; link to this plan.
 
@@ -214,8 +222,8 @@ No tests.
 
 ### Layer 1 — Pure logic (`src/utils/*.test.ts`)
 
-- Migration: legacy → `kind` mapping, date snapping per period (monthly / quarterly / semi_annual / annual / every_4_years), idempotency, dedupe.
-- `generateRolloverRecords`: every output record has `kind: "rollover"`, `usedDate` aligns to period start, max-years clamp respected.
+- Migration: legacy `isRollover: true` → `kind: "rollover"` with the `isRollover` property deleted; date snapping per period (monthly / quarterly / semi_annual / annual / every_4_years); idempotency; dedupe.
+- `generateRolloverRecords`: every output record has `kind: "rollover"`, no `isRollover` field, `usedDate` aligns to period start, max-years clamp respected.
 - `isBenefitUsedInPeriod`: rollover-only current cycle → false (regression).
 - `getAvailableValue`: driven by `kind` not `isRollover`.
 - Factory invariants: face/actual must be 0 for rollover; date snapped; `kind` mandatory.
@@ -223,24 +231,29 @@ No tests.
 ### Layer 2 — Store integration (`src/stores/useCardStore.test.ts`, `tests/store-integration.test.ts`)
 
 - `replaceRolloverRecords` sequence: start empty → set 600 → set 300 → clear. Assert record count and `kind` at each step.
+- **Max-years prune:** benefit with 3 rollover records and `rolloverMaxYears: 3`; reduce to `rolloverMaxYears: 1`; call `replaceRolloverRecords` with amount matching the old count; assert only 1 record remains (oldest pruned), no error.
 - `rolloverBenefit` called twice in the same cycle → single record (duplicate-guard).
-- JSON round-trip with a rollover record: save, load, migration no-ops, equality holds.
-- Reducing `rolloverMaxYears` below existing rollover count: test the chosen behavior (see open question 3) — either oldest pruned on next `replaceRolloverRecords`, or a flag surfaced for the UI to prompt.
+- JSON round-trip with a rollover record: save, load, migration no-ops, equality holds; no `isRollover` field anywhere in serialised output.
 
 ### Layer 3 — Component (`src/views/main/RolloverEditDialog.test.tsx`, `src/views/shared/BenefitCard.test.tsx`)
 
-- Dialog preview updates live as user types amount / hypothetical max-years change.
+- Dialog preview updates live as user types amount.
+- Dialog opens pre-filled when existing rollover records exist; empty otherwise.
 - Save button dispatches with typed amount and closes dialog.
 - Clear button dispatches `clearRolloverRecords` and closes dialog.
 - Cancel closes without dispatching.
-- Gear button visibility scoped to rolloverable benefits in `CardDetail` only, not in tray views.
+- Lowering amount past existing record count → preview shrinks, save prunes silently (no confirm rendered).
+- Non-rolloverable guard: in DEV, rendering the dialog with a non-rolloverable benefit throws on mount; in prod, it logs warn and renders null. Both assertions run via `vi.stubEnv`.
+- `↗` entry point: in `CardDetail` opens the dialog; in `ByUrgencyView` still calls legacy `onRollover`.
 
 ---
 
-## 7. Open Questions
+## 7. Decisions (previously open questions)
 
-1. **`↗` quick button fate.** Keep as-is (one-click "rollover current cycle" marker alongside the new `⚙` dialog), remove it now that the dialog can do more, or change it to open the dialog pre-filled with `faceValue` as a shortcut? Current plan keeps it untouched; confirm.
+1. **`↗` quick button:** its `onClick` now opens `RolloverEditDialog` pre-filled with the current accumulated amount. No separate `⚙` gear is added — one entry point per rolloverable row.
+2. **Legacy `isRollover`:** deleted immediately. `UsageRecord.kind` is the only discriminator in live code; the migration strips `isRollover` from any legacy record it touches. No deprecation window.
+3. **`rolloverMaxYears` reduction:** oldest over-cap rollover records are silently pruned on the next `replaceRolloverRecords` save. No confirm prompt.
 
-2. **Deprecation policy for legacy `isRollover`.** Options: (a) keep both fields for exactly one release, then drop `isRollover` and remove the deprecation comment; (b) drop `isRollover` immediately and rely entirely on migration; (c) keep indefinitely. Current plan is (a). Confirm the target release / tag to drop it.
+## 8. Open Questions
 
-3. **`rolloverMaxYears` reduction handling.** When the user lowers `rolloverMaxYears` via the benefit editor and the existing rollover-record count exceeds the new cap, do we silently prune oldest records at the next `replaceRolloverRecords`/save, prompt the user with a confirm, or leave the over-cap records alone until the user opens the dialog? Current plan is silent prune on save inside `replaceRolloverRecords` (natural consequence of regenerating from amount) — but an explicit prompt may be safer. Confirm.
+None at the time of writing. New questions that arise during implementation should be surfaced before the relevant task commits.
