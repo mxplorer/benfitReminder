@@ -3,7 +3,7 @@ import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { CardChip } from "../shared/CardChip";
-import { isBenefitUsedInPeriod, isApplicableNow } from "../../utils/period";
+import { isBenefitUsedInPeriod, isInCurrentCycle } from "../../utils/period";
 import { latestHasPropagate } from "../../utils/usageRecords";
 import type { ActiveView } from "./MainWindow";
 
@@ -25,7 +25,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
       if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;
-      if (!isApplicableNow(benefit, today)) continue;
+      if (!isInCurrentCycle(benefit, today)) continue;
       if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
       count++;
     }

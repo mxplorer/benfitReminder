@@ -6,7 +6,7 @@ import {
   getDeadline,
   getDaysRemaining,
   isBenefitUsedInPeriod,
-  isApplicableNow,
+  isInCurrentCycle,
 } from "../../utils/period";
 import { latestHasPropagate } from "../../utils/usageRecords";
 import { CardChip } from "../shared/CardChip";
@@ -26,7 +26,7 @@ export const ByUrgencyView = () => {
     if (!card.isEnabled) continue;
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
-      if (!isApplicableNow(benefit, today)) continue;
+      if (!isInCurrentCycle(benefit, today)) continue;
       if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
       // Skip auto-recur subscriptions (they're handled automatically)
       if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;

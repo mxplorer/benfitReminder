@@ -1,5 +1,5 @@
 import type { Benefit, CreditCard, UsageRecord } from "../models/types";
-import { formatDate, isApplicableNow, isBenefitUsedInPeriod } from "./period";
+import { formatDate, isApplicableNow, isBenefitUsedInPeriod, isInCurrentCycle } from "./period";
 import { getScopeWindow, getScopeCycles, findCycleRecord } from "./cycles";
 import type { PeriodCycle } from "./cycles";
 import { latestHasPropagate } from "./usageRecords";
@@ -108,7 +108,7 @@ const expandUnused = (
   for (const b of card.benefits) {
     if (b.isHidden) continue;
     if (isStandardOnly(b)) {
-      if (!isApplicableNow(b, today)) continue;
+      if (!isInCurrentCycle(b, today)) continue;
       if (isBenefitUsedInPeriod(b, today, card.cardOpenDate, card.statementClosingDay)) continue;
       items.push(standardItem(b, card));
       continue;

@@ -1,5 +1,5 @@
 import type { CreditCard } from "../models/types";
-import { isApplicableNow, isBenefitUsedInPeriod } from "./period";
+import { isBenefitUsedInPeriod, isInCurrentCycle } from "./period";
 import { getBenefitsDueForReminder } from "./reminder";
 
 export type TrayState = "clean" | "unused" | "urgent";
@@ -28,7 +28,7 @@ export const computeTrayStatus = (
     if (!card.isEnabled) continue;
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
-      if (!isApplicableNow(benefit, today)) continue;
+      if (!isInCurrentCycle(benefit, today)) continue;
       if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) {
         continue;
       }

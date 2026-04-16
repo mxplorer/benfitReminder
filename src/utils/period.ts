@@ -231,6 +231,21 @@ export const isApplicableNow = (benefit: Benefit, today: Date): boolean => {
   return true;
 };
 
+// Like isApplicableNow, but for one_time benefits only gates on expiresDate.
+// A future-dated one_time benefit (today < availableFromDate) is still in the
+// current cycle — users should see it in "unused" lists so upcoming benefits
+// aren't missed. Non-one_time behavior is identical to isApplicableNow.
+export const isInCurrentCycle = (benefit: Benefit, today: Date): boolean => {
+  if (benefit.resetType === "one_time") {
+    const todayIso = formatDate(today);
+    if (benefit.resetConfig.expiresDate && todayIso > benefit.resetConfig.expiresDate) {
+      return false;
+    }
+    return true;
+  }
+  return isApplicableNow(benefit, today);
+};
+
 export interface DeadlineInput {
   resetType: ResetType;
   resetConfig: ResetConfig;

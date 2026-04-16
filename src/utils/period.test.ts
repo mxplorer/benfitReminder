@@ -7,6 +7,7 @@ import {
   getMonthRange,
   isBenefitUsedInPeriod,
   isApplicableNow,
+  isInCurrentCycle,
   getDeadline,
   getDaysRemaining,
   getAnniversaryStatementClosingRange,
@@ -413,6 +414,55 @@ describe("isApplicableNow", () => {
       resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
     });
     expect(isApplicableNow(benefit, d("2027-01-01"))).toBe(false);
+  });
+});
+
+describe("isInCurrentCycle", () => {
+  it("returns true for one_time benefit when today is before availableFromDate but on or before expiresDate", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    expect(isInCurrentCycle(benefit, d("2026-04-16"))).toBe(true);
+  });
+
+  it("returns false for one_time benefit when today is after expiresDate", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    expect(isInCurrentCycle(benefit, d("2027-01-01"))).toBe(false);
+  });
+
+  it("returns true for one_time benefit when today is within [availableFromDate, expiresDate]", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    expect(isInCurrentCycle(benefit, d("2026-09-15"))).toBe(true);
+  });
+
+  it("returns true for one_time benefit with no expiresDate even far before availableFromDate", () => {
+    const benefit = makeBenefit({
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2030-01-01" },
+    });
+    expect(isInCurrentCycle(benefit, d("2026-04-16"))).toBe(true);
+  });
+
+  it("matches isApplicableNow for calendar benefit in current month", () => {
+    const benefit = makeBenefit({ resetConfig: { period: "monthly" } });
+    const today = d("2026-04-10");
+    expect(isInCurrentCycle(benefit, today)).toBe(isApplicableNow(benefit, today));
+  });
+
+  it("matches isApplicableNow for calendar benefit outside applicableMonths", () => {
+    const benefit = makeBenefit({
+      resetConfig: { period: "semi_annual", applicableMonths: [1, 2, 3, 4, 5, 6] },
+    });
+    const today = d("2026-10-15");
+    expect(isInCurrentCycle(benefit, today)).toBe(isApplicableNow(benefit, today));
+    expect(isInCurrentCycle(benefit, today)).toBe(false);
   });
 });
 
