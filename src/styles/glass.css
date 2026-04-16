@@ -162,6 +162,21 @@
   background: var(--tag-info-bg, rgba(0, 122, 255, 0.12));
 }
 
+.benefit-card__rollover-icon {
+  font-size: 1.35em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.benefit-card__rollover-edit-btn {
+  color: var(--text-secondary);
+}
+
+.benefit-card__rollover-edit-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 .benefit-card__actions {
   display: flex;
   align-items: center;

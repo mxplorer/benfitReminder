@@ -198,6 +198,63 @@ describe("BenefitCard", () => {
     expect(handler).toHaveBeenCalledWith("c1", "b1");
   });
 
+  it("renders edit-rollover gear button when onEditRollover is supplied and benefit is rolloverable", () => {
+    const benefit = makeBenefit({ rolloverable: true, rolloverMaxYears: 2 });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onRollover={vi.fn()}
+        onEditRollover={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("编辑 rollover 额度")).toBeInTheDocument();
+  });
+
+  it("does not render edit-rollover gear when onEditRollover is omitted", () => {
+    const benefit = makeBenefit({ rolloverable: true, rolloverMaxYears: 2 });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onRollover={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("编辑 rollover 额度")).not.toBeInTheDocument();
+  });
+
+  it("does not render edit-rollover gear when benefit is not rolloverable", () => {
+    const benefit = makeBenefit({ rolloverable: false });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onEditRollover={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("编辑 rollover 额度")).not.toBeInTheDocument();
+  });
+
+  it("fires onEditRollover with (cardId, benefitId) when gear is clicked", () => {
+    const handler = vi.fn();
+    const benefit = makeBenefit({ id: "b1", rolloverable: true, rolloverMaxYears: 2 });
+    const card = makeCard({ id: "c1" });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={vi.fn()}
+        onRollover={vi.fn()}
+        onEditRollover={handler}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("编辑 rollover 额度"));
+    expect(handler).toHaveBeenCalledWith("c1", "b1");
+  });
+
   it("shows accumulated value when rollover records exist", () => {
     // Today is 2026-04-25 → Q2. Q1 was rolled → available = 300 + 300 = 600
     const benefit = makeBenefit({

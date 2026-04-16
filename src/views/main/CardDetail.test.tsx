@@ -139,6 +139,67 @@ describe("CardDetail filter integration", () => {
   });
 });
 
+describe("CardDetail rollover edit dialog", () => {
+  it("clicking ⚙ gear opens dialog pre-filled with accumulated past-cycle amount", () => {
+    useCardStore.setState({
+      cards: [
+        makeCard({
+          benefits: [
+            makeBenefit({
+              id: "b1",
+              name: "Airline Credit",
+              faceValue: 300,
+              rolloverable: true,
+              rolloverMaxYears: 3,
+              resetType: "calendar",
+              resetConfig: { period: "annual" },
+              usageRecords: [
+                { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+                { usedDate: "2024-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+
+    fireEvent.click(screen.getByLabelText("编辑 rollover 额度"));
+
+    const input = screen.getByLabelText(/accumulated/i);
+    expect(input).toBeInTheDocument();
+    expect((input as HTMLInputElement).value).toBe("600");
+  });
+
+  it("clicking Cancel in dialog closes it without touching records", () => {
+    useCardStore.setState({
+      cards: [
+        makeCard({
+          benefits: [
+            makeBenefit({
+              id: "b1",
+              faceValue: 300,
+              rolloverable: true,
+              rolloverMaxYears: 2,
+              resetType: "calendar",
+              resetConfig: { period: "annual" },
+              usageRecords: [
+                { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+    fireEvent.click(screen.getByLabelText("编辑 rollover 额度"));
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(screen.queryByLabelText(/accumulated/i)).toBeNull();
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
+  });
+});
+
 describe("CardDetail cycle-scoped toggle integration", () => {
   it("unchecking a past quarterly cycle in 全部 removes that cycle's record, not today's", () => {
     useCardStore.setState({

@@ -13,6 +13,7 @@ import { GlassContainer } from "../shared/GlassContainer";
 import { BenefitCard } from "../shared/BenefitCard";
 import { BenefitFilterBar } from "../shared/BenefitFilterBar";
 import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
+import { RolloverEditDialog } from "./RolloverEditDialog";
 import type { ActiveView } from "./MainWindow";
 import "./CardDetail.css";
 
@@ -33,6 +34,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const getCardType = useCardTypeStore((s) => s.getCardType);
   const [filter, setFilter] = useState<FilterMode>("available");
   const [scope, setScope] = useState<YearScope>("calendar");
+  const [editRolloverBenefitId, setEditRolloverBenefitId] = useState<string | null>(null);
   const today = useToday();
 
   const card = cards.find((c) => c.id === cardId);
@@ -147,6 +149,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
               onToggleUsage={toggleBenefitUsage}
               onSetCycleUsed={setBenefitCycleUsed}
               onRollover={rolloverBenefit}
+              onEditRollover={(_cardId, benefitId) => { setEditRolloverBenefitId(benefitId); }}
               onToggleHidden={toggleBenefitHidden}
               onDelete={removeBenefit}
               periodLabel={item.periodLabel}
@@ -162,6 +165,18 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
           onClick={() => { onNavigate({ type: "benefit-editor", cardId }); }}
         >+ 添加 Benefit</button>
       </div>
+
+      {editRolloverBenefitId && (() => {
+        const editing = card.benefits.find((b) => b.id === editRolloverBenefitId);
+        if (!editing) return null;
+        return (
+          <RolloverEditDialog
+            card={card}
+            benefit={editing}
+            onClose={() => { setEditRolloverBenefitId(null); }}
+          />
+        );
+      })()}
 
       <div className="card-detail__history-section">
         <span className="card-detail__section-title">使用历史</span>
