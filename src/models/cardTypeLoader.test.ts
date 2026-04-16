@@ -57,6 +57,7 @@ describe("mergeCardTypes", () => {
     defaultAnnualFee: 100,
     color: "#000",
     isBuiltin: true,
+    version: 0,
     defaultBenefits: [],
   };
 
@@ -66,6 +67,7 @@ describe("mergeCardTypes", () => {
     defaultAnnualFee: 50,
     color: "#FFF",
     isBuiltin: false,
+    version: 0,
     defaultBenefits: [],
   };
 

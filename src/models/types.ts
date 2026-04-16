@@ -42,6 +42,7 @@ export interface ResetConfig {
 }
 
 export interface BenefitTemplate {
+  templateBenefitId: string;
   name: string;
   description: string;
   faceValue: number;
@@ -59,6 +60,7 @@ export interface CardType {
   color: string;
   image?: string;       // optional card face image URL
   isBuiltin: boolean;   // true for built-in, false for user-created
+  version: number;
   defaultBenefits: BenefitTemplate[];
 }
 
@@ -76,6 +78,7 @@ export interface UsageRecord {
 
 export interface Benefit {
   id: string;
+  templateBenefitId?: string;
   name: string;
   description: string;
   faceValue: number;
@@ -86,6 +89,8 @@ export interface Benefit {
   rolloverable: boolean;
   rolloverMaxYears: number;
   usageRecords: UsageRecord[];
+  expired?: boolean;
+  expiredAt?: string;
 }
 
 export interface CreditCard {
@@ -103,6 +108,7 @@ export interface CreditCard {
   /** Day of month (1-31) that the card's statement closes. Used by
    * resetsAtStatementClose benefits. Clamped to last day of short months. */
   statementClosingDay?: number;
+  templateVersion?: number;
 }
 
 export interface AppSettings {

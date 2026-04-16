@@ -51,6 +51,7 @@ describe("CardType", () => {
       defaultBenefits: [],
       image: "/path.webp",
       isBuiltin: true,
+      version: 0,
     };
     expect(ct.image).toBe("/path.webp");
     expect(ct.isBuiltin).toBe(true);
@@ -64,6 +65,7 @@ describe("CardType", () => {
       color: "#000",
       defaultBenefits: [],
       isBuiltin: false,
+      version: 0,
     };
     expect(ct.image).toBeUndefined();
   });

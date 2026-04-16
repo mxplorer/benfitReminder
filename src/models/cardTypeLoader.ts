@@ -26,6 +26,7 @@ export const parseCardTypeJson = (raw: unknown): Omit<CardType, "isBuiltin"> => 
     name: obj.name,
     defaultAnnualFee: typeof obj.defaultAnnualFee === "number" ? obj.defaultAnnualFee : 0,
     color: obj.color,
+    version: typeof obj.version === "number" ? obj.version : 0,
     defaultBenefits: Array.isArray(obj.defaultBenefits)
       ? (obj.defaultBenefits as BenefitTemplate[])
       : [],

@@ -29,8 +29,10 @@ beforeEach(() => {
         defaultAnnualFee: 895,
         color: "#8E9EAF",
         isBuiltin: true,
+        version: 0,
         defaultBenefits: [
           {
+            templateBenefitId: "test",
             name: "$200 Airline Fee Credit",
             description: "Annual airline fee credit",
             faceValue: 200,

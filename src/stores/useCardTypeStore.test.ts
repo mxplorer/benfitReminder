@@ -9,6 +9,7 @@ const mockBuiltin: CardType = {
   color: "#8E9EAF",
   image: "/amex.webp",
   isBuiltin: true,
+  version: 0,
   defaultBenefits: [],
 };
 
@@ -18,6 +19,7 @@ const mockUser: CardType = {
   defaultAnnualFee: 200,
   color: "#FF0000",
   isBuiltin: false,
+  version: 0,
   defaultBenefits: [],
 };
 
