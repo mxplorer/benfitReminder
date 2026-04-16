@@ -243,13 +243,18 @@ export const syncAllCardsWithTemplates = (
     if (!template) return card;
 
     const result = syncCardWithTemplate(card, template, today);
-    if (result.changes.length > 0) {
+    // Detect any card mutation: field diffs, additions, expirations, or
+    // metadata-only updates like templateVersion/templateBenefitId bootstrap
+    // on a legacy card (changes array may be empty in that case).
+    if (result.card !== card) {
       hasChanges = true;
-      logger.debug("Card synced with template", {
-        cardId: card.id,
-        slug: card.cardTypeSlug,
-        changes: result.changes,
-      });
+      if (result.changes.length > 0) {
+        logger.debug("Card synced with template", {
+          cardId: card.id,
+          slug: card.cardTypeSlug,
+          changes: result.changes,
+        });
+      }
     }
     return result.card;
   });
