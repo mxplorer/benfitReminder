@@ -1,6 +1,10 @@
 import { createLogger } from "../lib/logger";
 import { parseCardTypeJson } from "../models/cardTypeLoader";
 import type { CardType } from "../models/types";
+import { syncAllCardsWithTemplates } from "../utils/templateSync";
+import { useCardStore } from "../stores/useCardStore";
+import { useCardTypeStore } from "../stores/useCardTypeStore";
+import { formatDate } from "../utils/period";
 
 const logger = createLogger("tauri.cardTypePersistence");
 const CARD_TYPES_DIR = "card-types";
@@ -114,6 +118,44 @@ export const saveUserCardType = async (cardType: CardType): Promise<void> => {
   const jsonPath = await join(typesDir, `${cardType.slug}.json`);
   await writeTextFile(jsonPath, serializeUserCardType(cardType));
   logger.info("User card type saved", { slug: cardType.slug });
+};
+
+/**
+ * Save a user card type with auto-incremented version, backfill missing
+ * `templateBenefitId`s, persist to disk, refresh the registry, then re-sync
+ * any cards using this template.
+ */
+export const saveAndSyncUserCardType = async (cardType: CardType): Promise<CardType> => {
+  const updated: CardType = {
+    ...cardType,
+    version: cardType.version + 1,
+    defaultBenefits: cardType.defaultBenefits.map((b) => ({
+      ...b,
+      templateBenefitId: b.templateBenefitId || crypto.randomUUID(),
+    })),
+  };
+
+  // Persist template (no-op outside Tauri)
+  await saveUserCardType(updated);
+
+  // Refresh registry — addUserCardType throws on collision, so remove first
+  try {
+    useCardTypeStore.getState().removeUserCardType(updated.slug);
+  } catch {
+    // not registered yet — fine
+  }
+  useCardTypeStore.getState().addUserCardType(updated);
+
+  // Re-sync any cards using this template
+  const cards = useCardStore.getState().cards;
+  const templates = useCardTypeStore.getState().cardTypes;
+  const today = formatDate(new Date());
+  const result = syncAllCardsWithTemplates(cards, templates, today);
+  if (result.hasChanges) {
+    useCardStore.getState().loadData(result.cards, useCardStore.getState().settings);
+  }
+
+  return updated;
 };
 
 /**
