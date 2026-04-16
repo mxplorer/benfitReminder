@@ -63,6 +63,10 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
         ))}
       </div>
 
+      <span className="dashboard__scope-caption" data-testid="summary-scope-caption">
+        按日历年 · {String(selectedYear)}-01-01 ~ {String(selectedYear)}-12-31
+      </span>
+
       <div className="dashboard__roi-summary" data-testid="roi-summary">
         <GlassContainer className="dashboard__roi-cell">
           <span className="dashboard__roi-label">总年费</span>
@@ -86,6 +90,9 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
 
       <div className="dashboard__cards-section">
         <span className="dashboard__section-title">各卡回本进度</span>
+        <span className="dashboard__scope-caption" data-testid="cards-scope-caption">
+          按各卡当前会员年(以开卡纪念日为界)
+        </span>
         {enabledCards.map((card) => {
           const roi = calculateCardROI(card, today);
           const progressPct = card.annualFee > 0

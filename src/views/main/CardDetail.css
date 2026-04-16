@@ -80,6 +80,13 @@
   background: rgba(255, 59, 48, 0.1);
 }
 
+/* Scope caption under the ROI strip header */
+.card-detail__scope-caption {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: -16px;
+}
+
 /* ROI strip */
 .card-detail__roi-strip {
   display: grid;

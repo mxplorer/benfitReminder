@@ -64,6 +64,12 @@
   gap: 4px;
 }
 
+.dashboard__scope-caption {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: -16px;
+}
+
 .dashboard__roi-label {
   font-size: 12px;
   color: var(--text-secondary);

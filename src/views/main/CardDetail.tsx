@@ -3,7 +3,7 @@ import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
-import { calculateCardROI } from "../../utils/roi";
+import { calculateCardROI, getMembershipYearRange } from "../../utils/roi";
 import {
   expandBenefitsForFilter,
   type FilterMode,
@@ -41,6 +41,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   if (!card) return <p>卡片未找到</p>;
 
   const roi = calculateCardROI(card, today);
+  const membershipRange = getMembershipYearRange(card.cardOpenDate, today);
   const items = expandBenefitsForFilter(card, filter, today, scope);
 
   const allRecords = card.benefits
@@ -94,6 +95,10 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
           data-testid="delete-card-btn"
         >删除</button>
       </GlassContainer>
+
+      <span className="card-detail__scope-caption" data-testid="roi-scope-caption">
+        会员年 {membershipRange.start} ~ {membershipRange.end}
+      </span>
 
       <div className="card-detail__roi-strip" data-testid="roi-strip">
         <GlassContainer className="card-detail__roi-cell">
