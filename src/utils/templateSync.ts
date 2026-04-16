@@ -1,4 +1,5 @@
 import type { Benefit, BenefitTemplate, CreditCard, CardType } from "../models/types";
+import { formatDate } from "./period";
 
 export interface SyncChange {
   type: "added" | "modified" | "expired" | "cleaned";
@@ -84,7 +85,7 @@ const getNextAnniversaryAfter = (cardOpenDate: string, afterDate: string): strin
   if (candidate <= after) {
     candidate = new Date(after.getFullYear() + 1, month, day);
   }
-  return candidate.toISOString().slice(0, 10);
+  return formatDate(candidate);
 };
 
 export const syncCardWithTemplate = (

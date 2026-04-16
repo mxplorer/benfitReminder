@@ -369,4 +369,74 @@ describe("syncCardWithTemplate", () => {
     // No "modified" change because all fields are identical
     expect(result.changes).toHaveLength(0);
   });
+
+  it("removes expired benefits exactly on the anniversary date (boundary)", () => {
+    const template = makeTemplate({
+      version: 2,
+      defaultBenefits: [],
+    });
+    const card = makeCard({
+      templateVersion: 2,
+      cardOpenDate: "2025-06-15",
+      benefits: [
+        {
+          id: "b-1",
+          templateBenefitId: "benefit_a",
+          name: "Benefit A",
+          description: "Desc A",
+          faceValue: 100,
+          category: "travel",
+          resetType: "calendar",
+          resetConfig: { period: "annual" },
+          isHidden: false,
+          rolloverable: false,
+          rolloverMaxYears: 2,
+          usageRecords: [],
+          expired: true,
+          expiredAt: "2026-01-10",
+        },
+      ],
+    });
+
+    // Today IS the anniversary
+    const result = syncCardWithTemplate(card, template, "2026-06-15");
+    expect(result.card.benefits).toHaveLength(0);
+    expect(result.changes).toEqual([
+      { type: "cleaned", templateBenefitId: "benefit_a", benefitName: "Benefit A" },
+    ]);
+  });
+
+  it("does not remove expired benefits one day before anniversary", () => {
+    const template = makeTemplate({
+      version: 2,
+      defaultBenefits: [],
+    });
+    const card = makeCard({
+      templateVersion: 2,
+      cardOpenDate: "2025-06-15",
+      benefits: [
+        {
+          id: "b-1",
+          templateBenefitId: "benefit_a",
+          name: "Benefit A",
+          description: "Desc A",
+          faceValue: 100,
+          category: "travel",
+          resetType: "calendar",
+          resetConfig: { period: "annual" },
+          isHidden: false,
+          rolloverable: false,
+          rolloverMaxYears: 2,
+          usageRecords: [],
+          expired: true,
+          expiredAt: "2026-01-10",
+        },
+      ],
+    });
+
+    // Today is one day before anniversary
+    const result = syncCardWithTemplate(card, template, "2026-06-14");
+    expect(result.card.benefits).toHaveLength(1);
+    expect(result.changes).toHaveLength(0);
+  });
 });
