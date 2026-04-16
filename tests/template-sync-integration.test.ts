@@ -54,11 +54,13 @@ describe("syncAllCardsWithTemplates — integration against real built-in templa
 
     expect(synced.benefits).toHaveLength(template.defaultBenefits.length);
 
-    for (const benefit of synced.benefits) {
-      expect(
-        benefit.templateBenefitId,
-        `Benefit "${benefit.name}" should have a templateBenefitId after legacy sync`,
-      ).toBeTruthy();
+    const templateIdsByName = new Map(
+      template.defaultBenefits.map((t) => [t.name, t.templateBenefitId]),
+    );
+    for (const b of synced.benefits) {
+      expect(b.templateBenefitId, `${b.name} should match template ID`).toBe(
+        templateIdsByName.get(b.name),
+      );
     }
   });
 
