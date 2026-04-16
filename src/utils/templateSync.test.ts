@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { CreditCard, CardType } from "../models/types";
 import type { LogEntry, LogTransport } from "../lib/logger";
 import { setGlobalTransports, setGlobalMinLevel } from "../lib/logger";
-import { syncCardWithTemplate } from "./templateSync";
+import { syncCardWithTemplate, syncAllCardsWithTemplates } from "./templateSync";
 
 const createMockTransport = (): LogTransport & { entries: LogEntry[] } => {
   const entries: LogEntry[] = [];
@@ -472,5 +472,71 @@ describe("syncCardWithTemplate", () => {
     const warnings = transport.entries.filter((e) => e.level === "warn");
     expect(warnings).toHaveLength(1);
     expect(warnings[0].module).toBe("templateSync");
+  });
+});
+
+describe("syncAllCardsWithTemplates", () => {
+  it("syncs each card against its matching template", () => {
+    const templates: CardType[] = [
+      makeTemplate({
+        slug: "card_a",
+        version: 2,
+        defaultBenefits: [
+          {
+            templateBenefitId: "b1",
+            name: "Updated B1",
+            description: "New",
+            faceValue: 999,
+            category: "travel",
+            resetType: "calendar",
+            resetConfig: { period: "annual" },
+          },
+        ],
+      }),
+    ];
+    const cards: CreditCard[] = [
+      makeCard({
+        cardTypeSlug: "card_a",
+        templateVersion: 1,
+        benefits: [
+          {
+            id: "x",
+            templateBenefitId: "b1",
+            name: "Old B1",
+            description: "Old",
+            faceValue: 100,
+            category: "travel",
+            resetType: "calendar",
+            resetConfig: { period: "annual" },
+            isHidden: false,
+            rolloverable: false,
+            rolloverMaxYears: 2,
+            usageRecords: [],
+          },
+        ],
+      }),
+    ];
+
+    const result = syncAllCardsWithTemplates(cards, templates, "2026-04-16");
+    expect(result.cards[0].benefits[0].name).toBe("Updated B1");
+    expect(result.cards[0].benefits[0].faceValue).toBe(999);
+    expect(result.hasChanges).toBe(true);
+  });
+
+  it("skips cards with no matching template", () => {
+    const templates: CardType[] = [makeTemplate({ slug: "other" })];
+    const cards: CreditCard[] = [makeCard({ cardTypeSlug: "no_match" })];
+
+    const result = syncAllCardsWithTemplates(cards, templates, "2026-04-16");
+    expect(result.cards[0]).toBe(cards[0]); // unchanged reference
+    expect(result.hasChanges).toBe(false);
+  });
+
+  it("returns hasChanges=false when all cards are already in sync", () => {
+    const templates: CardType[] = [makeTemplate({ slug: "test_card", version: 1 })];
+    const cards: CreditCard[] = [makeCard({ cardTypeSlug: "test_card", templateVersion: 1 })];
+
+    const result = syncAllCardsWithTemplates(cards, templates, "2026-04-16");
+    expect(result.hasChanges).toBe(false);
   });
 });

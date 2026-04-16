@@ -2,6 +2,8 @@ import { createLogger } from "../lib/logger";
 import { BUILTIN_CARD_TYPES } from "../models/templates";
 import { useCardStore } from "../stores/useCardStore";
 import { useCardTypeStore } from "../stores/useCardTypeStore";
+import { formatDate } from "../utils/period";
+import { syncAllCardsWithTemplates } from "../utils/templateSync";
 import { loadData, saveData } from "./bridge";
 import { loadUserCardTypes } from "./cardTypePersistence";
 
@@ -106,6 +108,19 @@ export const initPersistence = async (): Promise<void> => {
     }
   } catch (err) {
     logger.warn("Failed to hydrate store from disk", { error: String(err) });
+  }
+
+  // 1.5 Sync cards with current templates (silent, idempotent).
+  //     Runs in BOTH windows; fast path makes concurrent calls cheap.
+  {
+    const cards = useCardStore.getState().cards;
+    const templates = useCardTypeStore.getState().cardTypes;
+    const today = formatDate(new Date());
+    const result = syncAllCardsWithTemplates(cards, templates, today);
+    if (result.hasChanges) {
+      useCardStore.getState().loadData(result.cards, useCardStore.getState().settings);
+      logger.info("Cards synced with templates");
+    }
   }
 
   // 2. Subscribe for auto-save + cross-window emit.

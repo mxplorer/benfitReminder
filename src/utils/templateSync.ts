@@ -224,3 +224,35 @@ export const syncCardWithTemplate = (
     changes,
   };
 };
+
+/**
+ * Sync every card in `cards` against its matching template (by `cardTypeSlug`).
+ * Cards with no matching template are returned unchanged. Returns a summary
+ * flag so callers can skip persistence work when nothing changed.
+ */
+export const syncAllCardsWithTemplates = (
+  cards: CreditCard[],
+  templates: CardType[],
+  today: string,
+): { cards: CreditCard[]; hasChanges: boolean } => {
+  const templateMap = new Map(templates.map((t) => [t.slug, t]));
+  let hasChanges = false;
+
+  const updatedCards = cards.map((card) => {
+    const template = templateMap.get(card.cardTypeSlug);
+    if (!template) return card;
+
+    const result = syncCardWithTemplate(card, template, today);
+    if (result.changes.length > 0) {
+      hasChanges = true;
+      logger.debug("Card synced with template", {
+        cardId: card.id,
+        slug: card.cardTypeSlug,
+        changes: result.changes,
+      });
+    }
+    return result.card;
+  });
+
+  return { cards: updatedCards, hasChanges };
+};
