@@ -4,6 +4,7 @@ import { formatDate, isBenefitUsedInPeriod, isInCurrentCycle } from "../utils/pe
 import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
 import { syncAllCardsWithTemplates } from "../utils/templateSync";
+import { generateRolloverRecords } from "../utils/rollover";
 import { cycleStartForDate, makeRolloverRecord, makeUsageRecord } from "../utils/usageRecords";
 import { useCardTypeStore } from "./useCardTypeStore";
 
@@ -33,6 +34,8 @@ interface CardStoreActions {
     opts?: { actualValue?: number; usedDate?: string; propagateNext?: boolean },
   ) => void;
   rolloverBenefit: (cardId: string, benefitId: string, usedDate?: string) => void;
+  replaceRolloverRecords: (cardId: string, benefitId: string, rolloverAmount: number) => void;
+  clearRolloverRecords: (cardId: string, benefitId: string) => void;
   backfillBenefitUsage: (cardId: string, benefitId: string, records: UsageRecord[]) => void;
   getUnusedBenefitCount: () => number;
   updateSettings: (partial: Partial<AppSettings>) => void;
@@ -245,6 +248,55 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
           usageRecords: [...b.usageRecords, newRecord],
+        })),
+      };
+    });
+  },
+
+  replaceRolloverRecords: (cardId, benefitId, rolloverAmount) => {
+    const today = new Date();
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit || !benefit.rolloverable) return state;
+      const period = benefit.resetConfig.period;
+      if (!period) return state;
+
+      // Past-cycle editor: keep usage records and any current-cycle rollover
+      // marker (written by the ⟳ shortcut), replace only past-cycle rollovers.
+      const currentCycleStart = cycleStartForDate(today, period);
+      const preserved = benefit.usageRecords.filter(
+        (r) => r.kind !== "rollover" || r.usedDate >= currentCycleStart,
+      );
+      const regenerated = generateRolloverRecords(benefit, rolloverAmount, today);
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: [...preserved, ...regenerated],
+        })),
+      };
+    });
+  },
+
+  clearRolloverRecords: (cardId, benefitId) => {
+    const today = new Date();
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit) return state;
+      const period = benefit.resetConfig.period;
+      // Mirror replaceRolloverRecords: clear past-cycle only, keep current-cycle ⟳.
+      const currentCycleStart = period ? cycleStartForDate(today, period) : undefined;
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: b.usageRecords.filter(
+            (r) =>
+              r.kind !== "rollover" ||
+              (currentCycleStart !== undefined && r.usedDate >= currentCycleStart),
+          ),
         })),
       };
     });
