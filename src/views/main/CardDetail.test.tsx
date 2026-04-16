@@ -164,7 +164,7 @@ describe("CardDetail rollover edit dialog", () => {
     });
     render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
 
-    fireEvent.click(screen.getByLabelText("编辑 rollover 额度"));
+    fireEvent.click(screen.getByLabelText("Rollover 设置"));
 
     const input = screen.getByLabelText(/accumulated/i);
     expect(input).toBeInTheDocument();
@@ -192,7 +192,7 @@ describe("CardDetail rollover edit dialog", () => {
       ],
     });
     render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
-    fireEvent.click(screen.getByLabelText("编辑 rollover 额度"));
+    fireEvent.click(screen.getByLabelText("Rollover 设置"));
     fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
 
     expect(screen.queryByLabelText(/accumulated/i)).toBeNull();

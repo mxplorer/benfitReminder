@@ -179,53 +179,32 @@ describe("BenefitCard", () => {
     expect(screen.queryByText("可Roll")).not.toBeInTheDocument();
   });
 
-  it("shows rollover button for unused rolloverable benefit", () => {
-    const benefit = makeBenefit({ rolloverable: true, rolloverMaxYears: 2 });
-    render(
-      <BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} onRollover={vi.fn()} />
-    );
-    expect(screen.getByLabelText("Rollover")).toBeInTheDocument();
-  });
-
-  it("fires onRollover when rollover button is clicked", () => {
-    const handler = vi.fn();
-    const benefit = makeBenefit({ id: "b1", rolloverable: true, rolloverMaxYears: 2 });
-    const card = makeCard({ id: "c1" });
-    render(
-      <BenefitCard benefit={benefit} card={card} onToggleUsage={vi.fn()} onRollover={handler} />
-    );
-    fireEvent.click(screen.getByLabelText("Rollover"));
-    expect(handler).toHaveBeenCalledWith("c1", "b1");
-  });
-
-  it("renders edit-rollover gear button when onEditRollover is supplied and benefit is rolloverable", () => {
+  it("renders rollover settings button when onEditRollover is supplied and benefit is rolloverable", () => {
     const benefit = makeBenefit({ rolloverable: true, rolloverMaxYears: 2 });
     render(
       <BenefitCard
         benefit={benefit}
         card={makeCard()}
         onToggleUsage={vi.fn()}
-        onRollover={vi.fn()}
         onEditRollover={vi.fn()}
       />,
     );
-    expect(screen.getByLabelText("编辑 rollover 额度")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rollover 设置")).toBeInTheDocument();
   });
 
-  it("does not render edit-rollover gear when onEditRollover is omitted", () => {
+  it("does not render rollover settings button when onEditRollover is omitted", () => {
     const benefit = makeBenefit({ rolloverable: true, rolloverMaxYears: 2 });
     render(
       <BenefitCard
         benefit={benefit}
         card={makeCard()}
         onToggleUsage={vi.fn()}
-        onRollover={vi.fn()}
       />,
     );
-    expect(screen.queryByLabelText("编辑 rollover 额度")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Rollover 设置")).not.toBeInTheDocument();
   });
 
-  it("does not render edit-rollover gear when benefit is not rolloverable", () => {
+  it("does not render rollover settings button when benefit is not rolloverable", () => {
     const benefit = makeBenefit({ rolloverable: false });
     render(
       <BenefitCard
@@ -235,10 +214,10 @@ describe("BenefitCard", () => {
         onEditRollover={vi.fn()}
       />,
     );
-    expect(screen.queryByLabelText("编辑 rollover 额度")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Rollover 设置")).not.toBeInTheDocument();
   });
 
-  it("fires onEditRollover with (cardId, benefitId) when gear is clicked", () => {
+  it("fires onEditRollover with (cardId, benefitId) when rollover button is clicked", () => {
     const handler = vi.fn();
     const benefit = makeBenefit({ id: "b1", rolloverable: true, rolloverMaxYears: 2 });
     const card = makeCard({ id: "c1" });
@@ -247,11 +226,10 @@ describe("BenefitCard", () => {
         benefit={benefit}
         card={card}
         onToggleUsage={vi.fn()}
-        onRollover={vi.fn()}
         onEditRollover={handler}
       />,
     );
-    fireEvent.click(screen.getByLabelText("编辑 rollover 额度"));
+    fireEvent.click(screen.getByLabelText("Rollover 设置"));
     expect(handler).toHaveBeenCalledWith("c1", "b1");
   });
 

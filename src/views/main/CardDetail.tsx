@@ -26,7 +26,6 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
   const setBenefitCycleUsed = useCardStore((s) => s.setBenefitCycleUsed);
-  const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const removeCard = useCardStore((s) => s.removeCard);
   const removeBenefit = useCardStore((s) => s.removeBenefit);
   const toggleBenefitHidden = useCardStore((s) => s.toggleBenefitHidden);
@@ -153,7 +152,6 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
               card={item.card}
               onToggleUsage={toggleBenefitUsage}
               onSetCycleUsed={setBenefitCycleUsed}
-              onRollover={rolloverBenefit}
               onEditRollover={(_cardId, benefitId) => { setEditRolloverBenefitId(benefitId); }}
               onToggleHidden={toggleBenefitHidden}
               onDelete={removeBenefit}

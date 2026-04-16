@@ -3,7 +3,7 @@ import type { Benefit, CalendarPeriod, CreditCard } from "../../models/types";
 import { createLogger } from "../../lib/logger";
 import { useCardStore } from "../../stores/useCardStore";
 import { cycleStartForDate } from "../../utils/usageRecords";
-import { generateRolloverRecords } from "../../utils/rollover";
+import { generateRolloverRecords, getAvailableValue } from "../../utils/rollover";
 import "./RolloverEditDialog.css";
 
 const logger = createLogger("views.rollover-dialog");
@@ -82,6 +82,14 @@ const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps)
     [benefit, amount, today],
   );
 
+  const currentAvailable = useMemo(
+    () => getAvailableValue(benefit, today),
+    [benefit, today],
+  );
+  const nextAvailable = benefit.faceValue + previewRecords.length * benefit.faceValue;
+  const snappedAmount = previewRecords.length * benefit.faceValue;
+  const hasRemainder = amount > 0 && amount !== snappedAmount;
+
   const replaceRolloverRecords = useCardStore((s) => s.replaceRolloverRecords);
   const clearRolloverRecords = useCardStore((s) => s.clearRolloverRecords);
 
@@ -124,16 +132,34 @@ const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps)
             onChange={(e) => { setAmount(Math.max(0, Number(e.target.value) || 0)); }}
           />
         </label>
+        <dl className="rollover-dialog__impact" data-testid="rollover-edit-impact">
+          <div className="rollover-dialog__info-row">
+            <dt>当前可用</dt>
+            <dd>${String(currentAvailable)}</dd>
+          </div>
+          <div className="rollover-dialog__info-row">
+            <dt>保存后可用</dt>
+            <dd data-testid="rollover-edit-next-available">${String(nextAvailable)}</dd>
+          </div>
+        </dl>
+        {hasRemainder && (
+          <p className="rollover-dialog__hint" data-testid="rollover-edit-hint">
+            金额会按 faceValue 向下取整:${String(amount)} → ${String(snappedAmount)}
+            ({String(previewRecords.length)} × ${String(benefit.faceValue)})
+          </p>
+        )}
         <div className="rollover-dialog__preview-section">
           <span className="rollover-dialog__preview-label">
-            Preview (past-cycle rollover records):
+            生成的 past-cycle rollover 记录:
           </span>
           <ul className="rollover-dialog__preview" data-testid="rollover-edit-preview">
-            {previewRecords.map((r) => (
-              <li key={r.usedDate}>
-                {r.usedDate} · rollover · $0
-              </li>
-            ))}
+            {previewRecords.length === 0 ? (
+              <li className="rollover-dialog__preview-empty">(无)</li>
+            ) : (
+              previewRecords.map((r) => (
+                <li key={r.usedDate}>{r.usedDate} · rollover</li>
+              ))
+            )}
           </ul>
         </div>
         <div className="rollover-dialog__actions">

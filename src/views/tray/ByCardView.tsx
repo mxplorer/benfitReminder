@@ -18,7 +18,6 @@ export const ByCardView = () => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
   const setBenefitCycleUsed = useCardStore((s) => s.setBenefitCycleUsed);
-  const rolloverBenefit = useCardStore((s) => s.rolloverBenefit);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
   const [filter, setFilter] = useState<FilterMode>("available");
@@ -81,7 +80,6 @@ export const ByCardView = () => {
                     card={item.card}
                     onToggleUsage={toggleBenefitUsage}
                     onSetCycleUsed={setBenefitCycleUsed}
-                    onRollover={rolloverBenefit}
                     periodLabel={item.periodLabel}
                     cycleStart={item.periodStart}
                     cycleEnd={item.periodEnd}

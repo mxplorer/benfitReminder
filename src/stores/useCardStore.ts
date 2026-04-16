@@ -5,7 +5,7 @@ import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
 import { syncAllCardsWithTemplates } from "../utils/templateSync";
 import { generateRolloverRecords } from "../utils/rollover";
-import { cycleStartForDate, makeRolloverRecord, makeUsageRecord } from "../utils/usageRecords";
+import { cycleStartForDate, makeUsageRecord } from "../utils/usageRecords";
 import { useCardTypeStore } from "./useCardTypeStore";
 
 interface CardStoreState {
@@ -33,7 +33,6 @@ interface CardStoreActions {
     used: boolean,
     opts?: { actualValue?: number; usedDate?: string; propagateNext?: boolean },
   ) => void;
-  rolloverBenefit: (cardId: string, benefitId: string, usedDate?: string) => void;
   replaceRolloverRecords: (cardId: string, benefitId: string, rolloverAmount: number) => void;
   clearRolloverRecords: (cardId: string, benefitId: string) => void;
   backfillBenefitUsage: (cardId: string, benefitId: string, records: UsageRecord[]) => void;
@@ -216,38 +215,6 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
           usageRecords: b.usageRecords.filter((r) => r !== existingInCycle),
-        })),
-      };
-    });
-  },
-
-  rolloverBenefit: (cardId, benefitId, usedDate?) => {
-    const today = new Date();
-    set((state) => {
-      const card = state.cards.find((c) => c.id === cardId);
-      if (!card) return state;
-      const benefit = card.benefits.find((b) => b.id === benefitId);
-      if (!benefit || !benefit.rolloverable) return state;
-      const period = benefit.resetConfig.period;
-      if (!period) return state;
-
-      // Snap to current cycle start so dedupe + getAvailableValue can find
-      // exactly one rollover record per cycle.
-      const explicit = usedDate
-        ? cycleStartForDate(new Date(usedDate + "T00:00:00"), period)
-        : undefined;
-      const anchorDate = explicit ?? cycleStartForDate(today, period);
-
-      const alreadyRolled = benefit.usageRecords.some(
-        (r) => r.kind === "rollover" && r.usedDate === anchorDate,
-      );
-      if (alreadyRolled) return state;
-
-      const newRecord = makeRolloverRecord(anchorDate);
-      return {
-        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
-          ...b,
-          usageRecords: [...b.usageRecords, newRecord],
         })),
       };
     });

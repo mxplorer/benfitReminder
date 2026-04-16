@@ -31,12 +31,13 @@ Use `makeRolloverRecord(cycleStart)` and `makeUsageRecord({ ... })` from `src/ut
 
 | Action | Location | Cycle it targets | Intent |
 |--------|----------|-----------------|--------|
-| `rolloverBenefit(cardId, benefitId)` | `src/stores/useCardStore.ts` | current cycle (snapped) | "mark this cycle rolled forward" — invoked by the `⟳` per-cycle shortcut on `BenefitCard`. Silent no-op on duplicate. |
-| `replaceRolloverRecords(cardId, benefitId, amount)` | `src/stores/useCardStore.ts` | past cycles only | Past-balance editor: drops past-cycle rollovers, regenerates from `generateRolloverRecords(benefit, amount, today)`, preserves current-cycle rollover and all usage records. |
-| `clearRolloverRecords(cardId, benefitId)` | `src/stores/useCardStore.ts` | past cycles only | Drops past-cycle rollovers; preserves current-cycle rollover and usage. |
+| `replaceRolloverRecords(cardId, benefitId, amount)` | `src/stores/useCardStore.ts` | past cycles only | Dialog Save: drops past-cycle rollovers, regenerates from `generateRolloverRecords(benefit, amount, today)`, preserves legacy current-cycle rollovers and all usage records. |
+| `clearRolloverRecords(cardId, benefitId)` | `src/stores/useCardStore.ts` | past cycles only | Dialog Clear: drops past-cycle rollovers; preserves legacy current-cycle rollover and usage. |
 | `generateRolloverRecords(benefit, amount, today)` | `src/utils/rollover.ts` | past cycles | Pure: returns up to `rolloverMaxYears × PERIOD_MULTIPLIER[period]` past-cycle rollover records, walking backward from the current cycle. |
 
 `rolloverMaxYears` reductions are handled implicitly — the next `replaceRolloverRecords` call regenerates under the new cap, silently pruning records beyond it. No confirm dialog.
+
+Current-cycle rollover records can only originate from migrated legacy data (the `⟳` per-cycle shortcut was removed 2026-04-16 because its effect was not visible until the next cycle). Readers/writers still tolerate them for back-compat.
 
 ## Reader Contracts
 
@@ -48,11 +49,10 @@ Use `makeRolloverRecord(cycleStart)` and `makeUsageRecord({ ... })` from `src/ut
 
 ## UI Entry Points
 
-Only `CardDetail` wires the past-balance editor; tray views don't render the gear.
+Only `CardDetail` wires the rollover editor; tray views don't render the button.
 
-- **`⟳` per-cycle shortcut** (`BenefitCard.tsx`): visible on unused rolloverable benefits. Unicode U+27F3, 1.35× button font-size, `font-weight: 700`. Fires `onRollover(cardId, benefitId)` → `rolloverBenefit`.
-- **`⚙` gear button** (`BenefitCard.tsx`): renders only when `onEditRollover` is supplied **and** the benefit is rolloverable. Fires `onEditRollover(cardId, benefitId)` → `CardDetail` opens `RolloverEditDialog`.
-- **`RolloverEditDialog`** (`views/main/RolloverEditDialog.tsx`): past-balance editor. Amount input seeded from `(past-cycle rollover count × faceValue)`. Live preview via `generateRolloverRecords`. Buttons: Clear → `clearRolloverRecords`, Cancel → close, Save → `replaceRolloverRecords`. Non-rolloverable / no-period benefits: throws in DEV, logs warn + renders `null` in prod.
+- **`⟳` rollover button** (`BenefitCard.tsx`): single entry point for rollover configuration. Renders only when `onEditRollover` is supplied **and** the benefit is rolloverable. Fires `onEditRollover(cardId, benefitId)` → `CardDetail` opens `RolloverEditDialog`. aria-label `"Rollover 设置"`.
+- **`RolloverEditDialog`** (`views/main/RolloverEditDialog.tsx`): past-balance editor. Amount input seeded from `(past-cycle rollover count × faceValue)`. Shows `当前可用` vs `保存后可用` for immediate feedback, and a snap hint when `amount % faceValue !== 0` (the amount rounds down to the nearest multiple of `faceValue`). Buttons: Clear → `clearRolloverRecords`, Cancel → close, Save → `replaceRolloverRecords`. Non-rolloverable / no-period benefits: throws in DEV, logs warn + renders `null` in prod.
 
 ## Migration
 

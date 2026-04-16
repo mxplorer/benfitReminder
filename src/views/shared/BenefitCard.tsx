@@ -14,7 +14,6 @@ interface BenefitCardProps {
   benefit: Benefit;
   card: CreditCard;
   onToggleUsage: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
-  onRollover?: (cardId: string, benefitId: string) => void;
   onEditRollover?: (cardId: string, benefitId: string) => void;
   onToggleHidden?: (cardId: string, benefitId: string) => void;
   onDelete?: (cardId: string, benefitId: string) => void;
@@ -58,7 +57,6 @@ export const BenefitCard = ({
   benefit,
   card,
   onToggleUsage,
-  onRollover,
   onEditRollover,
   onToggleHidden,
   onDelete,
@@ -214,24 +212,14 @@ export const BenefitCard = ({
                 ✕
               </button>
             )}
-            {onRollover && benefit.rolloverable && !isUsed && (
-              <button
-                className="benefit-card__action-btn benefit-card__rollover-btn"
-                onClick={() => { onRollover(card.id, benefit.id); }}
-                aria-label="Rollover"
-                title="Rollover"
-              >
-                <span className="benefit-card__rollover-icon">⟳</span>
-              </button>
-            )}
             {onEditRollover && benefit.rolloverable && (
               <button
-                className="benefit-card__action-btn benefit-card__rollover-edit-btn"
+                className="benefit-card__action-btn benefit-card__rollover-btn"
                 onClick={() => { onEditRollover(card.id, benefit.id); }}
-                aria-label="编辑 rollover 额度"
-                title="编辑 rollover 额度"
+                aria-label="Rollover 设置"
+                title="Rollover 设置"
               >
-                ⚙
+                <span className="benefit-card__rollover-icon">⟳</span>
               </button>
             )}
             <button

@@ -394,46 +394,6 @@ describe("useCardStore", () => {
     });
   });
 
-  describe("rolloverBenefit", () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date("2026-04-10T12:00:00"));
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it("writes a rollover UsageRecord with faceValue 0", () => {
-      const card = makeCard({
-        id: "c1",
-        benefits: [makeBenefit({ id: "b1", rolloverable: true, rolloverMaxYears: 2 })],
-      });
-      useCardStore.setState({ cards: [card] });
-
-      useCardStore.getState().rolloverBenefit("c1", "b1");
-
-      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-      expect(records).toHaveLength(1);
-      expect(records[0].faceValue).toBe(0);
-      expect(records[0].actualValue).toBe(0);
-      expect(records[0].kind).toBe("rollover");
-    });
-
-    it("does nothing for non-rolloverable benefit", () => {
-      const card = makeCard({
-        id: "c1",
-        benefits: [makeBenefit({ id: "b1", rolloverable: false })],
-      });
-      useCardStore.setState({ cards: [card] });
-
-      useCardStore.getState().rolloverBenefit("c1", "b1");
-
-      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-      expect(records).toHaveLength(0);
-    });
-  });
-
   describe("replaceRolloverRecords", () => {
     beforeEach(() => {
       vi.useFakeTimers();
@@ -534,10 +494,18 @@ describe("useCardStore", () => {
       expect(records[0].usedDate).toBe("2025-01-01");
     });
 
-    it("preserves current-cycle rollover record (written by ⟳ shortcut) across save", () => {
-      const card = makeCard({ id: "c1", benefits: [rolloverAnnual()] });
+    it("preserves a pre-existing current-cycle rollover record across save (legacy/migrated data)", () => {
+      const card = makeCard({
+        id: "c1",
+        benefits: [
+          rolloverAnnual({
+            usageRecords: [
+              { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+            ],
+          }),
+        ],
+      });
       useCardStore.setState({ cards: [card] });
-      useCardStore.getState().rolloverBenefit("c1", "b1");
 
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 200);
 
@@ -663,7 +631,7 @@ describe("useCardStore", () => {
       expect(records[0].kind).toBe("usage");
     });
 
-    it("preserves current-cycle rollover record (written by ⟳ shortcut)", () => {
+    it("preserves a pre-existing current-cycle rollover record (legacy/migrated data)", () => {
       const card = makeCard({
         id: "c1",
         benefits: [
@@ -673,12 +641,14 @@ describe("useCardStore", () => {
             rolloverMaxYears: 3,
             resetType: "calendar",
             resetConfig: { period: "annual" },
+            usageRecords: [
+              { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+            ],
           }),
         ],
       });
       useCardStore.setState({ cards: [card] });
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 200);
-      useCardStore.getState().rolloverBenefit("c1", "b1");
 
       useCardStore.getState().clearRolloverRecords("c1", "b1");
 
