@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Benefit, CreditCard, UsageRecord } from "../models/types";
 import { useCardStore } from "./useCardStore";
+import { useCardTypeStore } from "./useCardTypeStore";
 
 const makeBenefit = (overrides: Partial<Benefit> = {}): Benefit => ({
   id: "b1",
@@ -32,6 +33,7 @@ const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
 describe("useCardStore", () => {
   beforeEach(() => {
     useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+    useCardTypeStore.getState().reset();
   });
 
   describe("card CRUD", () => {
@@ -319,6 +321,47 @@ describe("useCardStore", () => {
         // back directly to whatever it was at entry.
         useCardTypeStore.setState({ cardTypes: originalCardTypes });
       }
+    });
+
+    it("preserves card benefits when no matching template is registered", () => {
+      const importJson = JSON.stringify({
+        version: 1,
+        cards: [
+          {
+            id: "c1",
+            owner: "test",
+            cardTypeSlug: "no_such_template",
+            annualFee: 0,
+            cardOpenDate: "2025-01-01",
+            color: "#000",
+            isEnabled: true,
+            templateVersion: 1,
+            benefits: [
+              {
+                id: "b1",
+                templateBenefitId: "x.y",
+                name: "Some Benefit",
+                description: "Desc",
+                faceValue: 100,
+                category: "travel",
+                resetType: "calendar",
+                resetConfig: { period: "annual" },
+                isHidden: false,
+                rolloverable: false,
+                rolloverMaxYears: 2,
+                usageRecords: [],
+              },
+            ],
+          },
+        ],
+      });
+
+      // Note: useCardTypeStore is empty due to beforeEach reset.
+      useCardStore.getState().importData(importJson);
+      const card = useCardStore.getState().cards[0];
+      expect(card.benefits).toHaveLength(1);
+      expect(card.benefits[0].name).toBe("Some Benefit");
+      expect(card.templateVersion).toBe(1); // unchanged — no template to sync against
     });
   });
 
