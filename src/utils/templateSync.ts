@@ -146,21 +146,7 @@ export const syncCardWithTemplate = (
     return { card, changes: [] };
   }
 
-  // Phase 1: Legacy bootstrap — match by name to establish templateBenefitId
-  let benefits = [...cardAfterClean.benefits];
-  if (card.templateVersion === undefined) {
-    const templateByName = new Map(
-      template.defaultBenefits.map((t) => [t.name, t]),
-    );
-    benefits = benefits.map((b) => {
-      if (b.templateBenefitId) return b; // already linked
-      const match = templateByName.get(b.name);
-      if (match) {
-        return { ...b, templateBenefitId: match.templateBenefitId };
-      }
-      return b; // unmatched = custom
-    });
-  }
+  const benefits = [...cardAfterClean.benefits];
 
   // Phase 2: Diff & Apply by templateBenefitId
   const templateMap = new Map(
