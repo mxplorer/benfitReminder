@@ -25,7 +25,8 @@ src/
 ├── utils/                # PURE functions — no store, no side effects
 │   ├── period.ts         # Period ranges, usage check, applicability, deadline, daysRemaining
 │   ├── roi.ts            # calculateCardROI, calculateDashboardROI, getMembershipYearRange
-│   └── reminder.ts       # getBenefitsDueForReminder (filters + sorts by urgency)
+│   ├── reminder.ts       # getBenefitsDueForReminder (filters + sorts by urgency)
+│   └── rollover.ts       # generateRolloverRecords, getAvailableValue (see modules/rollover.md)
 │
 ├── stores/
 │   └── useCardStore.ts   # Zustand store: cards[], settings, all CRUD actions
@@ -49,6 +50,7 @@ src/
 │   │   ├── CardDetail.tsx    # Card header, ROI strip, benefits grid (with filter pills), usage history table
 │   │   ├── CardEditor.tsx    # Add/edit card form with template selector
 │   │   ├── BenefitEditor.tsx # Add/edit benefit form with conditional fields per resetType
+│   │   ├── RolloverEditDialog.tsx # Past-cycle rollover balance editor (see modules/rollover.md)
 │   │   ├── Settings.tsx      # Reminder config, debug toggle, export/import, danger zone
 │   │   └── History.tsx       # Per-card membership year ROI browser
 │   │
