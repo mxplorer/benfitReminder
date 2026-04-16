@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-// Composite a white halo + status dot onto the line-art source to produce
-// 3 states × 2 sizes. Re-run whenever `assets/brand/tray-source-1024.png` changes.
+// Composite a solid white rounded-rect background + line art + status dot to
+// produce 3 states × 2 sizes. Re-run whenever
+// `assets/brand/tray-source-1024.png` changes.
 //
-// The halo gives the line art readable contrast against any menu-bar wallpaper.
-// Because the output contains both black (line) and white (halo) pixels, the
-// Rust side must NOT use template mode — `icon_as_template(false)`.
+// The white tile gives the dark line art full contrast against any menu-bar
+// wallpaper (vs. a thin halo that can still look muddled on busy backdrops).
+// Because the output contains both dark and white pixels, the Rust side must
+// NOT use template mode — `icon_as_template(false)`.
 
 import sharp from "sharp";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -21,9 +23,14 @@ const OUT_DIR = path.join(ROOT, "src-tauri/icons/tray");
 const DOT_CENTER_FRAC = 17 / 22;
 const DOT_RADIUS_FRAC = 4 / 22;
 
-// Halo thickness in pixels per 22pt of icon size. At 22px we get ~1px halo,
-// at 44px we get ~2px — crisp on both @1x and @2x.
-const HALO_PX_PER_22 = 1;
+// White tile corner radius — 15% gives a rounded-rect "app chip" feel that
+// matches the desktop squircle at small scale without looking like a plain
+// square.
+const BG_RADIUS_FRAC = 0.15;
+
+// Line-art content fills this much of the tile's shortest edge. Leaves a
+// small white margin inside the rounded rect so strokes don't kiss the edge.
+const CONTENT_FRAC = 0.82;
 
 const STATES = [
   { name: "clean", dot: null },
@@ -31,10 +38,24 @@ const STATES = [
   { name: "urgent", dot: "#E53935" },
 ];
 
+// Apple's menu-bar convention is 22pt, but our bell+card glyph is wider than
+// tall (~1.3:1) — at 22px the content reads small and thin on retina. Bumping
+// to 44pt logical (44/88 physical) keeps the aspect but fills the menu-bar
+// slot more fully. macOS will letterbox vertically as needed.
 const SIZES = [
-  { suffix: "@1x", px: 22 },
-  { suffix: "@2x", px: 44 },
+  { suffix: "@1x", px: 44 },
+  { suffix: "@2x", px: 88 },
 ];
+
+const makeWhiteBgSvg = (size) => {
+  const r = Math.round(size * BG_RADIUS_FRAC);
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+       <rect x="0" y="0" width="${size}" height="${size}"
+             rx="${r}" ry="${r}" fill="#FFFFFF"/>
+     </svg>`,
+  );
+};
 
 const makeDotSvg = (size, color) => {
   if (!color) return null;
@@ -48,57 +69,39 @@ const makeDotSvg = (size, color) => {
   );
 };
 
-/**
- * Wrap a transparent-bg line-art PNG with a white halo. The halo is built by
- * dilating the alpha channel (blur + threshold) and filling the expanded mask
- * with solid white, then compositing the original on top.
- */
-const addWhiteHalo = async (srcBuf, size) => {
-  const haloPx = Math.max(1, Math.round((size * HALO_PX_PER_22) / 22));
-
-  const dilatedMask = await sharp(srcBuf)
-    .ensureAlpha()
-    .extractChannel("alpha")
-    .blur(haloPx)
-    .threshold(10)
-    .toBuffer();
-
-  const whiteHalo = await sharp({
-    create: {
-      width: size,
-      height: size,
-      channels: 3,
-      background: { r: 255, g: 255, b: 255 },
-    },
-  })
-    .joinChannel(dilatedMask)
+// Trim the source to its content bbox, fit it into `contentSize` preserving
+// aspect, and return the fitted buffer plus (top, left) offsets to center it
+// in a `canvasSize`×`canvasSize` tile.
+const prepareLineArt = async (srcPath, canvasSize) => {
+  const contentSize = Math.round(canvasSize * CONTENT_FRAC);
+  const trimmed = await sharp(srcPath).trim({ threshold: 0 }).toBuffer();
+  const meta = await sharp(trimmed).metadata();
+  const ratio = Math.min(contentSize / meta.width, contentSize / meta.height);
+  const fitW = Math.round(meta.width * ratio);
+  const fitH = Math.round(meta.height * ratio);
+  const fitted = await sharp(trimmed)
+    .resize(fitW, fitH, { kernel: "lanczos3" })
     .png()
     .toBuffer();
-
-  return sharp(whiteHalo)
-    .composite([{ input: srcBuf, top: 0, left: 0 }])
-    .png()
-    .toBuffer();
+  return {
+    buffer: fitted,
+    top: Math.round((canvasSize - fitH) / 2),
+    left: Math.round((canvasSize - fitW) / 2),
+  };
 };
 
 await mkdir(OUT_DIR, { recursive: true });
 
 for (const { name, dot } of STATES) {
   for (const { suffix, px } of SIZES) {
-    const resized = await sharp(SOURCE)
-      .resize(px, px, { kernel: "lanczos3" })
-      .png()
-      .toBuffer();
-    const haloed = await addWhiteHalo(resized, px);
+    const bgSvg = makeWhiteBgSvg(px);
+    const { buffer: lineArt, top, left } = await prepareLineArt(SOURCE, px);
 
-    const svg = makeDotSvg(px, dot);
-    const final = svg
-      ? await sharp(haloed)
-          .composite([{ input: svg, top: 0, left: 0 }])
-          .png()
-          .toBuffer()
-      : haloed;
+    const layers = [{ input: lineArt, top, left }];
+    const dotSvg = makeDotSvg(px, dot);
+    if (dotSvg) layers.push({ input: dotSvg, top: 0, left: 0 });
 
+    const final = await sharp(bgSvg).composite(layers).png().toBuffer();
     const outPath = path.join(OUT_DIR, `tray-${name}${suffix}.png`);
     await writeFile(outPath, final);
     console.log(`wrote ${path.relative(ROOT, outPath)}`);

@@ -27,3 +27,4 @@ const squareInPlace = async (name, background) => {
 };
 
 await squareInPlace("tray-source-1024.png", { r: 0, g: 0, b: 0, alpha: 0 });
+await squareInPlace("dock-source-1024.png", { r: 0, g: 0, b: 0, alpha: 0 });
