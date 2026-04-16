@@ -1,22 +1,52 @@
 use tauri::{
+    image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, PhysicalPosition, Position, Rect, Size, WebviewUrl, WebviewWindow,
+    Manager, PhysicalPosition, Position, Rect, Size, State, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, WindowEvent,
 };
 
-/// Update the tray icon badge overlay with the unused benefit count.
+/// Preloaded tray icon variants — one per visual state, bundled at compile time.
+struct TrayIcons {
+    clean: Image<'static>,
+    unused: Image<'static>,
+    urgent: Image<'static>,
+}
+
+impl TrayIcons {
+    fn pick(&self, state: &str) -> &Image<'static> {
+        match state {
+            "urgent" => &self.urgent,
+            "unused" => &self.unused,
+            _ => &self.clean,
+        }
+    }
+}
+
+/// Update the tray icon + tooltip to reflect the current benefit status.
 /// Exposed as a Tauri command so the frontend can call it after store mutations.
 #[tauri::command]
-fn update_tray_badge(app: tauri::AppHandle, count: i32) {
-    if let Some(tray) = app.tray_by_id("main-tray") {
-        let tooltip = if count > 0 {
-            format!("Credit Card Benefits · {count} 项未使用")
-        } else {
-            "Credit Card Benefits · 全部已使用".to_string()
-        };
-        let _ = tray.set_tooltip(Some(&tooltip));
-    }
+fn update_tray_status(
+    app: tauri::AppHandle,
+    icons: State<'_, TrayIcons>,
+    state: &str,
+    unused_count: i32,
+    urgent_count: i32,
+) {
+    let Some(tray) = app.tray_by_id("main-tray") else {
+        return;
+    };
+
+    let _ = tray.set_icon(Some(icons.pick(state).clone()));
+
+    let tooltip = match state {
+        "urgent" => format!(
+            "Credit Card Benefits · {unused_count} 项未使用（{urgent_count} 项即将到期）"
+        ),
+        "unused" => format!("Credit Card Benefits · {unused_count} 项未使用"),
+        _ => "Credit Card Benefits · 全部已使用".to_string(),
+    };
+    let _ = tray.set_tooltip(Some(&tooltip));
 }
 
 /// Show / re-create the main window. Exposed as a Tauri command so the tray
@@ -26,19 +56,16 @@ fn show_main_window(app: tauri::AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
         let _ = win.set_focus();
-    } else {
-        // Re-create the main window if it was somehow destroyed
-        if let Ok(win) = WebviewWindowBuilder::new(
-            &app,
-            "main",
-            WebviewUrl::App("index.html".into()),
-        )
-        .title("Credit Card Benefits")
-        .inner_size(1024.0, 768.0)
-        .build()
-        {
-            let _ = win.set_focus();
-        }
+    } else if let Ok(win) = WebviewWindowBuilder::new(
+        &app,
+        "main",
+        WebviewUrl::App("index.html".into()),
+    )
+    .title("Credit Card Benefits")
+    .inner_size(1024.0, 768.0)
+    .build()
+    {
+        let _ = win.set_focus();
     }
 }
 
@@ -87,8 +114,20 @@ fn rect_to_physical(rect: Rect, scale: f64) -> (f64, f64, f64, f64) {
     (x, y, w, h)
 }
 
+/// Decode a bundled PNG byte slice into a Tauri `Image<'static>`. The input is
+/// built by `scripts/build-tray-icons.mjs`, so a decode failure is a build bug.
+fn load_icon(bytes: &'static [u8]) -> Image<'static> {
+    Image::from_bytes(bytes).expect("bundled tray icon PNG must be valid")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let tray_icons = TrayIcons {
+        clean: load_icon(include_bytes!("../icons/tray/tray-clean@2x.png")),
+        unused: load_icon(include_bytes!("../icons/tray/tray-unused@2x.png")),
+        urgent: load_icon(include_bytes!("../icons/tray/tray-urgent@2x.png")),
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
@@ -98,7 +137,8 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
-        .invoke_handler(tauri::generate_handler![update_tray_badge, show_main_window])
+        .manage(tray_icons)
+        .invoke_handler(tauri::generate_handler![update_tray_status, show_main_window])
         .setup(|app| {
             // Tray-app pattern: closing the main window hides it rather than
             // destroying it, so the app keeps running in the menu bar.
@@ -126,10 +166,15 @@ pub fn run() {
             let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
             let menu = MenuBuilder::new(app).item(&quit_item).build()?;
 
-            // Build tray icon. show_menu_on_left_click=false so left-click
-            // fires the click handler directly instead of showing the menu.
+            // Initial icon is the `clean` variant; the frontend will push the
+            // real state right after hydration. `icon_as_template(true)` lets
+            // macOS tint the line art per menu-bar appearance — the status dot
+            // bitmap retains its own color because template mode only recolors
+            // opaque pixels in a single pass based on alpha.
+            let initial_icon = app.state::<TrayIcons>().clean.clone();
             TrayIconBuilder::with_id("main-tray")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(initial_icon)
+                .icon_as_template(true)
                 .tooltip("Credit Card Benefits")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
