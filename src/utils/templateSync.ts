@@ -1,5 +1,8 @@
 import type { Benefit, BenefitTemplate, CreditCard, CardType } from "../models/types";
+import { createLogger } from "../lib/logger";
 import { formatDate } from "./period";
+
+const logger = createLogger("templateSync");
 
 export interface SyncChange {
   type: "added" | "modified" | "expired" | "cleaned";
@@ -115,8 +118,28 @@ export const syncCardWithTemplate = (
       ? { ...card, benefits: cleanedBenefits }
       : card;
 
+  // Anomalous state: card was previously synced to a newer template than the
+  // one currently loaded (e.g. data file written by a newer app version, then
+  // opened by an older one). Warn and return unchanged so an older template
+  // cannot stomp fields set by a newer one.
+  if (card.templateVersion !== undefined && card.templateVersion > template.version) {
+    logger.warn(
+      "card was synced to a newer template version than the one currently loaded",
+      {
+        cardId: card.id,
+        cardTemplateVersion: card.templateVersion,
+        templateVersion: template.version,
+        templateSlug: template.slug,
+      },
+    );
+    if (changes.length > 0) {
+      return { card: cardAfterClean, changes };
+    }
+    return { card, changes: [] };
+  }
+
   // Fast path: already in sync (but still needed cleanup check above)
-  if (card.templateVersion !== undefined && card.templateVersion >= template.version) {
+  if (card.templateVersion !== undefined && card.templateVersion === template.version) {
     if (changes.length > 0) {
       return { card: cardAfterClean, changes };
     }

@@ -1,6 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { CreditCard, CardType } from "../models/types";
+import type { LogEntry, LogTransport } from "../lib/logger";
+import { setGlobalTransports, setGlobalMinLevel } from "../lib/logger";
 import { syncCardWithTemplate } from "./templateSync";
+
+const createMockTransport = (): LogTransport & { entries: LogEntry[] } => {
+  const entries: LogEntry[] = [];
+  return {
+    entries,
+    write: vi.fn((entry: LogEntry) => entries.push(entry)),
+  };
+};
 
 const makeTemplate = (overrides?: Partial<CardType>): CardType => ({
   slug: "test_card",
@@ -52,6 +62,11 @@ const makeCard = (overrides?: Partial<CreditCard>): CreditCard => ({
 });
 
 describe("syncCardWithTemplate", () => {
+  beforeEach(() => {
+    setGlobalTransports([]);
+    setGlobalMinLevel("debug");
+  });
+
   it("skips sync when card templateVersion matches template version (fast path)", () => {
     const card = makeCard({ templateVersion: 1 });
     const template = makeTemplate({ version: 1 });
@@ -438,5 +453,24 @@ describe("syncCardWithTemplate", () => {
     const result = syncCardWithTemplate(card, template, "2026-06-14");
     expect(result.card.benefits).toHaveLength(1);
     expect(result.changes).toHaveLength(0);
+  });
+
+  it("returns card unchanged and logs a warning when card templateVersion is newer than template", () => {
+    const transport = createMockTransport();
+    setGlobalTransports([transport]);
+
+    const card = makeCard({ templateVersion: 5 });
+    const template = makeTemplate({ version: 2 });
+
+    const result = syncCardWithTemplate(card, template, "2026-04-16");
+
+    // Card should be returned unchanged (same reference — no fields stomped)
+    expect(result.card).toBe(card);
+    expect(result.changes).toHaveLength(0);
+
+    // A warning should be logged about the anomalous state
+    const warnings = transport.entries.filter((e) => e.level === "warn");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].module).toBe("templateSync");
   });
 });
