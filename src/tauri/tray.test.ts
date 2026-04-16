@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { updateTrayStatus } from "./tray";
 import type { TrayStatus } from "../utils/trayState";
 
-const invokeMock = vi.fn();
+const invokeMock = vi.fn<(cmd: string, args: unknown) => Promise<void>>();
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: unknown) => invokeMock(cmd, args),

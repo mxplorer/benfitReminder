@@ -167,14 +167,14 @@ pub fn run() {
             let menu = MenuBuilder::new(app).item(&quit_item).build()?;
 
             // Initial icon is the `clean` variant; the frontend will push the
-            // real state right after hydration. `icon_as_template(true)` lets
-            // macOS tint the line art per menu-bar appearance — the status dot
-            // bitmap retains its own color because template mode only recolors
-            // opaque pixels in a single pass based on alpha.
+            // real state right after hydration. Template mode is OFF: our PNGs
+            // carry a white halo and a colored status dot, both of which must
+            // render with their true RGB values. Template mode would flatten
+            // everything to a single tinted shape keyed on alpha.
             let initial_icon = app.state::<TrayIcons>().clean.clone();
             TrayIconBuilder::with_id("main-tray")
                 .icon(initial_icon)
-                .icon_as_template(true)
+                .icon_as_template(false)
                 .tooltip("Credit Card Benefits")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
@@ -200,4 +200,53 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Byte-equality of `Image::from_bytes(&raw)` is not available directly, so
+    // we anchor `pick` against the raw PNG bytes each variant was built from.
+    // If someone swaps the wiring (e.g. points `unused` at the clean PNG), the
+    // `pick` branch table will stop matching the expected file and fail.
+    const CLEAN_BYTES: &[u8] = include_bytes!("../icons/tray/tray-clean@2x.png");
+    const UNUSED_BYTES: &[u8] = include_bytes!("../icons/tray/tray-unused@2x.png");
+    const URGENT_BYTES: &[u8] = include_bytes!("../icons/tray/tray-urgent@2x.png");
+
+    fn fixture() -> TrayIcons {
+        TrayIcons {
+            clean: load_icon(CLEAN_BYTES),
+            unused: load_icon(UNUSED_BYTES),
+            urgent: load_icon(URGENT_BYTES),
+        }
+    }
+
+    fn ptr(image: &Image<'_>) -> *const u8 {
+        image.rgba().as_ptr()
+    }
+
+    #[test]
+    fn pick_returns_urgent_for_urgent_state() {
+        let icons = fixture();
+        assert_eq!(ptr(icons.pick("urgent")), ptr(&icons.urgent));
+    }
+
+    #[test]
+    fn pick_returns_unused_for_unused_state() {
+        let icons = fixture();
+        assert_eq!(ptr(icons.pick("unused")), ptr(&icons.unused));
+    }
+
+    #[test]
+    fn pick_returns_clean_for_clean_state() {
+        let icons = fixture();
+        assert_eq!(ptr(icons.pick("clean")), ptr(&icons.clean));
+    }
+
+    #[test]
+    fn pick_falls_back_to_clean_for_unknown_state() {
+        let icons = fixture();
+        assert_eq!(ptr(icons.pick("bogus")), ptr(&icons.clean));
+    }
 }
