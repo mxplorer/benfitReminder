@@ -83,6 +83,22 @@ export const loadUserCardTypes = async (): Promise<CardType[]> => {
 };
 
 /**
+ * Serialize a CardType for disk storage. Excludes derived fields (isBuiltin, image)
+ * which are reconstructed at load time. Exported for testing.
+ */
+export const serializeUserCardType = (cardType: CardType): string => {
+  const data = {
+    slug: cardType.slug,
+    name: cardType.name,
+    defaultAnnualFee: cardType.defaultAnnualFee,
+    color: cardType.color,
+    version: cardType.version,
+    defaultBenefits: cardType.defaultBenefits,
+  };
+  return JSON.stringify(data, null, 2);
+};
+
+/**
  * Save a user card type JSON to appConfigDir/card-types/{slug}.json.
  */
 export const saveUserCardType = async (cardType: CardType): Promise<void> => {
@@ -96,15 +112,7 @@ export const saveUserCardType = async (cardType: CardType): Promise<void> => {
   await mkdir(typesDir, { recursive: true });
 
   const jsonPath = await join(typesDir, `${cardType.slug}.json`);
-  // Exclude derived fields (isBuiltin, image) — they are reconstructed at load time
-  const data = {
-    slug: cardType.slug,
-    name: cardType.name,
-    defaultAnnualFee: cardType.defaultAnnualFee,
-    color: cardType.color,
-    defaultBenefits: cardType.defaultBenefits,
-  };
-  await writeTextFile(jsonPath, JSON.stringify(data, null, 2));
+  await writeTextFile(jsonPath, serializeUserCardType(cardType));
   logger.info("User card type saved", { slug: cardType.slug });
 };
 
