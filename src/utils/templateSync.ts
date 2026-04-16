@@ -230,8 +230,7 @@ export const syncAllCardsWithTemplates = (
 
     const result = syncCardWithTemplate(card, template, today);
     // Detect any card mutation: field diffs, additions, expirations, or
-    // metadata-only updates like templateVersion/templateBenefitId bootstrap
-    // on a legacy card (changes array may be empty in that case).
+    // a first-time sync that bumps templateVersion (legacy card with no prior version).
     if (result.card !== card) {
       hasChanges = true;
       if (result.changes.length > 0) {
