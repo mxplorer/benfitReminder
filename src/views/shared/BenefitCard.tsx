@@ -181,9 +181,11 @@ export const BenefitCard = ({
         <span className="benefit-card__description">{benefit.description}</span>
       )}
       <div className="benefit-card__footer">
-        <span className="benefit-card__value">
-          {displayValue > 0 ? `$${String(displayValue)}` : "—"}
-        </span>
+        {pendingValue === null && (
+          <span className="benefit-card__value">
+            {displayValue > 0 ? `$${String(displayValue)}` : "—"}
+          </span>
+        )}
         {pendingValue === null ? (
           <div className="benefit-card__actions">
             {onToggleHidden && (
@@ -196,7 +198,7 @@ export const BenefitCard = ({
                 {benefit.isHidden ? "👁" : "🙈"}
               </button>
             )}
-            {onDelete && (
+            {onDelete && !benefit.templateBenefitId && (
               <button
                 className="benefit-card__action-btn benefit-card__action-btn--danger"
                 onClick={() => {

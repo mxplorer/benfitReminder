@@ -213,6 +213,32 @@ describe("BenefitCard", () => {
     expect(screen.getByText("$600")).toBeInTheDocument();
   });
 
+  it("hides delete button for benefits with templateBenefitId", () => {
+    const benefit = makeBenefit({ templateBenefitId: "some_template_id" });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("删除权益")).not.toBeInTheDocument();
+  });
+
+  it("shows delete button for custom benefits without templateBenefitId", () => {
+    const benefit = makeBenefit(); // no templateBenefitId
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("删除权益")).toBeInTheDocument();
+  });
+
   it("unchecks directly without prompting when already used", () => {
     const handler = vi.fn();
     const benefit = makeBenefit({
