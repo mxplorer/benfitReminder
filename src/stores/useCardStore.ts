@@ -3,6 +3,8 @@ import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../
 import { formatDate, isBenefitUsedInPeriod, isApplicableNow } from "../utils/period";
 import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
+import { syncAllCardsWithTemplates } from "../utils/templateSync";
+import { useCardTypeStore } from "./useCardTypeStore";
 
 interface CardStoreState {
   cards: CreditCard[];
@@ -290,8 +292,13 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       throw new Error("Missing or invalid cards array");
     }
 
+    const migrated = migrateCards(data.cards as CreditCard[]);
+    const templates = useCardTypeStore.getState().cardTypes;
+    const today = formatDate(new Date());
+    const { cards: synced } = syncAllCardsWithTemplates(migrated, templates, today);
+
     set({
-      cards: migrateCards(data.cards as CreditCard[]),
+      cards: synced,
       settings: (data.settings as AppSettings | undefined) ?? { ...DEFAULT_SETTINGS },
     });
   },

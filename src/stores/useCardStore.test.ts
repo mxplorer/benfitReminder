@@ -249,6 +249,77 @@ describe("useCardStore", () => {
         useCardStore.getState().importData(JSON.stringify({ version: 1 }));
       }).toThrow("cards");
     });
+
+    it("runs template sync on imported cards (legacy → newer template)", async () => {
+      const { useCardTypeStore } = await import("./useCardTypeStore");
+      const originalCardTypes = useCardTypeStore.getState().cardTypes;
+      try {
+        useCardTypeStore.getState().setBuiltinCardTypes([
+          {
+            slug: "test_card",
+            name: "Test Card",
+            defaultAnnualFee: 0,
+            color: "#000",
+            isBuiltin: true,
+            version: 2,
+            defaultBenefits: [
+              {
+                templateBenefitId: "tc.benefit_a",
+                name: "Updated Name",
+                description: "Updated",
+                faceValue: 999,
+                category: "travel",
+                resetType: "calendar",
+                resetConfig: { period: "annual" },
+              },
+            ],
+          },
+        ]);
+
+        const importJson = JSON.stringify({
+          version: 1,
+          cards: [
+            {
+              id: "c1",
+              owner: "test",
+              cardTypeSlug: "test_card",
+              annualFee: 0,
+              cardOpenDate: "2025-01-01",
+              color: "#000",
+              isEnabled: true,
+              templateVersion: 1,
+              benefits: [
+                {
+                  id: "b1",
+                  templateBenefitId: "tc.benefit_a",
+                  name: "Old Name",
+                  description: "Old",
+                  faceValue: 100,
+                  category: "travel",
+                  resetType: "calendar",
+                  resetConfig: { period: "annual" },
+                  isHidden: false,
+                  rolloverable: false,
+                  rolloverMaxYears: 2,
+                  usageRecords: [],
+                },
+              ],
+            },
+          ],
+        });
+
+        useCardStore.getState().importData(importJson);
+        const card = useCardStore.getState().cards[0];
+        expect(card.templateVersion).toBe(2);
+        expect(card.benefits[0].name).toBe("Updated Name");
+        expect(card.benefits[0].faceValue).toBe(999);
+      } finally {
+        // Restore the card type store so other tests aren't polluted.
+        // The store uses a single `cardTypes` array internally, so we set it
+        // back directly to whatever it was at entry.
+        useCardTypeStore.setState({ cardTypes: originalCardTypes });
+      }
+    });
   });
 
   describe("JSON round-trip", () => {
