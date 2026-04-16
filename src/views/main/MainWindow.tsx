@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { initPersistence } from "../../tauri/persistence";
-import { updateTrayBadge } from "../../tauri/tray";
+import { updateTrayStatus } from "../../tauri/tray";
+import { computeTrayStatus } from "../../utils/trayState";
 import { checkAndSendReminders } from "../../tauri/notifications";
 import { Sidebar } from "./Sidebar";
 import { Dashboard } from "./Dashboard";
@@ -32,11 +33,11 @@ export const MainWindow = () => {
   }, []);
 
   useEffect(() => {
-    // Keep tray badge in sync with unused benefit count and send reminders
+    // Keep tray icon + tooltip in sync with benefit status, and send reminders.
     const syncTray = () => {
-      const { getUnusedBenefitCount, cards, settings } = useCardStore.getState();
-      const count = getUnusedBenefitCount();
-      void updateTrayBadge(count);
+      const { cards, settings, now } = useCardStore.getState();
+      const status = computeTrayStatus(cards, now, settings.reminderDays);
+      void updateTrayStatus(status);
       void checkAndSendReminders(cards, settings);
     };
 
