@@ -138,11 +138,12 @@ export const saveAndSyncUserCardType = async (cardType: CardType): Promise<CardT
   // Persist template (no-op outside Tauri)
   await saveUserCardType(updated);
 
-  // Refresh registry — addUserCardType throws on collision, so remove first
-  try {
+  // Refresh registry — addUserCardType throws on collision, so remove first if present.
+  // Using an existence check (rather than try/catch) lets the "cannot remove built-in"
+  // error surface naturally if a built-in slug is ever passed in.
+  const existing = useCardTypeStore.getState().getCardType(updated.slug);
+  if (existing) {
     useCardTypeStore.getState().removeUserCardType(updated.slug);
-  } catch {
-    // not registered yet — fine
   }
   useCardTypeStore.getState().addUserCardType(updated);
 

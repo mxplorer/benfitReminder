@@ -181,4 +181,27 @@ describe("saveAndSyncUserCardType", () => {
     expect(syncedCard.templateVersion).toBe(2);
     expect(syncedCard.benefits[0].name).toBe("Renamed Existing");
   });
+
+  it("registers the card type when not previously in the registry", async () => {
+    // Don't pre-register — registry is empty (cleared by beforeEach)
+    const result = await saveAndSyncUserCardType(baseCardType({ version: 1 }));
+
+    expect(result.version).toBe(2);
+    const registered = useCardTypeStore.getState().getCardType("my_card");
+    expect(registered).toBeDefined();
+    expect(registered?.version).toBe(2);
+  });
+
+  it("does not call loadData when no cards use this template", async () => {
+    useCardTypeStore.getState().addUserCardType(baseCardType({ version: 1 }));
+    // No cards in store — beforeEach clears them
+    const initialCardsRef = useCardStore.getState().cards;
+
+    await saveAndSyncUserCardType(baseCardType({ version: 1 }));
+
+    // Same array reference — no loadData call (which would set a new array)
+    expect(useCardStore.getState().cards).toBe(initialCardsRef);
+    // But registry was still updated
+    expect(useCardTypeStore.getState().getCardType("my_card")?.version).toBe(2);
+  });
 });
