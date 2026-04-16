@@ -8,8 +8,8 @@ const findCard = (slug: string) => {
 };
 
 describe("BUILTIN_CARD_TYPES", () => {
-  it("contains 5 card types", () => {
-    expect(BUILTIN_CARD_TYPES).toHaveLength(5);
+  it("contains 6 card types", () => {
+    expect(BUILTIN_CARD_TYPES).toHaveLength(6);
   });
 
   it("has Amex Platinum with annual fee $895", () => {
@@ -86,6 +86,27 @@ describe("BUILTIN_CARD_TYPES", () => {
           expect(benefit.resetConfig.expiresDate).toMatch(isoDateRegex);
         }
       }
+    }
+  });
+
+  it("every built-in card type has version >= 1", () => {
+    for (const ct of BUILTIN_CARD_TYPES) {
+      expect(ct.version, `${ct.slug} missing version`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("every built-in benefit has a non-empty templateBenefitId", () => {
+    for (const ct of BUILTIN_CARD_TYPES) {
+      for (const b of ct.defaultBenefits) {
+        expect(b.templateBenefitId, `${ct.slug}/${b.name} missing templateBenefitId`).toBeTruthy();
+      }
+    }
+  });
+
+  it("templateBenefitIds are unique within each card type", () => {
+    for (const ct of BUILTIN_CARD_TYPES) {
+      const ids = ct.defaultBenefits.map((b) => b.templateBenefitId);
+      expect(new Set(ids).size, `${ct.slug} has duplicate templateBenefitIds`).toBe(ids.length);
     }
   });
 });

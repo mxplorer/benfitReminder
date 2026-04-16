@@ -3,8 +3,10 @@
   "name": "Chase Sapphire Preferred",
   "defaultAnnualFee": 95,
   "color": "#2471A3",
+  "version": 1,
   "defaultBenefits": [
     {
+      "templateBenefitId": "chase_sapphire_preferred.hotel_credit",
       "name": "$50 Annual Hotel Credit",
       "description": "Annual hotel credit through Chase Travel",
       "faceValue": 50,
@@ -13,6 +15,7 @@
       "resetConfig": { "resetsAtStatementClose": true }
     },
     {
+      "templateBenefitId": "chase_sapphire_preferred.dashpass_promo",
       "name": "$10/mo DashPass Promo Credit",
       "description": "Monthly DoorDash promotional credit",
       "faceValue": 10,
@@ -21,6 +24,7 @@
       "resetConfig": { "period": "monthly" }
     },
     {
+      "templateBenefitId": "chase_sapphire_preferred.dashpass",
       "name": "DashPass Membership ($120/yr value)",
       "description": "Annual DashPass membership included",
       "faceValue": 120,

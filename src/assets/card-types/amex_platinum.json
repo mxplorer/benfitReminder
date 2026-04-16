@@ -3,8 +3,10 @@
   "name": "Amex Platinum",
   "defaultAnnualFee": 895,
   "color": "#8E9EAF",
+  "version": 1,
   "defaultBenefits": [
     {
+      "templateBenefitId": "amex_platinum.hotel_fhr",
       "name": "$300 Hotel Credit FHR/THC",
       "description": "Fine Hotels + Resorts or The Hotel Collection credit, per half-year",
       "faceValue": 300,
@@ -15,6 +17,7 @@
       "rolloverMaxYears": 2
     },
     {
+      "templateBenefitId": "amex_platinum.airline_fee",
       "name": "$200 Airline Fee Credit",
       "description": "Annual airline fee credit for selected airline",
       "faceValue": 200,
@@ -23,6 +26,7 @@
       "resetConfig": { "period": "annual" }
     },
     {
+      "templateBenefitId": "amex_platinum.oura_ring",
       "name": "$200 Oura Ring Credit",
       "description": "Annual Oura Ring membership credit",
       "faceValue": 200,
@@ -31,6 +35,7 @@
       "resetConfig": { "period": "annual" }
     },
     {
+      "templateBenefitId": "amex_platinum.clear_plus",
       "name": "$209 CLEAR+ Credit",
       "description": "Annual CLEAR Plus membership credit",
       "faceValue": 209,
@@ -39,6 +44,7 @@
       "resetConfig": {}
     },
     {
+      "templateBenefitId": "amex_platinum.global_entry",
       "name": "$100 Global Entry / TSA PreCheck",
       "description": "Global Entry or TSA PreCheck application fee credit",
       "faceValue": 100,
@@ -47,6 +53,7 @@
       "resetConfig": { "period": "every_4_years" }
     },
     {
+      "templateBenefitId": "amex_platinum.resy_dining",
       "name": "$100/quarter Resy Dining Credit",
       "description": "Quarterly dining credit at Resy restaurants",
       "faceValue": 100,
@@ -55,6 +62,7 @@
       "resetConfig": { "period": "quarterly" }
     },
     {
+      "templateBenefitId": "amex_platinum.lululemon",
       "name": "$75/quarter Lululemon Credit",
       "description": "Quarterly Lululemon credit",
       "faceValue": 75,
@@ -63,6 +71,7 @@
       "resetConfig": { "period": "quarterly" }
     },
     {
+      "templateBenefitId": "amex_platinum.digital_entertainment",
       "name": "$25/mo Digital Entertainment",
       "description": "Monthly digital entertainment credit",
       "faceValue": 25,
@@ -71,6 +80,7 @@
       "resetConfig": {}
     },
     {
+      "templateBenefitId": "amex_platinum.uber_cash_jan_nov",
       "name": "$15/mo Uber Cash (Jan-Nov)",
       "description": "Monthly Uber Cash credit, January–November",
       "faceValue": 15,
@@ -79,6 +89,7 @@
       "resetConfig": { "period": "monthly", "applicableMonths": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
     },
     {
+      "templateBenefitId": "amex_platinum.uber_cash_dec",
       "name": "$35 Uber Cash (Dec)",
       "description": "December Uber Cash credit (bonus month)",
       "faceValue": 35,
@@ -87,6 +98,7 @@
       "resetConfig": { "period": "monthly", "applicableMonths": [12] }
     },
     {
+      "templateBenefitId": "amex_platinum.uber_one",
       "name": "$120/yr Uber One Membership",
       "description": "Annual Uber One membership credit",
       "faceValue": 120,
@@ -95,6 +107,7 @@
       "resetConfig": {}
     },
     {
+      "templateBenefitId": "amex_platinum.walmart_plus",
       "name": "$12.95/mo Walmart+",
       "description": "Monthly Walmart+ membership credit",
       "faceValue": 12.95,

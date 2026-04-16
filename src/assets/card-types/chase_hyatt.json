@@ -1,0 +1,27 @@
+{
+  "slug": "chase_hyatt",
+  "name": "Chase World of Hyatt",
+  "defaultAnnualFee": 95,
+  "color": "#1C2951",
+  "version": 1,
+  "defaultBenefits": [
+    {
+      "templateBenefitId": "chase_hyatt.free_night",
+      "name": "Anniversary Free Night (Cat 1-4)",
+      "description": "Annual free night award at Cat 1-4 Hyatt property, valid 12 months",
+      "faceValue": 0,
+      "category": "hotel",
+      "resetType": "anniversary",
+      "resetConfig": {}
+    },
+    {
+      "templateBenefitId": "chase_hyatt.doordash_nonrestaurant",
+      "name": "$10 DoorDash Non-Restaurant Credit",
+      "description": "Up to $10 off one non-restaurant DoorDash order per quarter (DashPass required)",
+      "faceValue": 10,
+      "category": "dining",
+      "resetType": "calendar",
+      "resetConfig": { "period": "quarterly" }
+    }
+  ]
+}
