@@ -86,9 +86,9 @@ describe("migrateCards - autoRecur → propagateNext", () => {
       autoRecur: true,
       cancelledMonths: ["2026-02"],
       usageRecords: [
-        { usedDate: "2026-01-05", faceValue: 25, actualValue: 25 },
-        { usedDate: "2026-02-10", faceValue: 25, actualValue: 20 },
-        { usedDate: "2026-03-03", faceValue: 25, actualValue: 25 },
+        { usedDate: "2026-01-05", faceValue: 25, actualValue: 25, kind: "usage" },
+        { usedDate: "2026-02-10", faceValue: 25, actualValue: 20, kind: "usage" },
+        { usedDate: "2026-03-03", faceValue: 25, actualValue: 25, kind: "usage" },
       ],
     });
     const [card] = migrateCards([makeCard([benefit])]);
@@ -106,7 +106,7 @@ describe("migrateCards - autoRecur → propagateNext", () => {
       resetType: "subscription",
       autoRecur: false,
       cancelledMonths: ["2026-01"],
-      usageRecords: [{ usedDate: "2026-01-05", faceValue: 25, actualValue: 25 }],
+      usageRecords: [{ usedDate: "2026-01-05", faceValue: 25, actualValue: 25, kind: "usage" }],
     });
     const [card] = migrateCards([makeCard([benefit])]);
     expect((card.benefits[0] as LegacyBenefit).cancelledMonths).toBeUndefined();
@@ -118,7 +118,7 @@ describe("migrateCards - autoRecur → propagateNext", () => {
       resetType: "subscription",
       autoRecur: false,
       usageRecords: [
-        { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true },
+        { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true, kind: "usage" },
       ],
     });
     const once = migrateCards([makeCard([benefit])]);
@@ -132,9 +132,98 @@ describe("migrateCards - autoRecur → propagateNext", () => {
       autoRecur: true,
       cancelledMonths: ["2026-02"],
       usageRecords: [
-        { usedDate: "2026-01-05", faceValue: 25, actualValue: 25 },
-        { usedDate: "2026-02-10", faceValue: 25, actualValue: 20 },
+        { usedDate: "2026-01-05", faceValue: 25, actualValue: 25, kind: "usage" },
+        { usedDate: "2026-02-10", faceValue: 25, actualValue: 20, kind: "usage" },
       ],
+    });
+    const once = migrateCards([makeCard([benefit])]);
+    const twice = migrateCards(once);
+    expect(twice).toEqual(once);
+  });
+});
+
+describe("migrateCards - isRollover → kind", () => {
+  type LegacyRecord = {
+    usedDate: string;
+    faceValue: number;
+    actualValue: number;
+    isRollover?: boolean;
+    kind?: string;
+  };
+
+  it("converts legacy isRollover: true to kind: 'rollover' and snaps usedDate to cycle start", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2025-03-14", faceValue: 0, actualValue: 0, isRollover: true } as LegacyRecord,
+      ] as unknown as Benefit["usageRecords"],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    const record = card.benefits[0].usageRecords[0];
+    expect(record.kind).toBe("rollover");
+    expect(record.usedDate).toBe("2025-01-01");
+    expect("isRollover" in record).toBe(false);
+  });
+
+  it("tags legacy usage records as kind: 'usage' and strips any stray isRollover: false", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "monthly" },
+      usageRecords: [
+        { usedDate: "2026-03-05", faceValue: 25, actualValue: 25, isRollover: false } as LegacyRecord,
+      ] as unknown as Benefit["usageRecords"],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    const record = card.benefits[0].usageRecords[0];
+    expect(record.kind).toBe("usage");
+    expect(record.usedDate).toBe("2026-03-05");
+    expect("isRollover" in record).toBe(false);
+  });
+
+  it("collapses duplicate legacy rollover records in the same cycle to one", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "semi_annual" },
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2025-02-15", faceValue: 0, actualValue: 0, isRollover: true } as LegacyRecord,
+        { usedDate: "2025-05-20", faceValue: 0, actualValue: 0, isRollover: true } as LegacyRecord,
+      ] as unknown as Benefit["usageRecords"],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    const rollovers = card.benefits[0].usageRecords.filter((r) => r.kind === "rollover");
+    expect(rollovers).toHaveLength(1);
+    expect(rollovers[0].usedDate).toBe("2025-01-01");
+  });
+
+  it("leaves already-tagged kind records untouched (idempotent)", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "monthly" },
+      usageRecords: [
+        { usedDate: "2026-03-05", faceValue: 10, actualValue: 10, kind: "usage" },
+      ],
+    });
+    const once = migrateCards([makeCard([benefit])]);
+    const twice = migrateCards(once);
+    expect(twice).toEqual(once);
+    expect(once[0].benefits[0].usageRecords[0].usedDate).toBe("2026-03-05");
+  });
+
+  it("running migration twice on mixed legacy data produces identical output", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2025-03-14", faceValue: 0, actualValue: 0, isRollover: true } as LegacyRecord,
+        { usedDate: "2025-06-20", faceValue: 100, actualValue: 80 } as LegacyRecord,
+      ] as unknown as Benefit["usageRecords"],
     });
     const once = migrateCards([makeCard([benefit])]);
     const twice = migrateCards(once);
