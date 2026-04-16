@@ -78,7 +78,7 @@ describe("getBenefitsDueForReminder", () => {
     const benefit = makeBenefit({
       resetType: "subscription",
       resetConfig: { period: "monthly" },
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     const card = makeCard([benefit]);
     const result = getBenefitsDueForReminder([card], d("2026-04-25"), 7);
@@ -87,7 +87,7 @@ describe("getBenefitsDueForReminder", () => {
 
   it("excludes already-used benefits", () => {
     const benefit = makeBenefit({
-      usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     const card = makeCard([benefit]);
     const result = getBenefitsDueForReminder([card], d("2026-04-25"), 7);
@@ -126,7 +126,7 @@ describe("getBenefitsDueForReminder", () => {
     const benefit = makeBenefit({
       resetType: "one_time",
       resetConfig: { expiresDate: "2026-04-30" },
-      usageRecords: [{ usedDate: "2026-03-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-03-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     const card = makeCard([benefit]);
     const result = getBenefitsDueForReminder([card], d("2026-04-25"), 7);

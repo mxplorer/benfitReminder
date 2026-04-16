@@ -156,7 +156,7 @@ describe("useCardStore", () => {
           makeBenefit({ id: "b3", resetType: "subscription" }), // monthly sub, no record → count
           makeBenefit({
             id: "b4",
-            usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100 }],
+            usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100, kind: "usage" }],
           }), // used → skip
         ],
       });
@@ -373,7 +373,7 @@ describe("useCardStore", () => {
         benefits: [
           makeBenefit({
             id: "b1",
-            usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 80 }],
+            usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 80, kind: "usage" }],
           }),
         ],
       });
@@ -389,6 +389,7 @@ describe("useCardStore", () => {
         usedDate: "2026-04-01",
         faceValue: 100,
         actualValue: 80,
+        kind: "usage",
       });
     });
   });
@@ -416,7 +417,7 @@ describe("useCardStore", () => {
       expect(records).toHaveLength(1);
       expect(records[0].faceValue).toBe(0);
       expect(records[0].actualValue).toBe(0);
-      expect(records[0].isRollover).toBe(true);
+      expect(records[0].kind).toBe("rollover");
     });
 
     it("does nothing for non-rolloverable benefit", () => {
@@ -441,9 +442,9 @@ describe("useCardStore", () => {
       });
       useCardStore.setState({ cards: [card] });
 
-      const records = [
-        { usedDate: "2026-01-01", faceValue: 100, actualValue: 80 },
-        { usedDate: "2025-10-01", faceValue: 100, actualValue: 100 },
+      const records: UsageRecord[] = [
+        { usedDate: "2026-01-01", faceValue: 100, actualValue: 80, kind: "usage" },
+        { usedDate: "2025-10-01", faceValue: 100, actualValue: 100, kind: "usage" },
       ];
       useCardStore.getState().backfillBenefitUsage("c1", "b1", records);
 
@@ -479,7 +480,7 @@ describe("useCardStore", () => {
                 rolloverable: false,
                 rolloverMaxYears: 0,
                 usageRecords: [
-                  { usedDate: "2026-02-05", faceValue: 100, actualValue: 100 }, // Q1
+                  { usedDate: "2026-02-05", faceValue: 100, actualValue: 100, kind: "usage" }, // Q1
                 ],
               },
             ],
@@ -497,7 +498,7 @@ describe("useCardStore", () => {
       const q3 = b.usageRecords.find(
         (r) => r.usedDate >= "2026-07-01" && r.usedDate <= "2026-09-30",
       );
-      expect(q3).toEqual({ usedDate: "2026-07-01", faceValue: 100, actualValue: 90 });
+      expect(q3).toEqual({ usedDate: "2026-07-01", faceValue: 100, actualValue: 90, kind: "usage" });
     });
 
     it("uses explicit usedDate when provided", () => {
@@ -542,8 +543,8 @@ describe("useCardStore", () => {
               {
                 ...useCardStore.getState().cards[0].benefits[0],
                 usageRecords: [
-                  { usedDate: "2026-02-05", faceValue: 100, actualValue: 100 }, // Q1
-                  { usedDate: "2026-05-10", faceValue: 100, actualValue: 80 }, // Q2
+                  { usedDate: "2026-02-05", faceValue: 100, actualValue: 100, kind: "usage" }, // Q1
+                  { usedDate: "2026-05-10", faceValue: 100, actualValue: 80, kind: "usage" }, // Q2
                 ],
               },
             ],
@@ -553,7 +554,7 @@ describe("useCardStore", () => {
       useCardStore.getState().setBenefitCycleUsed("c1", "b1", "2026-01-01", "2026-03-31", false);
       const b = useCardStore.getState().cards[0].benefits[0];
       expect(b.usageRecords).toEqual([
-        { usedDate: "2026-05-10", faceValue: 100, actualValue: 80 },
+        { usedDate: "2026-05-10", faceValue: 100, actualValue: 80, kind: "usage" },
       ]);
     });
 
@@ -617,7 +618,7 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
 
   it("creates current-month record when prev month has propagateNext=true", () => {
     seed(makeMonthlySub([
-      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true },
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true, kind: "usage" },
     ]));
     useCardStore.getState().generateAutoRecurRecords();
     const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
@@ -627,12 +628,13 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
       faceValue: 25,
       actualValue: 22,
       propagateNext: true,
+      kind: "usage",
     });
   });
 
   it("does NOT create when prev month's propagateNext is false/absent", () => {
     seed(makeMonthlySub([
-      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22 },
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, kind: "usage" },
     ]));
     useCardStore.getState().generateAutoRecurRecords();
     expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
@@ -640,8 +642,8 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
 
   it("does NOT create when current month already has a record", () => {
     seed(makeMonthlySub([
-      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true },
-      { usedDate: "2026-04-02", faceValue: 25, actualValue: 25 },
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true, kind: "usage" },
+      { usedDate: "2026-04-02", faceValue: 25, actualValue: 25, kind: "usage" },
     ]));
     useCardStore.getState().generateAutoRecurRecords();
     expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(2);
@@ -649,7 +651,7 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
 
   it("does NOT create when prev month is missing (two-month gap)", () => {
     seed(makeMonthlySub([
-      { usedDate: "2026-02-10", faceValue: 25, actualValue: 22, propagateNext: true },
+      { usedDate: "2026-02-10", faceValue: 25, actualValue: 22, propagateNext: true, kind: "usage" },
     ]));
     useCardStore.getState().generateAutoRecurRecords();
     expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
@@ -657,7 +659,7 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
 
   it("is idempotent", () => {
     seed(makeMonthlySub([
-      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true },
+      { usedDate: "2026-03-10", faceValue: 25, actualValue: 22, propagateNext: true, kind: "usage" },
     ]));
     useCardStore.getState().generateAutoRecurRecords();
     useCardStore.getState().generateAutoRecurRecords();
@@ -669,7 +671,7 @@ describe("generateAutoRecurRecords — per-record propagation", () => {
       id: "b1", name: "quarterly", description: "", faceValue: 100,
       category: "dining", resetType: "calendar", resetConfig: { period: "quarterly" },
       isHidden: false, rolloverable: false, rolloverMaxYears: 0,
-      usageRecords: [{ usedDate: "2026-03-10", faceValue: 100, actualValue: 100, propagateNext: true }],
+      usageRecords: [{ usedDate: "2026-03-10", faceValue: 100, actualValue: 100, propagateNext: true, kind: "usage" }],
     };
     seed(benefit);
     useCardStore.getState().generateAutoRecurRecords();
@@ -750,7 +752,7 @@ describe("setBenefitCycleUsed with propagateNext", () => {
         ...c,
         benefits: c.benefits.map((b) => ({
           ...b,
-          usageRecords: [{ usedDate: "2026-04-05", faceValue: 25, actualValue: 25, propagateNext: true }],
+          usageRecords: [{ usedDate: "2026-04-05", faceValue: 25, actualValue: 25, propagateNext: true, kind: "usage" }],
         })),
       })),
     }));
@@ -770,7 +772,7 @@ describe("setBenefitCycleUsed with propagateNext", () => {
         ...c,
         benefits: c.benefits.map((b) => ({
           ...b,
-          usageRecords: [{ usedDate: "2026-04-05", faceValue: 25, actualValue: 25, propagateNext: true }],
+          usageRecords: [{ usedDate: "2026-04-05", faceValue: 25, actualValue: 25, propagateNext: true, kind: "usage" }],
         })),
       })),
     }));

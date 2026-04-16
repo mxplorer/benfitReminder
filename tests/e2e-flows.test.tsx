@@ -245,7 +245,7 @@ describe("E2E: Filter pills in card detail", () => {
             isHidden: false,
             rolloverable: false,
             rolloverMaxYears: 0,
-            usageRecords: [{ usedDate: "2026-04-05", faceValue: 30, actualValue: 30 }],
+            usageRecords: [{ usedDate: "2026-04-05", faceValue: 30, actualValue: 30, kind: "usage" }],
           },
           {
             id: "b3",
@@ -339,7 +339,7 @@ describe("E2E: Export and import data round-trip", () => {
           isHidden: false,
           rolloverable: false,
           rolloverMaxYears: 0,
-          usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 50 }],
+          usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 50, kind: "usage" }],
         }],
       }],
     });
@@ -408,7 +408,7 @@ describe("E2E: Subscription auto-recur record generation", () => {
           rolloverable: false,
           rolloverMaxYears: 0,
           usageRecords: [
-            { usedDate: "2026-03-01", faceValue: 14, actualValue: 14, propagateNext: true },
+            { usedDate: "2026-03-01", faceValue: 14, actualValue: 14, propagateNext: true, kind: "usage" },
           ],
         }],
       }],
@@ -481,7 +481,7 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             isHidden: false,
             rolloverable: false,
             rolloverMaxYears: 0,
-            usageRecords: [{ usedDate: "2026-04-10", faceValue: 30, actualValue: 30 }],
+            usageRecords: [{ usedDate: "2026-04-10", faceValue: 30, actualValue: 30, kind: "usage" }],
           },
           {
             id: "hidden1",
@@ -543,7 +543,7 @@ describe("E2E: benefit filter switching", () => {
               resetType: "calendar", resetConfig: { period: "monthly" },
               isHidden: false,
               rolloverable: false, rolloverMaxYears: 0,
-              usageRecords: [{ usedDate: "2026-02-05", faceValue: 10, actualValue: 10 }],
+              usageRecords: [{ usedDate: "2026-02-05", faceValue: 10, actualValue: 10, kind: "usage" }],
             },
             {
               id: "bh", name: "Hidden Y", description: "",

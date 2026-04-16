@@ -179,21 +179,49 @@ describe("findCycleRecord", () => {
   it("returns the first record whose usedDate falls within the cycle", () => {
     const b = makeBenefit({
       usageRecords: [
-        { usedDate: "2026-03-10", faceValue: 10, actualValue: 8 },
-        { usedDate: "2026-04-20", faceValue: 10, actualValue: 10 },
+        { usedDate: "2026-03-10", faceValue: 10, actualValue: 8, kind: "usage" },
+        { usedDate: "2026-04-20", faceValue: 10, actualValue: 10, kind: "usage" },
       ],
     });
     const cycle: PeriodCycle = { start: "2026-04-01", end: "2026-04-30", label: "4月" };
     expect(findCycleRecord(b, cycle)).toEqual(
-      { usedDate: "2026-04-20", faceValue: 10, actualValue: 10 },
+      { usedDate: "2026-04-20", faceValue: 10, actualValue: 10, kind: "usage" },
     );
   });
 
   it("returns undefined when no records fall in cycle", () => {
     const b = makeBenefit({
-      usageRecords: [{ usedDate: "2026-03-10", faceValue: 10, actualValue: 10 }],
+      usageRecords: [{ usedDate: "2026-03-10", faceValue: 10, actualValue: 10, kind: "usage" }],
     });
     const cycle: PeriodCycle = { start: "2026-04-01", end: "2026-04-30", label: "4月" };
     expect(findCycleRecord(b, cycle)).toBeUndefined();
+  });
+
+  it("excludes rollover records by default (rollover ≠ used)", () => {
+    const b = makeBenefit({
+      usageRecords: [
+        { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const cycle: PeriodCycle = { start: "2026-04-01", end: "2026-04-30", label: "4月" };
+    expect(findCycleRecord(b, cycle)).toBeUndefined();
+  });
+
+  it("returns rollover record when includeRollover is true", () => {
+    const rollover = { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" as const };
+    const b = makeBenefit({ usageRecords: [rollover] });
+    const cycle: PeriodCycle = { start: "2026-04-01", end: "2026-04-30", label: "4月" };
+    expect(findCycleRecord(b, cycle, { includeRollover: true })).toEqual(rollover);
+  });
+
+  it("prefers usage over rollover within same cycle when includeRollover is true (find returns first match)", () => {
+    const rollover = { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" as const };
+    const usage = { usedDate: "2026-04-15", faceValue: 10, actualValue: 10, kind: "usage" as const };
+    const b = makeBenefit({ usageRecords: [rollover, usage] });
+    const cycle: PeriodCycle = { start: "2026-04-01", end: "2026-04-30", label: "4月" };
+    // Default: skips rollover, finds usage.
+    expect(findCycleRecord(b, cycle)).toEqual(usage);
+    // includeRollover: find returns the first matching record in array order.
+    expect(findCycleRecord(b, cycle, { includeRollover: true })).toEqual(rollover);
   });
 });

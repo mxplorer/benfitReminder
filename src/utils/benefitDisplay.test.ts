@@ -50,7 +50,7 @@ describe("expandBenefitsForFilter — 可使用", () => {
     const today = new Date(2026, 3, 14);
     const b = makeBenefit({
       id: "b1",
-      usageRecords: [{ usedDate: "2026-04-02", faceValue: 10, actualValue: 10 }],
+      usageRecords: [{ usedDate: "2026-04-02", faceValue: 10, actualValue: 10, kind: "usage" }],
     });
     const card = makeCard([b]);
     expect(expandBenefitsForFilter(card, "available", today, "calendar")).toHaveLength(0);
@@ -90,9 +90,9 @@ describe("expandBenefitsForFilter — 已使用", () => {
       faceValue: 15,
       resetConfig: { period: "monthly" },
       usageRecords: [
-        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
-        { usedDate: "2026-03-05", faceValue: 15, actualValue: 12 },
-        { usedDate: "2025-12-10", faceValue: 15, actualValue: 15 },
+        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15, kind: "usage" },
+        { usedDate: "2026-03-05", faceValue: 15, actualValue: 12, kind: "usage" },
+        { usedDate: "2025-12-10", faceValue: 15, actualValue: 15, kind: "usage" },
       ],
     });
     const card = makeCard([b]);
@@ -119,8 +119,8 @@ describe("expandBenefitsForFilter — 已使用", () => {
       resetConfig: { period: "quarterly" },
       faceValue: 100,
       usageRecords: [
-        { usedDate: "2026-02-10", faceValue: 100, actualValue: 100 },
-        { usedDate: "2026-05-20", faceValue: 100, actualValue: 80 },
+        { usedDate: "2026-02-10", faceValue: 100, actualValue: 100, kind: "usage" },
+        { usedDate: "2026-05-20", faceValue: 100, actualValue: 80, kind: "usage" },
       ],
     });
     const card = makeCard([b]);
@@ -137,7 +137,7 @@ describe("expandBenefitsForFilter — 已使用", () => {
       id: "b1",
       resetType: "one_time",
       resetConfig: {},
-      usageRecords: [{ usedDate: "2026-03-01", faceValue: 50, actualValue: 50 }],
+      usageRecords: [{ usedDate: "2026-03-01", faceValue: 50, actualValue: 50, kind: "usage" }],
     });
     const card = makeCard([b]);
     const items = expandBenefitsForFilter(card, "used", today, "calendar");
@@ -149,7 +149,7 @@ describe("expandBenefitsForFilter — 已使用", () => {
     const b = makeBenefit({
       id: "b1",
       isHidden: true,
-      usageRecords: [{ usedDate: "2026-02-10", faceValue: 10, actualValue: 10 }],
+      usageRecords: [{ usedDate: "2026-02-10", faceValue: 10, actualValue: 10, kind: "usage" }],
     });
     const card = makeCard([b]);
     expect(expandBenefitsForFilter(card, "used", today, "calendar")).toHaveLength(0);
@@ -162,7 +162,7 @@ describe("expandBenefitsForFilter — 已使用", () => {
       faceValue: 20,
       resetConfig: {},
       usageRecords: [
-        { usedDate: "2026-03-15", faceValue: 20, actualValue: 20, propagateNext: true },
+        { usedDate: "2026-03-15", faceValue: 20, actualValue: 20, propagateNext: true, kind: "usage" },
       ],
     });
     const card = makeCard([b]);
@@ -181,8 +181,8 @@ describe("expandBenefitsForFilter — 未使用", () => {
       resetConfig: { period: "monthly" },
       faceValue: 15,
       usageRecords: [
-        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
-        { usedDate: "2026-03-05", faceValue: 15, actualValue: 15 },
+        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15, kind: "usage" },
+        { usedDate: "2026-03-05", faceValue: 15, actualValue: 15, kind: "usage" },
       ],
     });
     const card = makeCard([b]);
@@ -198,7 +198,7 @@ describe("expandBenefitsForFilter — 未使用", () => {
       id: "b1",
       resetConfig: { period: "quarterly" },
       faceValue: 100,
-      usageRecords: [{ usedDate: "2026-02-10", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-02-10", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     const card = makeCard([b]);
     const items = expandBenefitsForFilter(card, "unused", today, "calendar");
@@ -253,7 +253,7 @@ describe("expandBenefitsForFilter — 未使用", () => {
       resetType: "subscription",
       resetConfig: {},
       usageRecords: [
-        { usedDate: "2026-03-10", faceValue: 10, actualValue: 10, propagateNext: true },
+        { usedDate: "2026-03-10", faceValue: 10, actualValue: 10, propagateNext: true, kind: "usage" },
       ],
     });
     const card = makeCard([b]);
@@ -272,7 +272,7 @@ describe("expandBenefitsForFilter — 未使用", () => {
       resetType: "anniversary",
       resetConfig: {},
       faceValue: 50,
-      usageRecords: [{ usedDate: "2026-04-15", faceValue: 50, actualValue: 50 }],
+      usageRecords: [{ usedDate: "2026-04-15", faceValue: 50, actualValue: 50, kind: "usage" }],
     });
     const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2015-02-03" };
     const items = expandBenefitsForFilter(card, "unused", apr16, "calendar");
@@ -314,8 +314,8 @@ describe("expandBenefitsForFilter — 全部", () => {
       resetConfig: { period: "monthly" },
       faceValue: 15,
       usageRecords: [
-        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
-        { usedDate: "2026-03-05", faceValue: 15, actualValue: 12 },
+        { usedDate: "2026-01-10", faceValue: 15, actualValue: 15, kind: "usage" },
+        { usedDate: "2026-03-05", faceValue: 15, actualValue: 12, kind: "usage" },
       ],
     });
     const card = makeCard([b]);
@@ -333,7 +333,7 @@ describe("expandBenefitsForFilter — 全部", () => {
     const b = makeBenefit({
       id: "b1",
       resetConfig: { period: "quarterly" },
-      usageRecords: [{ usedDate: "2026-02-10", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-02-10", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     const card = makeCard([b]);
     const items = expandBenefitsForFilter(card, "all", today, "calendar");

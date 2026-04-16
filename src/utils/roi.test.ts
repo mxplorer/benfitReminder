@@ -49,9 +49,9 @@ describe("calculateCardROI", () => {
           rolloverable: false,
           rolloverMaxYears: 0,
           usageRecords: [
-            { usedDate: "2026-04-01", faceValue: 300, actualValue: 250 },
-            { usedDate: "2026-05-01", faceValue: 300, actualValue: 300 },
-            { usedDate: "2025-04-01", faceValue: 200, actualValue: 200 }, // prior year
+            { usedDate: "2026-04-01", faceValue: 300, actualValue: 250, kind: "usage" },
+            { usedDate: "2026-05-01", faceValue: 300, actualValue: 300, kind: "usage" },
+            { usedDate: "2025-04-01", faceValue: 200, actualValue: 200, kind: "usage" }, // prior year
           ],
         },
       ],
@@ -79,7 +79,7 @@ describe("calculateCardROI", () => {
           isHidden: false,
           rolloverable: false,
           rolloverMaxYears: 0,
-          usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 100 }],
+          usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 100, kind: "usage" }],
         },
       ],
     });
@@ -120,7 +120,7 @@ describe("calculateCardROI", () => {
           rolloverable: false,
           rolloverMaxYears: 0,
           usageRecords: [
-            { usedDate: "2026-01-10", faceValue: 100, actualValue: 100 },
+            { usedDate: "2026-01-10", faceValue: 100, actualValue: 100, kind: "usage" },
           ],
         },
       ],
@@ -149,7 +149,7 @@ describe("calculateDashboardROI", () => {
             isHidden: false,
             rolloverable: false,
             rolloverMaxYears: 0,
-            usageRecords: [{ usedDate: "2026-04-01", faceValue: 300, actualValue: 300 }],
+            usageRecords: [{ usedDate: "2026-04-01", faceValue: 300, actualValue: 300, kind: "usage" }],
           },
         ],
       }),
@@ -168,7 +168,7 @@ describe("calculateDashboardROI", () => {
             isHidden: false,
             rolloverable: false,
             rolloverMaxYears: 0,
-            usageRecords: [{ usedDate: "2026-05-01", faceValue: 50, actualValue: 50 }],
+            usageRecords: [{ usedDate: "2026-05-01", faceValue: 50, actualValue: 50, kind: "usage" }],
           },
         ],
       }),
@@ -196,7 +196,7 @@ describe("calculateDashboardROI", () => {
             isHidden: true,
             rolloverable: false,
             rolloverMaxYears: 0,
-            usageRecords: [{ usedDate: "2026-04-01", faceValue: 200, actualValue: 200 }],
+            usageRecords: [{ usedDate: "2026-04-01", faceValue: 200, actualValue: 200, kind: "usage" }],
           },
         ],
       }),
@@ -241,10 +241,10 @@ describe("calculateCardROI — anniversary window", () => {
           rolloverable: false,
           rolloverMaxYears: 0,
           usageRecords: [
-            { usedDate: "2025-08-01", faceValue: 100, actualValue: 100 }, // before window
-            { usedDate: "2025-10-01", faceValue: 100, actualValue: 80 }, // inside
-            { usedDate: "2026-03-01", faceValue: 100, actualValue: 90 }, // inside
-            { usedDate: "2026-10-01", faceValue: 100, actualValue: 100 }, // after window
+            { usedDate: "2025-08-01", faceValue: 100, actualValue: 100, kind: "usage" }, // before window
+            { usedDate: "2025-10-01", faceValue: 100, actualValue: 80, kind: "usage" }, // inside
+            { usedDate: "2026-03-01", faceValue: 100, actualValue: 90, kind: "usage" }, // inside
+            { usedDate: "2026-10-01", faceValue: 100, actualValue: 100, kind: "usage" }, // after window
           ],
         },
       ],
@@ -294,8 +294,8 @@ describe("calculateCardROI — anniversary window", () => {
           rolloverable: false,
           rolloverMaxYears: 0,
           usageRecords: [
-            { usedDate: "2026-01-05", faceValue: 10, actualValue: 10 },
-            { usedDate: "2026-02-05", faceValue: 10, actualValue: 10 },
+            { usedDate: "2026-01-05", faceValue: 10, actualValue: 10, kind: "usage" },
+            { usedDate: "2026-02-05", faceValue: 10, actualValue: 10, kind: "usage" },
           ],
         },
       ],

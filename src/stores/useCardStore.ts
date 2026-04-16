@@ -4,6 +4,7 @@ import { formatDate, isBenefitUsedInPeriod, isInCurrentCycle } from "../utils/pe
 import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
 import { syncAllCardsWithTemplates } from "../utils/templateSync";
+import { cycleStartForDate, makeRolloverRecord, makeUsageRecord } from "../utils/usageRecords";
 import { useCardTypeStore } from "./useCardTypeStore";
 
 interface CardStoreState {
@@ -126,9 +127,15 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay);
 
       if (isUsed) {
-        // Remove most recent record
+        // Remove the most recent non-rollover record. Popping blindly would
+        // discard a concurrent rollover marker on rolloverable benefits.
         const records = [...benefit.usageRecords];
-        records.pop();
+        for (let i = records.length - 1; i >= 0; i -= 1) {
+          if (records[i].kind !== "rollover") {
+            records.splice(i, 1);
+            break;
+          }
+        }
         return {
           cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
             ...b,
@@ -138,11 +145,11 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       }
 
       // Add new record with faceValue snapshot
-      const newRecord: UsageRecord = {
+      const newRecord: UsageRecord = makeUsageRecord({
         usedDate: usedDate ?? formatDate(today),
         faceValue: benefit.faceValue,
         actualValue: actualValue ?? benefit.faceValue,
-      };
+      });
       return {
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
@@ -187,12 +194,12 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         const todayIso = formatDate(new Date());
         const defaultDate =
           todayIso >= cycleStart && todayIso <= cycleEnd ? todayIso : cycleStart;
-        const newRecord: UsageRecord = {
+        const newRecord: UsageRecord = makeUsageRecord({
           usedDate: opts?.usedDate ?? defaultDate,
           faceValue: benefit.faceValue,
           actualValue: opts?.actualValue ?? benefit.faceValue,
           ...(opts?.propagateNext !== undefined ? { propagateNext: opts.propagateNext } : {}),
-        };
+        });
         return {
           cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
             ...b,
@@ -218,13 +225,22 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       if (!card) return state;
       const benefit = card.benefits.find((b) => b.id === benefitId);
       if (!benefit || !benefit.rolloverable) return state;
+      const period = benefit.resetConfig.period;
+      if (!period) return state;
 
-      const newRecord: UsageRecord = {
-        usedDate: usedDate ?? formatDate(today),
-        faceValue: 0,
-        actualValue: 0,
-        isRollover: true,
-      };
+      // Snap to current cycle start so dedupe + getAvailableValue can find
+      // exactly one rollover record per cycle.
+      const explicit = usedDate
+        ? cycleStartForDate(new Date(usedDate + "T00:00:00"), period)
+        : undefined;
+      const anchorDate = explicit ?? cycleStartForDate(today, period);
+
+      const alreadyRolled = benefit.usageRecords.some(
+        (r) => r.kind === "rollover" && r.usedDate === anchorDate,
+      );
+      if (alreadyRolled) return state;
+
+      const newRecord = makeRolloverRecord(anchorDate);
       return {
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
@@ -332,12 +348,12 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
           );
           if (!prev || prev.propagateNext !== true) return benefit;
 
-          const newRecord: UsageRecord = {
+          const newRecord: UsageRecord = makeUsageRecord({
             usedDate: currentMonthStartIso,
             faceValue: benefit.faceValue,
             actualValue: prev.actualValue,
             propagateNext: true,
-          };
+          });
           return { ...benefit, usageRecords: [...benefit.usageRecords, newRecord] };
         }),
       })),

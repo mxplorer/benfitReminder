@@ -55,7 +55,7 @@ describe("CardDetail", () => {
 
   it("renders usage history table with records", () => {
     const benefit = makeBenefit({
-      usageRecords: [{ usedDate: "2026-03-01", faceValue: 200, actualValue: 150 }],
+      usageRecords: [{ usedDate: "2026-03-01", faceValue: 200, actualValue: 150, kind: "usage" }],
     });
     const card = makeCard({ benefits: [benefit] });
     useCardStore.setState({ cards: [card] });
@@ -86,7 +86,7 @@ describe("CardDetail filter integration", () => {
               isHidden: false,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [
-                { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+                { usedDate: "2026-01-10", faceValue: 15, actualValue: 15, kind: "usage" },
               ],
             },
             {
@@ -164,7 +164,7 @@ describe("CardDetail cycle-scoped toggle integration", () => {
               rolloverable: false,
               rolloverMaxYears: 0,
               usageRecords: [
-                { usedDate: "2026-02-10", faceValue: 199, actualValue: 199 }, // Q1
+                { usedDate: "2026-02-10", faceValue: 199, actualValue: 199, kind: "usage" }, // Q1
               ],
             },
           ],

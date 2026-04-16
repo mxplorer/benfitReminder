@@ -245,14 +245,14 @@ const makeBenefit = (overrides: Partial<Benefit>): Benefit => ({
 describe("isBenefitUsedInPeriod", () => {
   it("returns true when usage record is in current calendar month", () => {
     const benefit = makeBenefit({
-      usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(true);
   });
 
   it("returns false when usage record is in prior month", () => {
     const benefit = makeBenefit({
-      usageRecords: [{ usedDate: "2026-03-15", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-03-15", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
@@ -270,7 +270,7 @@ describe("isBenefitUsedInPeriod", () => {
     const benefit = makeBenefit({
       resetType: "since_last_use",
       resetConfig: { cooldownDays: 30 },
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(true);
   });
@@ -279,7 +279,7 @@ describe("isBenefitUsedInPeriod", () => {
     const benefit = makeBenefit({
       resetType: "since_last_use",
       resetConfig: { cooldownDays: 5 },
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
@@ -289,7 +289,7 @@ describe("isBenefitUsedInPeriod", () => {
     const benefit = makeBenefit({
       resetType: "since_last_use",
       resetConfig: { cooldownDays: 5 },
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-06"))).toBe(false);
   });
@@ -298,7 +298,7 @@ describe("isBenefitUsedInPeriod", () => {
     const benefit = makeBenefit({
       resetType: "since_last_use",
       resetConfig: { cooldownDays: 5 },
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-05"))).toBe(true);
   });
@@ -307,7 +307,7 @@ describe("isBenefitUsedInPeriod", () => {
     const benefit = makeBenefit({
       resetType: "since_last_use",
       resetConfig: { cooldownDays: 0 },
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
@@ -316,7 +316,7 @@ describe("isBenefitUsedInPeriod", () => {
     const benefit = makeBenefit({
       resetType: "anniversary",
       resetConfig: {},
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 50 }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 50, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"), "2024-03-15")).toBe(true);
   });
@@ -325,7 +325,7 @@ describe("isBenefitUsedInPeriod", () => {
     const benefit = makeBenefit({
       resetType: "one_time",
       resetConfig: {},
-      usageRecords: [{ usedDate: "2020-01-01", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2020-01-01", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(true);
   });
@@ -337,6 +337,21 @@ describe("isBenefitUsedInPeriod", () => {
       usageRecords: [],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
+  });
+
+  it("ignores rollover records — a cycle with only a rollover marker is not 'used'", () => {
+    // Regression: before kind, rolloverBenefit wrote a record inside the current
+    // cycle that findCycleRecord/isBenefitUsedInPeriod mistook for a real use.
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(false);
   });
 });
 
@@ -568,7 +583,7 @@ describe("monthly subscription — current-month usage", () => {
     isHidden: false,
     rolloverable: false,
     rolloverMaxYears: 0,
-    usageRecords: records.map((r) => ({ ...r, faceValue: 20 })),
+    usageRecords: records.map((r) => ({ ...r, faceValue: 20, kind: "usage" as const })),
   });
 
   it("isBenefitUsedInPeriod returns false when current month has no record (regression: previously true)", () => {
@@ -679,7 +694,7 @@ describe("isBenefitUsedInPeriod — statement close aware", () => {
     isHidden: false,
     rolloverable: false,
     rolloverMaxYears: 0,
-    usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],
+    usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50, kind: "usage" }],
   };
 
   it("treats a record dated 2026-04-05 as LAST cycle's usage (before shifted start 2026-04-07)", () => {
@@ -689,7 +704,7 @@ describe("isBenefitUsedInPeriod — statement close aware", () => {
   it("treats a record dated 2026-04-07 as CURRENT cycle's usage", () => {
     const benefit = {
       ...base,
-      usageRecords: [{ usedDate: "2026-04-07", faceValue: 50, actualValue: 50 }],
+      usageRecords: [{ usedDate: "2026-04-07", faceValue: 50, actualValue: 50, kind: "usage" as const }],
     };
     expect(isBenefitUsedInPeriod(benefit, today, "2025-04-03", 7)).toBe(true);
   });

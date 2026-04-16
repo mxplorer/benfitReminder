@@ -71,7 +71,7 @@ describe("BenefitCard", () => {
 
   it("shows used state with checkmark and strikethrough", () => {
     const benefit = makeBenefit({
-      usageRecords: [{ usedDate: "2026-04-20", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-20", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
 
@@ -206,7 +206,7 @@ describe("BenefitCard", () => {
       rolloverMaxYears: 2,
       resetConfig: { period: "quarterly" },
       usageRecords: [
-        { usedDate: "2026-01-15", faceValue: 0, actualValue: 0, isRollover: true },
+        { usedDate: "2026-01-15", faceValue: 0, actualValue: 0, kind: "rollover" },
       ],
     });
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
@@ -243,7 +243,7 @@ describe("BenefitCard", () => {
     const handler = vi.fn();
     const benefit = makeBenefit({
       id: "b7",
-      usageRecords: [{ usedDate: "2026-04-20", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-20", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     const card = makeCard({ id: "c7" });
     render(<BenefitCard benefit={benefit} card={card} onToggleUsage={handler} />);
@@ -269,7 +269,7 @@ describe("BenefitCard — subscription reset label", () => {
       resetType: "subscription",
       resetConfig: {},
       usageRecords: [
-        { usedDate: "2026-03-15", faceValue: 100, actualValue: 100, propagateNext: true },
+        { usedDate: "2026-03-15", faceValue: 100, actualValue: 100, propagateNext: true, kind: "usage" },
       ],
     });
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
@@ -281,7 +281,7 @@ describe("BenefitCard — subscription reset label", () => {
       resetType: "subscription",
       resetConfig: {},
       usageRecords: [
-        { usedDate: "2026-03-15", faceValue: 100, actualValue: 100 },
+        { usedDate: "2026-03-15", faceValue: 100, actualValue: 100, kind: "usage" },
       ],
     });
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
@@ -315,7 +315,7 @@ describe("BenefitCard — per-cycle props", () => {
 
   it("shows used state when cycleUsed=true", () => {
     const benefit = makeBenefit();
-    const record: UsageRecord = { usedDate: "2026-04-10", faceValue: 100, actualValue: 80 };
+    const record: UsageRecord = { usedDate: "2026-04-10", faceValue: 100, actualValue: 80, kind: "usage" };
     render(
       <BenefitCard
         benefit={benefit}
@@ -351,7 +351,7 @@ describe("BenefitCard — cycle-scoped toggle", () => {
   it("unchecking a past used cycle routes through onSetCycleUsed, not onToggleUsage", () => {
     const benefit = makeBenefit({ id: "b1", resetConfig: { period: "quarterly" } });
     const card = makeCard({ id: "c1" });
-    const record: UsageRecord = { usedDate: "2026-02-05", faceValue: 100, actualValue: 100 };
+    const record: UsageRecord = { usedDate: "2026-02-05", faceValue: 100, actualValue: 100, kind: "usage" };
     const onToggle = vi.fn();
     const setCycleUsed = vi.fn();
     render(
@@ -534,6 +534,7 @@ describe("BenefitCard — propagateNext prompt (Task 7)", () => {
       faceValue: 25,
       actualValue: 22,
       propagateNext: true,
+      kind: "usage",
     };
     render(
       <BenefitCard
@@ -566,6 +567,7 @@ describe("BenefitCard — propagateNext prompt (Task 7)", () => {
       faceValue: 25,
       actualValue: 22,
       propagateNext: true,
+      kind: "usage",
     };
     render(
       <BenefitCard
@@ -605,6 +607,7 @@ describe("BenefitCard — propagateNext prompt (Task 7)", () => {
       usedDate: "2026-04-10",
       faceValue: 25,
       actualValue: 22,
+      kind: "usage",
     };
     render(
       <BenefitCard

@@ -1,11 +1,18 @@
 import { describe, it, expect } from "vitest";
 import type { Benefit, UsageRecord } from "../models/types";
-import { getLatestRecord, latestHasPropagate } from "./usageRecords";
+import {
+  cycleStartForDate,
+  getLatestRecord,
+  latestHasPropagate,
+  makeRolloverRecord,
+  makeUsageRecord,
+} from "./usageRecords";
 
-const makeRecord = (overrides: Partial<UsageRecord>): UsageRecord => ({
+const makeRecord = (overrides: Partial<UsageRecord> = {}): UsageRecord => ({
   usedDate: "2026-01-01",
   faceValue: 10,
   actualValue: 10,
+  kind: "usage",
   ...overrides,
 });
 
@@ -85,5 +92,68 @@ describe("latestHasPropagate", () => {
       makeRecord({ usedDate: "2026-02-01", propagateNext: false }),
     ]);
     expect(latestHasPropagate(b)).toBe(false);
+  });
+});
+
+describe("makeUsageRecord", () => {
+  it("tags the record as 'usage' and preserves core fields", () => {
+    const r = makeUsageRecord({ usedDate: "2026-03-15", faceValue: 100, actualValue: 80 });
+    expect(r).toEqual({
+      usedDate: "2026-03-15",
+      faceValue: 100,
+      actualValue: 80,
+      kind: "usage",
+    });
+  });
+
+  it("forwards propagateNext when supplied", () => {
+    const r = makeUsageRecord({
+      usedDate: "2026-03-15",
+      faceValue: 25,
+      actualValue: 25,
+      propagateNext: true,
+    });
+    expect(r.propagateNext).toBe(true);
+    expect(r.kind).toBe("usage");
+  });
+
+  it("omits propagateNext when undefined (no stray property)", () => {
+    const r = makeUsageRecord({ usedDate: "2026-03-15", faceValue: 10, actualValue: 10 });
+    expect("propagateNext" in r).toBe(false);
+  });
+});
+
+describe("makeRolloverRecord", () => {
+  it("zeroes face/actual value and uses the supplied cycle start as usedDate", () => {
+    const r = makeRolloverRecord("2026-01-01");
+    expect(r).toEqual({
+      usedDate: "2026-01-01",
+      faceValue: 0,
+      actualValue: 0,
+      kind: "rollover",
+    });
+  });
+});
+
+describe("cycleStartForDate", () => {
+  const d = (iso: string) => new Date(iso + "T00:00:00");
+  it("monthly: first of month", () => {
+    expect(cycleStartForDate(d("2026-03-15"), "monthly")).toBe("2026-03-01");
+  });
+  it("quarterly: first of quarter", () => {
+    expect(cycleStartForDate(d("2026-05-20"), "quarterly")).toBe("2026-04-01");
+    expect(cycleStartForDate(d("2026-01-10"), "quarterly")).toBe("2026-01-01");
+    expect(cycleStartForDate(d("2026-12-31"), "quarterly")).toBe("2026-10-01");
+  });
+  it("semi_annual: H1/H2 boundary", () => {
+    expect(cycleStartForDate(d("2026-06-30"), "semi_annual")).toBe("2026-01-01");
+    expect(cycleStartForDate(d("2026-07-01"), "semi_annual")).toBe("2026-07-01");
+  });
+  it("annual: Jan 1", () => {
+    expect(cycleStartForDate(d("2026-08-15"), "annual")).toBe("2026-01-01");
+  });
+  it("every_4_years: block start", () => {
+    expect(cycleStartForDate(d("2026-08-15"), "every_4_years")).toBe("2024-01-01");
+    expect(cycleStartForDate(d("2028-01-01"), "every_4_years")).toBe("2028-01-01");
   });
 });

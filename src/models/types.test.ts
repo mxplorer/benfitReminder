@@ -84,9 +84,9 @@ describe("Benefit rollover fields", () => {
     expect(b.rolloverMaxYears).toBe(2);
   });
 
-  it("supports isRollover on UsageRecord", () => {
-    const r: UsageRecord = { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, isRollover: true };
-    expect(r.isRollover).toBe(true);
+  it("supports kind=rollover on UsageRecord", () => {
+    const r: UsageRecord = { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" };
+    expect(r.kind).toBe("rollover");
   });
 });
 
@@ -96,13 +96,14 @@ describe("UsageRecord.propagateNext", () => {
       usedDate: "2026-03-01",
       faceValue: 25,
       actualValue: 25,
+      kind: "usage",
       propagateNext: true,
     };
     expect(r.propagateNext).toBe(true);
   });
 
   it("accepts propagateNext omitted", () => {
-    const r: UsageRecord = { usedDate: "2026-03-01", faceValue: 25, actualValue: 25 };
+    const r: UsageRecord = { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, kind: "usage" };
     expect(r.propagateNext).toBeUndefined();
   });
 });

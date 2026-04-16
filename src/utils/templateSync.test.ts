@@ -151,7 +151,7 @@ describe("syncCardWithTemplate", () => {
           isHidden: true,
           rolloverable: false,
           rolloverMaxYears: 2,
-          usageRecords: [{ usedDate: "2026-01-15", faceValue: 100, actualValue: 80 }],
+          usageRecords: [{ usedDate: "2026-01-15", faceValue: 100, actualValue: 80, kind: "usage" }],
         },
       ],
     });

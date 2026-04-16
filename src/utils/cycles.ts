@@ -197,10 +197,21 @@ export const getScopeCycles = (
   return raw.filter((c) => applicableMonthsOverlap(c, resetConfig.applicableMonths));
 };
 
+export interface FindCycleRecordOptions {
+  /** Include rollover records in the search. Defaults to false — rollover
+   * records mark a cycle as rolled-forward, not used, so UI that asks
+   * "is this cycle consumed?" should skip them. */
+  includeRollover?: boolean;
+}
+
 export const findCycleRecord = (
   benefit: Benefit,
   cycle: PeriodCycle,
+  options: FindCycleRecordOptions = {},
 ): UsageRecord | undefined =>
   benefit.usageRecords.find(
-    (r) => r.usedDate >= cycle.start && r.usedDate <= cycle.end,
+    (r) =>
+      r.usedDate >= cycle.start &&
+      r.usedDate <= cycle.end &&
+      (options.includeRollover || r.kind !== "rollover"),
   );

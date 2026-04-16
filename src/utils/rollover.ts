@@ -1,6 +1,7 @@
 import type { Benefit, CalendarPeriod, UsageRecord } from "../models/types";
 import type { DateRange } from "./period";
 import { getCalendarPeriodRange } from "./period";
+import { makeRolloverRecord } from "./usageRecords";
 
 export const getPeriodRangeAt = (
   date: Date,
@@ -82,7 +83,7 @@ export const generateRolloverRecords = (
   for (let i = 0; i < periodsNeeded; i++) {
     cursor = getPreviousPeriodStart(cursor, period);
     const prevRange = getPeriodRangeAt(cursor, period);
-    records.push({ usedDate: prevRange.start, faceValue: 0, actualValue: 0, isRollover: true });
+    records.push(makeRolloverRecord(prevRange.start));
   }
 
   return records;
@@ -108,7 +109,7 @@ export const getAvailableValue = (benefit: Benefit, today: Date): number => {
       (r) => r.usedDate >= prevRange.start && r.usedDate <= prevRange.end,
     );
     if (!recordInPeriod) break;
-    if (!recordInPeriod.isRollover) break;
+    if (recordInPeriod.kind !== "rollover") break;
     accumulated += benefit.faceValue;
     periodsChecked++;
   }

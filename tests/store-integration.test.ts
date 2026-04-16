@@ -149,7 +149,7 @@ describe("Store + Reminder integration", () => {
         makeBenefit({
           id: "used",
           name: "Used Monthly",
-          usageRecords: [{ usedDate: "2026-04-10", faceValue: 100, actualValue: 100 }],
+          usageRecords: [{ usedDate: "2026-04-10", faceValue: 100, actualValue: 100, kind: "usage" }],
         }),
       ],
     });
@@ -249,7 +249,7 @@ describe("Auto-recur + ROI integration", () => {
             resetType: "subscription",
             faceValue: 25,
             usageRecords: [
-              { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true },
+              { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true, kind: "usage" },
             ],
           }),
         ],
@@ -313,7 +313,7 @@ describe("JSON persistence round-trip", () => {
             name: "Hotel H1",
             faceValue: 300,
             resetConfig: { period: "semi_annual", applicableMonths: [1, 2, 3, 4, 5, 6] },
-            usageRecords: [{ usedDate: "2026-03-15", faceValue: 300, actualValue: 250 }],
+            usageRecords: [{ usedDate: "2026-03-15", faceValue: 300, actualValue: 250, kind: "usage" }],
           }),
           makeBenefit({
             id: "b2",
@@ -321,9 +321,9 @@ describe("JSON persistence round-trip", () => {
             resetType: "subscription",
             faceValue: 25,
             usageRecords: [
-              { usedDate: "2026-01-01", faceValue: 25, actualValue: 25, propagateNext: true },
-              { usedDate: "2026-02-01", faceValue: 25, actualValue: 25, propagateNext: true },
-              { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true },
+              { usedDate: "2026-01-01", faceValue: 25, actualValue: 25, propagateNext: true, kind: "usage" },
+              { usedDate: "2026-02-01", faceValue: 25, actualValue: 25, propagateNext: true, kind: "usage" },
+              { usedDate: "2026-03-01", faceValue: 25, actualValue: 25, propagateNext: true, kind: "usage" },
             ],
           }),
         ],
@@ -492,7 +492,7 @@ describe("Statement-close aligned anniversary benefit (CSP $50 hotel credit)", (
       isHidden: false,
       rolloverable: false,
       rolloverMaxYears: 0,
-      usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],
+      usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50, kind: "usage" }],
     };
     const card: CreditCard = {
       id: "c",
@@ -529,7 +529,7 @@ describe("Statement-close aligned anniversary benefit (CSP $50 hotel credit)", (
       isHidden: false,
       rolloverable: false,
       rolloverMaxYears: 0,
-      usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],
+      usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50, kind: "usage" }],
     };
     const card: CreditCard = {
       id: "c",
@@ -569,7 +569,7 @@ describe("auto-replicate subscription flow", () => {
       category: "streaming", resetType: "subscription",
       resetConfig: { period: "monthly" },
       isHidden: false, rolloverable: false, rolloverMaxYears: 0,
-      usageRecords: [{ usedDate: lastMonthStart, faceValue: 20, actualValue: 13, propagateNext: true }],
+      usageRecords: [{ usedDate: lastMonthStart, faceValue: 20, actualValue: 13, propagateNext: true, kind: "usage" }],
     };
     const card: CreditCard = {
       id: "c", owner: "me", cardTypeSlug: "x", annualFee: 0,

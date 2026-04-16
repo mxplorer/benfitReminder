@@ -80,7 +80,7 @@ describe("ByUrgencyView", () => {
     const used = makeBenefit({
       id: "b1",
       name: "Used Benefit",
-      usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50 }],
+      usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50, kind: "usage" }],
     });
     const card = makeCard({ benefits: [used] });
     useCardStore.setState({ cards: [card] });
@@ -109,7 +109,7 @@ describe("ByUrgencyView", () => {
       name: "Auto Sub Benefit",
       resetType: "subscription",
       usageRecords: [
-        { usedDate: "2026-03-10", faceValue: 50, actualValue: 50, propagateNext: true },
+        { usedDate: "2026-03-10", faceValue: 50, actualValue: 50, propagateNext: true, kind: "usage" },
       ],
     });
     const card = makeCard({ benefits: [autoSub] });

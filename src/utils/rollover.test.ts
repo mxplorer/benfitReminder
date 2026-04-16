@@ -104,7 +104,7 @@ describe("getAvailableValue", () => {
           usedDate: "2026-03-01",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         },
       ],
     });
@@ -120,13 +120,13 @@ describe("getAvailableValue", () => {
           usedDate: "2026-01-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         },
         {
           usedDate: "2026-04-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         },
       ],
     });
@@ -138,12 +138,12 @@ describe("getAvailableValue", () => {
       resetConfig: { period: "quarterly" },
       faceValue: 100,
       usageRecords: [
-        { usedDate: "2026-01-15", faceValue: 100, actualValue: 80 }, // actual use Q1
+        { usedDate: "2026-01-15", faceValue: 100, actualValue: 80, kind: "usage" }, // actual use Q1
         {
           usedDate: "2026-04-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         }, // Q2 rolled
       ],
     });
@@ -160,7 +160,7 @@ describe("getAvailableValue", () => {
           usedDate: "2026-04-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         }, // Q2 rolled
       ],
     });
@@ -177,19 +177,19 @@ describe("getAvailableValue", () => {
           usedDate: "2025-01-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         },
         {
           usedDate: "2025-07-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         },
         {
           usedDate: "2026-01-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         },
       ],
     });
@@ -205,7 +205,7 @@ describe("getAvailableValue", () => {
           usedDate: "2026-01-15",
           faceValue: 0,
           actualValue: 0,
-          isRollover: true,
+          kind: "rollover",
         },
       ],
     });
@@ -252,8 +252,8 @@ describe("generateRolloverRecords", () => {
     const b = makeBenefit({ faceValue: 300, resetConfig: { period: "semi_annual" } });
     const records = generateRolloverRecords(b, 600, d("2026-07-15"));
     expect(records).toHaveLength(2);
-    expect(records[0]).toEqual({ usedDate: "2026-01-01", faceValue: 0, actualValue: 0, isRollover: true });
-    expect(records[1]).toEqual({ usedDate: "2025-07-01", faceValue: 0, actualValue: 0, isRollover: true });
+    expect(records[0]).toEqual({ usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" });
+    expect(records[1]).toEqual({ usedDate: "2025-07-01", faceValue: 0, actualValue: 0, kind: "rollover" });
   });
 
   it("rounds down non-exact multiples", () => {

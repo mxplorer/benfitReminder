@@ -24,8 +24,8 @@ const usedItem: BenefitDisplayItem = {
   aggregate: {
     kind: "used",
     months: [
-      { label: "1月", used: true, record: { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 }, faceValue: 15, cycleStart: "2026-01-01", cycleEnd: "2026-01-31" },
-      { label: "3月", used: true, record: { usedDate: "2026-03-05", faceValue: 15, actualValue: 12 }, faceValue: 15, cycleStart: "2026-03-01", cycleEnd: "2026-03-31" },
+      { label: "1月", used: true, record: { usedDate: "2026-01-10", faceValue: 15, actualValue: 15, kind: "usage" }, faceValue: 15, cycleStart: "2026-01-01", cycleEnd: "2026-01-31" },
+      { label: "3月", used: true, record: { usedDate: "2026-03-05", faceValue: 15, actualValue: 12, kind: "usage" }, faceValue: 15, cycleStart: "2026-03-01", cycleEnd: "2026-03-31" },
     ],
     usedCount: 2, unusedCount: 0, totalActualValue: 27, totalFaceValue: 30,
   },
@@ -94,7 +94,7 @@ describe("AggregatedBenefitCard — uncheck used row", () => {
         {
           label: "1月",
           used: true,
-          record: { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+          record: { usedDate: "2026-01-10", faceValue: 15, actualValue: 15, kind: "usage" },
           faceValue: 15,
           cycleStart: "2026-01-01",
           cycleEnd: "2026-01-31",

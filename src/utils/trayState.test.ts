@@ -89,7 +89,7 @@ describe("computeTrayStatus", () => {
 
   it("returns clean when the only applicable benefit has been used this period", () => {
     const benefit = makeBenefit({
-      usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100 }],
+      usageRecords: [{ usedDate: "2026-04-05", faceValue: 100, actualValue: 100, kind: "usage" }],
     });
     const card = makeCard([benefit]);
     expect(computeTrayStatus([card], d("2026-04-16"), 3).state).toBe("clean");

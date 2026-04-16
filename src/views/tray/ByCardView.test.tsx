@@ -19,7 +19,7 @@ describe("ByCardView filter integration", () => {
               isHidden: false,
               rolloverable: false, rolloverMaxYears: 0,
               usageRecords: [
-                { usedDate: "2026-01-10", faceValue: 15, actualValue: 15 },
+                { usedDate: "2026-01-10", faceValue: 15, actualValue: 15, kind: "usage" },
               ],
             },
           ],

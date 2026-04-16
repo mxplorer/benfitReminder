@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import type { Benefit, CreditCard, UsageRecord } from "../../models/types";
 import type { DateRange } from "../../utils/period";
 import { getPastPeriods, generateRolloverRecords } from "../../utils/rollover";
+import { makeUsageRecord } from "../../utils/usageRecords";
 import { useCardStore } from "../../stores/useCardStore";
 import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
 import type { BenefitDisplayItem } from "../../utils/benefitDisplay";
@@ -192,11 +193,13 @@ export const BackfillDialog = ({ card, onDone }: BackfillDialogProps) => {
     for (const entry of entries) {
       if (!entry.checked) continue;
       const records = byBenefit.get(entry.benefitId) ?? [];
-      records.push({
-        usedDate: entry.period.start,
-        faceValue: entry.faceValue,
-        actualValue: entry.actualValue,
-      });
+      records.push(
+        makeUsageRecord({
+          usedDate: entry.period.start,
+          faceValue: entry.faceValue,
+          actualValue: entry.actualValue,
+        }),
+      );
       byBenefit.set(entry.benefitId, records);
     }
     for (const [benefitId, records] of byBenefit) {

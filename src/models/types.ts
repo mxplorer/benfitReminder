@@ -66,11 +66,16 @@ export interface CardType {
 
 // --- User data types (persisted to JSON) ---
 
+export type UsageRecordKind = "usage" | "rollover";
+
 export interface UsageRecord {
   usedDate: string;
   faceValue: number;
   actualValue: number;
-  isRollover?: boolean;
+  /** Discriminator for record intent. `"usage"` records consume benefit
+   * value in their cycle; `"rollover"` records mark a cycle as rolled
+   * forward (faceValue/actualValue are both 0 for rollover). */
+  kind: UsageRecordKind;
   /** For monthly subscription / calendar-monthly benefits: if true, app
    * auto-creates next month's record copying this record's actualValue. */
   propagateNext?: boolean;

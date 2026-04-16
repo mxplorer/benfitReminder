@@ -183,16 +183,19 @@ export const isBenefitUsedInPeriod = (
   statementClosingDay?: number,
 ): boolean => {
   const { resetType, resetConfig, usageRecords } = benefit;
+  // Rollover records mark a cycle as "rolled forward" — they never represent
+  // consumption, so exclude them from every "used?" check.
+  const usage = usageRecords.filter((r) => r.kind !== "rollover");
 
   if (resetType === "one_time") {
-    return usageRecords.length > 0;
+    return usage.length > 0;
   }
 
   if (resetType === "since_last_use") {
-    if (usageRecords.length === 0) return false;
+    if (usage.length === 0) return false;
     const cooldown = resetConfig.cooldownDays ?? 0;
     if (cooldown === 0) return false;
-    const latest = getLatestRecord(usageRecords);
+    const latest = getLatestRecord(usage);
     if (!latest) return false;
     const lastUsed = new Date(latest.usedDate + "T00:00:00");
     const cooldownEnd = new Date(lastUsed);
@@ -208,7 +211,7 @@ export const isBenefitUsedInPeriod = (
     statementClosingDay,
   });
   if (!range) return false;
-  return usageRecords.some((r) => isDateInRange(r.usedDate, range));
+  return usage.some((r) => isDateInRange(r.usedDate, range));
 };
 
 export const isApplicableNow = (benefit: Benefit, today: Date): boolean => {
