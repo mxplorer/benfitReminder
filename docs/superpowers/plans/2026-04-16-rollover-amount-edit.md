@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let users view and edit a rollover benefit's accumulated amount on an already-created card, using a dedicated dialog launched from the BenefitCard row, and replace the ambiguous `isRollover` flag on `UsageRecord` with a first-class `kind` discriminator.
+**Goal:** Let users view and edit a rollover benefit's accumulated past-cycle amount on an already-created card, using a dedicated dialog launched from a new `⚙` gear button on the BenefitCard row, and replace the ambiguous `isRollover` flag on `UsageRecord` with a first-class `kind` discriminator. The per-cycle rollover shortcut button keeps its existing semantic (marks the current cycle as rolled) but gets a bigger, bolder `⟳` icon for clarity.
 
 **Architecture:** A pure-function `generateRolloverRecords` already converts "accumulated amount" into N `kind: "rollover"` records. The new `RolloverEditDialog` wraps that function behind an atomic store action (`replaceRolloverRecords`) that deletes prior rollover records and emits a fresh set. Readers (`findCycleRecord`, `isBenefitUsedInPeriod`, `getAvailableValue`) are updated to branch on `record.kind`. A one-shot migration inside `migrateCards` converts legacy `isRollover: true` records, snaps their `usedDate` to the containing cycle start, dedupes duplicates, and deletes the legacy field.
 
@@ -20,21 +20,40 @@ After initial card creation there is no UI to revisit rollover amounts — `Back
 
 ## 2. UI Approach
 
-**Decision: the existing `↗` button on `BenefitCard` is rewired to open the new `RolloverEditDialog` pre-filled with the current accumulated rollover amount.** No new `⚙` gear button is added — one entry point per rolloverable benefit row keeps the card visually clean and avoids splitting semantics across two controls. The spec's three candidates were: (1) repurpose `BackfillDialog`'s rollover step from a CardDetail entry point, (2) turn the `↗` button into an input prompt, (3) a full `BenefitDetail` page. Option 1 couples rollover editing to a multi-step card-onboarding flow we don't want to reopen. A bare `↗` prompt (option 2) can't show the `rolloverMaxYears` cap or a live preview. Option 3 is disproportionate for a single field. A dedicated dialog reuses `generateRolloverRecords`, reuses the input control shape from `BackfillDialog.tsx:229-238`, and gives room to show the max-years constraint and the derived record preview inline.
+**Two entry points, cleanly separated semantics.** Per-cycle rollover (mark *this* cycle as rolling forward into the next) and accumulated past-cycle editing are two different jobs; merging them into one control proved confusing. The rolloverable `BenefitCard` row gets:
+
+1. **`⟳` button (per-cycle rollover shortcut)** — replaces the existing `↗` arrow. On click, writes a `kind: "rollover"` record for the *current* cycle via `rolloverBenefit`. Semantics are unchanged from today; only the icon is updated to be visibly larger and bolder so users distinguish it from the `✓` (use) action. This keeps the next-cycle chain intact — `getAvailableValue` can accumulate from the current cycle's rollover record forward as it does today.
+2. **`⚙` gear button (accumulated past-balance editor)** — new control, opens `RolloverEditDialog`. Edits the *past-cycle* rollover records (how many years of unused quota have already rolled into the current balance), which `generateRolloverRecords` materialises as N backdated `kind: "rollover"` records. The dialog does not touch the current cycle's record.
+
+The spec's three candidates were: (1) repurpose `BackfillDialog`'s rollover step from a CardDetail entry point, (2) turn the `↗` button into an input prompt, (3) a full `BenefitDetail` page. Option 1 couples rollover editing to a multi-step card-onboarding flow we don't want to reopen. Option 2 was the plan's original decision but was revised — the `↗`/`⟳` shortcut is load-bearing for keeping the cross-cycle rollover chain continuous (see §1 problem statement), so it cannot be sacrificed for the dialog. Option 3 is disproportionate for a single field. A dedicated dialog behind a separate `⚙` gear reuses `generateRolloverRecords`, reuses the input control shape from `BackfillDialog.tsx:229-238`, and gives room to show the max-years constraint and the derived record preview inline.
 
 ### Pre-fill behaviour
 
-When the dialog opens, the amount input is seeded from the current rollover state:
-`prefillAmount = (count of kind === "rollover" records) × benefit.faceValue`.
-Result: clicking `↗` on a benefit with no existing rollover shows an empty-state `0`; clicking on one already showing accumulated `$600` at `$300/year` seeds `600` and previews the two existing records.
+When the dialog opens, the amount input is seeded from the stored past-cycle rollover state (current cycle's record, if any, is excluded from the seed and left untouched by save):
+`prefillAmount = (count of past-cycle kind === "rollover" records) × benefit.faceValue`.
+Result: clicking `⚙` on a benefit with no past-cycle rollover shows an empty-state `0`; clicking on one already carrying two past cycles of `$300/year` seeds `600` and previews the two existing records.
 
 ### Max-years reduction behaviour
 
-When the user types a lower amount (or when `benefit.rolloverMaxYears` has been reduced via the benefit editor), the preview regenerates via `generateRolloverRecords(benefit, newAmount, today)`, which already clamps to `rolloverMaxYears * PERIOD_MULTIPLIER[period]`. On save, `replaceRolloverRecords` atomically drops all prior `kind === "rollover"` records and appends the new set — **oldest over-cap records are silently pruned, no confirm prompt**. This is an explicit decision (see §7 Decisions).
+When the user types a lower amount (or when `benefit.rolloverMaxYears` has been reduced via the benefit editor), the preview regenerates via `generateRolloverRecords(benefit, newAmount, today)`, which already clamps to `rolloverMaxYears * PERIOD_MULTIPLIER[period]`. On save, `replaceRolloverRecords` atomically drops all prior past-cycle `kind === "rollover"` records and appends the new set — **oldest over-cap records are silently pruned, no confirm prompt**. This is an explicit decision (see §7 Decisions). The current cycle's record (if any, from `⟳`) is preserved across save.
+
+### Icon styling (`⟳` button)
+
+The per-cycle rollover button uses the Unicode `⟳` (U+27F3 clockwise gapped circle arrow) rendered at ~1.35× the default button font size and `font-weight: 700`, so it reads clearly next to the smaller `✓` and `×` controls. Keep the same button-shell class so the hit target is consistent; only override `font-size` and `font-weight` in the icon span.
 
 ### ASCII Mockup
 
 ```
+BenefitCard (rolloverable):
+┌─────────────────────────────────────────────────┐
+│  $300 Airline Fee Credit     $900 available     │
+│  resets annually  •  rollover max 2 yrs         │
+│                                                 │
+│                             [⟳] [⚙] [✕] [✓]     │
+└─────────────────────────────────────────────────┘
+            per-cycle roll ─┘   └─ open dialog
+
+RolloverEditDialog (opened by ⚙):
 ┌──────────────────────────────────────────────┐
 │  Rollover — $300 Airline Fee Credit          │
 ├──────────────────────────────────────────────┤
@@ -43,7 +62,7 @@ When the user types a lower amount (or when `benefit.rolloverMaxYears` has been 
 │                                              │
 │  Accumulated rollover amount: $ [   600   ]  │
 │                                              │
-│  Preview (auto-generated records):           │
+│  Preview (past-cycle rollover records):      │
 │    • 2025-01-01  rollover  $0 (faceValue $0) │
 │    • 2024-01-01  rollover  $0 (faceValue $0) │
 │  Effective available this cycle: $900        │
@@ -52,7 +71,7 @@ When the user types a lower amount (or when `benefit.rolloverMaxYears` has been 
 └──────────────────────────────────────────────┘
 ```
 
-The `↗` button remains on rolloverable `BenefitCard` rows (in `CardDetail` — tray views will continue to not pass `onEditRollover`) but its `onClick` now opens this dialog rather than writing a zero-value record. The old one-click "mark current cycle rolled" shortcut is subsumed: typing `faceValue` into the amount field and saving produces the equivalent single-record state, and doing so goes through the same validated code path as multi-year input.
+Tray views (`ByUrgencyView`, etc.) keep the `⟳` button without the `⚙` gear; editing accumulated balance is a desktop-main-view-only action.
 
 ---
 
@@ -195,22 +214,28 @@ Each task is a single commit under 500 LOC of non-test changes, tests-first (see
 - Lowering implicit years via amount reduction → preview shrinks, save prunes; dialog never prompts.
 - **Non-rolloverable guard:** the component contract requires `benefit.rolloverable === true`. Mechanism: in development (`import.meta.env.DEV`) the component asserts on mount and throws to fail tests loudly; in production it logs a `warn` via `createLogger("views.rollover-dialog")` and renders `null`. Test covers both branches by toggling `import.meta.env.DEV`.
 
-### Task 7 — Entry point: `↗` button rewired in `CardDetail`
+### Task 7 — Entry point: `⚙` gear in `CardDetail`, bigger `⟳` icon everywhere
 
 **Files:**
-- Modify: `src/views/shared/BenefitCard.tsx` — add optional `onEditRollover?: (cardId, benefitId) => void` prop; when supplied, the existing `↗` button's `onClick` calls it instead of `onRollover`. The `↗` button remains visually identical. Tray views (which do not pass `onEditRollover`) fall back to the legacy `onRollover` path until they are retired.
-- Modify: `src/views/main/CardDetail.tsx` — owns dialog open state and wires `onEditRollover`; removes the direct `rolloverBenefit` prop passthrough for the main view.
-- Modify: `src/views/shared/BenefitCard.test.tsx` — click on `↗` invokes the new handler when supplied.
+- Modify: `src/views/shared/BenefitCard.tsx` —
+  - Replace the existing `↗` glyph in the rollover shortcut button with `⟳` (U+27F3). Keep `onRollover` wiring unchanged — per-cycle rollover semantic is preserved.
+  - Add optional `onEditRollover?: (cardId, benefitId) => void` prop; when supplied, render an additional `⚙` gear button next to the rollover shortcut. When absent (tray views), the gear is not rendered.
+- Modify: `src/views/shared/BenefitCard.css` (or equivalent) — new `.rollover-shortcut-icon` rule bumps the `⟳` glyph to ~1.35× font-size with `font-weight: 700`; `.rollover-edit-gear` styles the new button with the existing button-shell classes plus a matching size bump for visual parity.
+- Modify: `src/views/main/CardDetail.tsx` — owns dialog open state and passes `onEditRollover={() => setEditingRollover(benefitId)}` to `BenefitCard`.
+- Modify: `src/views/shared/BenefitCard.test.tsx` —
+  - Click on `⟳` invokes `onRollover` (unchanged).
+  - `⚙` renders only when `onEditRollover` is supplied and `benefit.rolloverable === true`; clicking it invokes the handler with `(cardId, benefitId)`.
 
 **Tests (Layer 3):**
-- In `CardDetail`, clicking `↗` opens the dialog pre-filled with current accumulated amount.
-- In tray `ByUrgencyView`, `↗` still marks the cycle as rolled (no regression) because `onEditRollover` is not supplied.
-- Dialog close returns focus to the `↗` button (keyboard-navigable).
+- In `CardDetail`, clicking `⚙` opens the dialog pre-filled with accumulated past-cycle amount.
+- In `CardDetail`, clicking `⟳` still marks the current cycle rolled (no regression) — verified via the store action being called.
+- In tray `ByUrgencyView`, `⚙` is not rendered (no `onEditRollover` prop); `⟳` still works.
+- Dialog close returns focus to the `⚙` button (keyboard-navigable).
 
 ### Task 8 — Docs
 
 **Files:**
-- Modify: `docs/dev/modules/rollover.md` (or create if missing) — document `kind` discriminator, invariants, writer/reader contracts, and the `↗`-opens-dialog entry point.
+- Modify: `docs/dev/modules/rollover.md` (or create if missing) — document `kind` discriminator, invariants, writer/reader contracts, the per-cycle `⟳` shortcut, and the `⚙`-gear `RolloverEditDialog` entry point.
 - Modify: `docs/dev/architecture.md` — add `RolloverEditDialog` to the main-view module map.
 - Modify: `docs/superpowers/specs/backlog-rollover-amount-edit.md` — mark as shipped; link to this plan.
 
@@ -244,13 +269,14 @@ No tests.
 - Cancel closes without dispatching.
 - Lowering amount past existing record count → preview shrinks, save prunes silently (no confirm rendered).
 - Non-rolloverable guard: in DEV, rendering the dialog with a non-rolloverable benefit throws on mount; in prod, it logs warn and renders null. Both assertions run via `vi.stubEnv`.
-- `↗` entry point: in `CardDetail` opens the dialog; in `ByUrgencyView` still calls legacy `onRollover`.
+- `⟳` per-cycle shortcut: clicking in `CardDetail` calls `rolloverBenefit` for the current cycle; clicking in `ByUrgencyView` still calls `onRollover` (tray behavior unchanged).
+- `⚙` gear entry point: renders only in `CardDetail` (where `onEditRollover` is wired); click opens `RolloverEditDialog` pre-filled with past-cycle accumulated amount. Not rendered in `ByUrgencyView`.
 
 ---
 
 ## 7. Decisions (previously open questions)
 
-1. **`↗` quick button:** its `onClick` now opens `RolloverEditDialog` pre-filled with the current accumulated amount. No separate `⚙` gear is added — one entry point per rolloverable row.
+1. **Two entry points on the rolloverable row:** the pre-existing `↗` quick button is renamed to `⟳` (larger + bolder) and keeps its per-cycle rollover semantic (writes a `kind: "rollover"` record for the *current* cycle via `rolloverBenefit`). A new `⚙` gear button opens `RolloverEditDialog` for editing the accumulated *past-cycle* balance. Rationale: collapsing both into a single control was the original decision but would have broken the cross-cycle rollover chain — `getAvailableValue` needs the current cycle's `⟳` record to extend the chain into the next cycle, and the dialog only writes past-cycle records. Keeping the two separate preserves the chain and makes each action unambiguous.
 2. **Legacy `isRollover`:** deleted immediately. `UsageRecord.kind` is the only discriminator in live code; the migration strips `isRollover` from any legacy record it touches. No deprecation window.
 3. **`rolloverMaxYears` reduction:** oldest over-cap rollover records are silently pruned on the next `replaceRolloverRecords` save. No confirm prompt.
 
