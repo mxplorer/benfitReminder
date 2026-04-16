@@ -192,6 +192,7 @@ describe("useCardStore", () => {
         reminderEnabled: false,
         reminderDays: 5,
         dismissedDate: null,
+        trayOpacity: 100,
       };
       useCardStore.getState().loadData([newCard], newSettings);
 

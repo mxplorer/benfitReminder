@@ -353,6 +353,7 @@ describe("JSON persistence round-trip", () => {
       reminderEnabled: true,
       reminderDays: 3,
       dismissedDate: null,
+      trayOpacity: 100,
     } });
     expect(useCardStore.getState().cards).toHaveLength(0);
 

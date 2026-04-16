@@ -12,6 +12,7 @@ beforeEach(() => {
       reminderEnabled: true,
       reminderDays: 3,
       dismissedDate: null,
+      trayOpacity: 100,
     },
   });
 });

@@ -94,7 +94,7 @@ describe("Dashboard", () => {
 
     const row = document.querySelector(".dashboard__card-row");
     expect(row).not.toBeNull();
-    fireEvent.click(row!);
+    fireEvent.click(row as Element);
     expect(onNavigate).toHaveBeenCalledWith({ type: "card", cardId: "c42" });
   });
 });

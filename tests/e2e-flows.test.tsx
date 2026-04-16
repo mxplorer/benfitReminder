@@ -17,6 +17,7 @@ beforeEach(() => {
     reminderEnabled: true,
     reminderDays: 3,
     dismissedDate: null,
+    trayOpacity: 100,
   }});
   useCardTypeStore.setState({
     cardTypes: [
@@ -102,6 +103,8 @@ describe("E2E: Check off benefit → verify used state → uncheck", () => {
           resetType: "calendar",
           resetConfig: { period: "monthly" },
           isHidden: false,
+          rolloverable: false,
+          rolloverMaxYears: 0,
           usageRecords: [],
         }],
       }],
@@ -227,6 +230,8 @@ describe("E2E: Filter pills in card detail", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
+            rolloverable: false,
+            rolloverMaxYears: 0,
             usageRecords: [],
           },
           {
@@ -238,6 +243,8 @@ describe("E2E: Filter pills in card detail", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
+            rolloverable: false,
+            rolloverMaxYears: 0,
             usageRecords: [{ usedDate: "2026-04-05", faceValue: 30, actualValue: 30 }],
           },
           {
@@ -249,6 +256,8 @@ describe("E2E: Filter pills in card detail", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: true,
+            rolloverable: false,
+            rolloverMaxYears: 0,
             usageRecords: [],
           },
         ],
@@ -328,6 +337,8 @@ describe("E2E: Export and import data round-trip", () => {
           resetType: "calendar",
           resetConfig: { period: "monthly" },
           isHidden: false,
+          rolloverable: false,
+          rolloverMaxYears: 0,
           usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 50 }],
         }],
       }],
@@ -442,6 +453,8 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
+            rolloverable: false,
+            rolloverMaxYears: 0,
             usageRecords: [],
           },
           {
@@ -453,6 +466,8 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
+            rolloverable: false,
+            rolloverMaxYears: 0,
             usageRecords: [],
           },
           {
@@ -464,6 +479,8 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: false,
+            rolloverable: false,
+            rolloverMaxYears: 0,
             usageRecords: [{ usedDate: "2026-04-10", faceValue: 30, actualValue: 30 }],
           },
           {
@@ -475,6 +492,8 @@ describe("E2E: Unused benefit count in sidebar badge", () => {
             resetType: "calendar",
             resetConfig: { period: "monthly" },
             isHidden: true,
+            rolloverable: false,
+            rolloverMaxYears: 0,
             usageRecords: [],
           },
         ],
