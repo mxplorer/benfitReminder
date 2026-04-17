@@ -69,7 +69,7 @@ export const TrayPanel = () => {
 
       <footer className="tray-panel__footer">
         <button className="tray-panel__dismiss-btn" onClick={handleDismiss}>
-          Dismiss · 今日不再提醒
+          关闭今日通知提醒
         </button>
       </footer>
     </div>

@@ -26,6 +26,14 @@
   border-left: 3px solid var(--color-red);
 }
 
+.glass-card.warning {
+  border-left: 3px solid var(--color-orange);
+}
+
+.glass-card.safe {
+  border-left: 3px solid var(--color-green);
+}
+
 .glass-card.used {
   opacity: 0.5;
 }
@@ -63,6 +71,12 @@
 .status-tag--safe {
   background: var(--tag-safe-bg);
   color: var(--color-green);
+}
+
+.status-tag--pending {
+  background: var(--tag-done-bg);
+  color: var(--text-secondary);
+  opacity: 0.8;
 }
 
 /* Benefit card */

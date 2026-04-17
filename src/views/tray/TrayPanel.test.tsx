@@ -48,7 +48,7 @@ describe("TrayPanel", () => {
 
   it("dismiss button sets dismissedDate in store", () => {
     render(<TrayPanel />);
-    const dismissBtn = screen.getByText(/Dismiss/);
+    const dismissBtn = screen.getByText(/关闭今日通知提醒/);
     fireEvent.click(dismissBtn);
 
     const settings = useCardStore.getState().settings;

@@ -138,6 +138,14 @@
   flex-shrink: 0;
 }
 
+.sidebar__card-badge--danger {
+  background: var(--color-red);
+}
+
+.sidebar__card-badge--warning {
+  background: var(--color-orange);
+}
+
 .sidebar__add-card-btn {
   display: flex;
   align-items: center;

@@ -4,6 +4,7 @@ import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from
 import { getAvailableValue } from "../../utils/rollover";
 import { latestHasPropagate } from "../../utils/usageRecords";
 import { useToday } from "../../stores/useToday";
+import { useCardStore } from "../../stores/useCardStore";
 import { GlassContainer } from "./GlassContainer";
 import { StatusTag } from "./StatusTag";
 
@@ -69,7 +70,8 @@ export const BenefitCard = ({
   onSetCycleUsed,
 }: BenefitCardProps) => {
   const today = useToday();
-  const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay);
+  const reminderDays = useCardStore((s) => s.settings.reminderDays);
+  const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
   const availableValue = getAvailableValue(benefit, today);
   const displayValue = cycleRecord ? cycleRecord.actualValue : availableValue;
   const cycleContext = cycleStart && cycleEnd ? { start: cycleStart, end: cycleEnd } : null;
@@ -92,14 +94,23 @@ export const BenefitCard = ({
     resetType: benefit.resetType,
     resetConfig: benefit.resetConfig,
     cardOpenDate: card.cardOpenDate,
-    statementClosingDay: card.statementClosingDay,
   });
   const daysRemaining = deadline ? getDaysRemaining(today, deadline) : null;
+  // When the card is rendered for a specific cycle (anniversary scoped view
+  // of "未使用" / "全部"), future cycles whose window hasn't started yet are
+  // visible but not yet actionable.
+  const notYetActive = cycleStart !== undefined && todayIso < cycleStart;
+
+  const urgencyClass = (() => {
+    if (isUsed || notYetActive) return "safe";
+    if (daysRemaining !== null && daysRemaining <= reminderDays) return "urgent";
+    return "warning";
+  })();
 
   const cardClasses = [
     isUsed ? "used" : "",
     benefit.isHidden ? "hidden-benefit" : "",
-    daysRemaining !== null && daysRemaining <= 7 && !isUsed ? "urgent" : "",
+    urgencyClass,
   ]
     .filter(Boolean)
     .join(" ");
@@ -159,7 +170,7 @@ export const BenefitCard = ({
   return (
     <GlassContainer className={`benefit-card ${cardClasses}`}>
       <div className="benefit-card__header">
-        <StatusTag daysRemaining={daysRemaining} isUsed={isUsed} />
+        <StatusTag daysRemaining={daysRemaining} isUsed={isUsed} notYetActive={notYetActive} reminderDays={reminderDays} />
         <span
           className="benefit-card__period"
           title={
