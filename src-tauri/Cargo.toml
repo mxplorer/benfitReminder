@@ -1,0 +1,27 @@
+[package]
+name = "credit-card-benefits"
+version = "0.1.0"
+description = "Credit Card Benefits Tracker"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "credit_card_benefits_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "credit-card-benefits"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "macos-private-api", "image-png"] }
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

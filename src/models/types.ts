@@ -1,0 +1,142 @@
+export type { LogLevel } from "../lib/logger";
+
+// --- Template types (built-in, read-only) ---
+
+export type BenefitCategory =
+  | "airline"
+  | "hotel"
+  | "dining"
+  | "travel"
+  | "streaming"
+  | "shopping"
+  | "wellness"
+  | "transportation"
+  | "entertainment"
+  | "other";
+
+export type ResetType =
+  | "calendar"
+  | "anniversary"
+  | "since_last_use"
+  | "subscription"
+  | "one_time";
+
+export type CalendarPeriod =
+  | "monthly"
+  | "quarterly"
+  | "semi_annual"
+  | "annual"
+  | "every_4_years";
+
+export interface ResetConfig {
+  period?: CalendarPeriod;
+  applicableMonths?: number[];
+  cooldownDays?: number;
+  expiresDate?: string;
+  /** For one_time benefits: ISO date before which the benefit is not yet
+   * applicable. Used for promotional credits with a future start (e.g. H2). */
+  availableFromDate?: string;
+}
+
+export interface BenefitTemplate {
+  templateBenefitId: string;
+  name: string;
+  description: string;
+  faceValue: number;
+  category: BenefitCategory;
+  resetType: ResetType;
+  resetConfig: ResetConfig;
+  rolloverable?: boolean;
+  rolloverMaxYears?: number;
+}
+
+export interface CardType {
+  slug: string;
+  name: string;
+  defaultAnnualFee: number;
+  color: string;
+  image?: string;       // optional card face image URL
+  isBuiltin: boolean;   // true for built-in, false for user-created
+  version: number;
+  defaultBenefits: BenefitTemplate[];
+}
+
+// --- User data types (persisted to JSON) ---
+
+export type UsageRecordKind = "usage" | "rollover";
+
+export interface UsageRecord {
+  usedDate: string;
+  faceValue: number;
+  actualValue: number;
+  /** Discriminator for record intent. `"usage"` records consume benefit
+   * value in their cycle; `"rollover"` records mark a cycle as rolled
+   * forward (faceValue/actualValue are both 0 for rollover). */
+  kind: UsageRecordKind;
+  /** For monthly subscription / calendar-monthly benefits: if true, app
+   * auto-creates next month's record copying this record's actualValue. */
+  propagateNext?: boolean;
+}
+
+export interface Benefit {
+  id: string;
+  templateBenefitId?: string;
+  name: string;
+  description: string;
+  faceValue: number;
+  category: BenefitCategory;
+  resetType: ResetType;
+  resetConfig: ResetConfig;
+  isHidden: boolean;
+  rolloverable: boolean;
+  rolloverMaxYears: number;
+  usageRecords: UsageRecord[];
+  expired?: boolean;
+  expiredAt?: string;
+}
+
+export interface CreditCard {
+  id: string;
+  owner: string;
+  cardTypeSlug: string;
+  customName?: string;
+  alias?: string;
+  cardNumber?: string;
+  annualFee: number;
+  cardOpenDate: string;
+  color: string;
+  isEnabled: boolean;
+  benefits: Benefit[];
+  templateVersion?: number;
+}
+
+export interface AppSettings {
+  logLevel: "debug" | "info" | "warn" | "error";
+  debugLogEnabled: boolean;
+  reminderEnabled: boolean;
+  reminderDays: number;
+  dismissedDate: string | null;
+  /** Tray panel background opacity 0–100. */
+  trayOpacity: number;
+}
+
+export interface AppData {
+  version: number;
+  cards: CreditCard[];
+  settings: AppSettings;
+}
+
+// --- Display name ---
+
+export const getCardDisplayName = (card: CreditCard, typeName?: string): string => {
+  if (card.alias) return card.alias;
+
+  if (typeName && card.cardNumber && card.cardNumber.length >= 4) {
+    const last4 = card.cardNumber.slice(-4);
+    return `${typeName} ···${last4}`;
+  }
+
+  if (card.customName) return card.customName;
+
+  return typeName ?? "Unknown Card";
+};

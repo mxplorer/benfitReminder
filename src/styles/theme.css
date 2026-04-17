@@ -1,0 +1,120 @@
+/* Design tokens — light theme (default) */
+:root {
+  /* Accent colors */
+  --color-blue: #007aff;
+  --color-green: #34c759;
+  --color-orange: #ff9500;
+  --color-red: #ff3b30;
+
+  /* Text */
+  --text-primary: rgba(0, 0, 0, 0.85);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.35);
+
+  /* Backgrounds */
+  --bg-panel-rgb: 245, 245, 247;
+  --bg-panel: rgba(245, 245, 247, 0.45);
+  --bg-card: rgba(255, 255, 255, 0.45);
+  --bg-card-hover: rgba(255, 255, 255, 0.65);
+  --bg-sidebar: rgba(240, 240, 242, 0.8);
+  --bg-tab: rgba(0, 0, 0, 0.04);
+  --bg-tab-active: rgba(255, 255, 255, 0.85);
+
+  /* Borders */
+  --border-card: rgba(0, 0, 0, 0.06);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+
+  /* Status tag backgrounds */
+  --tag-done-bg: rgba(0, 0, 0, 0.05);
+  --tag-danger-bg: rgba(255, 59, 48, 0.1);
+  --tag-warning-bg: rgba(255, 149, 0, 0.1);
+  --tag-safe-bg: rgba(52, 199, 89, 0.1);
+
+  /* Semantic aliases */
+  --accent: var(--color-blue);
+  --accent-subtle: rgba(0, 122, 255, 0.1);
+  --danger: var(--color-red);
+  --bg-primary: var(--bg-panel);
+  --bg-hover: rgba(0, 0, 0, 0.04);
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+
+  /* Spacing */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-blue: #0a84ff;
+    --color-green: #30d158;
+    --color-orange: #ff9f0a;
+    --color-red: #ff453a;
+
+    /* Text: boosted opacity across all levels for clear legibility */
+    --text-primary: rgba(255, 255, 255, 0.95);
+    --text-secondary: rgba(255, 255, 255, 0.72);
+    --text-tertiary: rgba(255, 255, 255, 0.48);
+
+    /* Backgrounds: deeper base + more opaque so content doesn't bleed through */
+    --bg-panel-rgb: 16, 16, 20;
+    --bg-panel: rgba(16, 16, 20, 0.90);
+    --bg-card: rgba(255, 255, 255, 0.10);
+    --bg-card-hover: rgba(255, 255, 255, 0.17);
+    --bg-sidebar: rgba(12, 12, 16, 0.96);
+    --bg-tab: rgba(255, 255, 255, 0.08);
+    --bg-tab-active: rgba(255, 255, 255, 0.20);
+
+    /* Borders: visible enough to delineate cards and inputs */
+    --border-card: rgba(255, 255, 255, 0.16);
+    --border-subtle: rgba(255, 255, 255, 0.10);
+
+    /* Status tags: slightly brighter tints against the darker base */
+    --tag-done-bg: rgba(255, 255, 255, 0.09);
+    --tag-danger-bg: rgba(255, 69, 58, 0.22);
+    --tag-warning-bg: rgba(255, 159, 10, 0.22);
+    --tag-safe-bg: rgba(48, 209, 88, 0.20);
+
+    --accent: var(--color-blue);
+    --accent-subtle: rgba(10, 132, 255, 0.22);
+    --danger: var(--color-red);
+    --bg-primary: var(--bg-panel);
+    --bg-hover: rgba(255, 255, 255, 0.10);
+
+    /* Shadows: stronger depth to separate layers */
+    --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.35);
+    --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.50);
+    --shadow-panel: 0 8px 40px rgba(0, 0, 0, 0.60);
+  }
+}
+
+/* Global resets */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+#root {
+  min-height: 100vh;
+}

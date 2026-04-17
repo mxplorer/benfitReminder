@@ -1,0 +1,152 @@
+.rollover-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.rollover-dialog {
+  background: rgb(var(--bg-panel-rgb));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 440px;
+  width: 90%;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.rollover-dialog__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+.rollover-dialog__info {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.rollover-dialog__info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.rollover-dialog__info-row dt {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.rollover-dialog__info-row dd {
+  margin: 0;
+}
+
+.rollover-dialog__amount-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+.rollover-dialog__amount-input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-family);
+  text-align: right;
+}
+
+.rollover-dialog__impact {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.rollover-dialog__impact dt {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.rollover-dialog__impact dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rollover-dialog__hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--color-orange, #ff9500);
+}
+
+.rollover-dialog__preview-section {
+  margin-bottom: 16px;
+}
+
+.rollover-dialog__preview-empty {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.rollover-dialog__preview-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+
+.rollover-dialog__preview {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  min-height: 24px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.rollover-dialog__preview li {
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--border-subtle);
+}
+
+.rollover-dialog__preview li:last-child {
+  border-bottom: none;
+}
+
+.rollover-dialog__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.rollover-dialog__btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-family);
+}
+
+.rollover-dialog__btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}

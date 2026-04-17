@@ -1,0 +1,99 @@
+{
+  "slug": "chase_sapphire_reserve",
+  "name": "Chase Sapphire Reserve",
+  "defaultAnnualFee": 795,
+  "color": "#1A1A2E",
+  "version": 1,
+  "defaultBenefits": [
+    {
+      "templateBenefitId": "chase_sapphire_reserve.annual_travel",
+      "name": "$300 Annual Travel Credit",
+      "description": "Annual travel credit applied automatically",
+      "faceValue": 300,
+      "category": "travel",
+      "resetType": "anniversary",
+      "resetConfig": {}
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.edit_hotel",
+      "name": "$250 The Edit Hotel Credit",
+      "description": "Annual credit at The Edit hotel collection",
+      "faceValue": 250,
+      "category": "hotel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "annual" }
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.select_hotel",
+      "name": "$250 Select Hotel Credit",
+      "description": "Annual credit at Select hotel properties",
+      "faceValue": 250,
+      "category": "hotel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "annual" }
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.exclusive_tables_h1",
+      "name": "$150 Exclusive Tables Dining (H1)",
+      "description": "Exclusive Tables dining credit, January–June",
+      "faceValue": 150,
+      "category": "dining",
+      "resetType": "calendar",
+      "resetConfig": { "period": "semi_annual", "applicableMonths": [1, 2, 3, 4, 5, 6] }
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.exclusive_tables_h2",
+      "name": "$150 Exclusive Tables Dining (H2)",
+      "description": "Exclusive Tables dining credit, July–December",
+      "faceValue": 150,
+      "category": "dining",
+      "resetType": "calendar",
+      "resetConfig": { "period": "semi_annual", "applicableMonths": [7, 8, 9, 10, 11, 12] }
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.global_entry",
+      "name": "$120 Global Entry / TSA PreCheck",
+      "description": "Global Entry or TSA PreCheck application fee credit",
+      "faceValue": 120,
+      "category": "travel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "every_4_years" }
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.doordash_promo",
+      "name": "$25/mo DoorDash Promo",
+      "description": "Monthly DoorDash promotional credit",
+      "faceValue": 25,
+      "category": "dining",
+      "resetType": "calendar",
+      "resetConfig": { "period": "monthly" }
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.dashpass",
+      "name": "DashPass Membership ($120/yr value)",
+      "description": "Annual DashPass membership included",
+      "faceValue": 120,
+      "category": "dining",
+      "resetType": "subscription",
+      "resetConfig": {}
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.peloton",
+      "name": "$10/mo Peloton Membership",
+      "description": "Monthly Peloton membership credit",
+      "faceValue": 10,
+      "category": "wellness",
+      "resetType": "subscription",
+      "resetConfig": {}
+    },
+    {
+      "templateBenefitId": "chase_sapphire_reserve.doordash_credit",
+      "name": "$5/mo DoorDash Credit",
+      "description": "Monthly DoorDash credit",
+      "faceValue": 5,
+      "category": "dining",
+      "resetType": "calendar",
+      "resetConfig": { "period": "monthly" }
+    }
+  ]
+}

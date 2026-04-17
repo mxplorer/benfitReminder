@@ -1,0 +1,58 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+
+# Test coverage
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Obsidian (notes are authored outside this repo's scope)
+.obsidian/
+*.canvas
+*.base
+未命名*
+
+# Internal docs and planning material — not for public repo
+docs/
+
+# Agent tooling (machine-local)
+CLAUDE.md
+.claude/
+.superpowers/
+.worktrees/
+
+# Tauri auto-generated schemas (rebuilt on each build)
+src-tauri/gen/schemas/
+
+# Non-macOS platform icons
+src-tauri/icons/android/
+src-tauri/icons/ios/
+src-tauri/icons/Square*.png
+src-tauri/icons/StoreLogo.png
+
+# Legacy assets
+app-icon.png
