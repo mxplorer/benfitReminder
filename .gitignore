@@ -1,7 +1,12 @@
+# macOS
 .DS_Store
-.claude/
-.superpowers/
-.obsidian/
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Dependencies
 node_modules/
@@ -10,21 +15,31 @@ node_modules/
 dist/
 src-tauri/target/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-Thumbs.db
+# Test coverage
+coverage/
 
 # Environment
 .env
 .env.local
+.env.*.local
 
-# Test coverage
-coverage/
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Git worktrees
+# Obsidian (notes are authored outside this repo's scope)
+.obsidian/
+*.canvas
+*.base
+未命名*
+
+# Internal docs and planning material — not for public repo
+docs/
+
+# Agent tooling (machine-local)
+.claude/
+.superpowers/
 .worktrees/
