@@ -62,6 +62,7 @@ const sumRecordsInRange = (
 
   for (const benefit of card.benefits) {
     for (const record of benefit.usageRecords) {
+      if (record.kind === "rollover") continue;
       if (record.usedDate >= range.start && record.usedDate <= range.end) {
         faceValueReturn += record.faceValue;
         actualReturn += record.actualValue;

@@ -45,7 +45,12 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
 
   const allRecords = card.benefits
     .flatMap((b) =>
-      b.usageRecords.map((r) => ({ ...r, benefitName: b.name, benefitId: b.id })),
+      b.usageRecords.map((r) => ({
+        ...r,
+        benefitName: b.name,
+        benefitId: b.id,
+        benefitFaceValue: b.faceValue,
+      })),
     )
     .sort((a, b) => b.usedDate.localeCompare(a.usedDate));
 
@@ -196,14 +201,17 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
               </tr>
             </thead>
             <tbody>
-              {allRecords.map((r, i) => (
-                <tr key={`${r.benefitId}-${r.usedDate}-${String(i)}`}>
-                  <td>{r.usedDate}</td>
-                  <td>{r.benefitName}</td>
-                  <td>${String(r.faceValue)}</td>
-                  <td>${String(r.actualValue)}</td>
-                </tr>
-              ))}
+              {allRecords.map((r, i) => {
+                const isRollover = r.kind === "rollover";
+                return (
+                  <tr key={`${r.benefitId}-${r.usedDate}-${String(i)}`}>
+                    <td>{r.usedDate}</td>
+                    <td>{isRollover ? `${r.benefitName} · 结转` : r.benefitName}</td>
+                    <td>${String(isRollover ? r.benefitFaceValue : r.faceValue)}</td>
+                    <td>${String(r.actualValue)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

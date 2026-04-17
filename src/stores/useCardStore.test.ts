@@ -136,6 +136,24 @@ describe("useCardStore", () => {
       useCardStore.getState().toggleBenefitUsage("card-1", "b1");
       expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(0);
     });
+
+    it("clamps out-of-period usedDate to today so the record counts as used now", () => {
+      // Calendar-annual benefit. Today is 2026-04-10 (faked). User enters
+      // usedDate=2025-04-16 (prior year's cycle). Without clamping, the record
+      // would be orphaned — isBenefitUsedInPeriod checks the current calendar
+      // year and wouldn't find the record, so the benefit would still show as
+      // "available" despite being marked used.
+      useCardStore.getState().addBenefit("card-1", makeBenefit({
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+      }));
+      useCardStore.getState().toggleBenefitUsage("card-1", "b1", 50, "2025-04-16");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records).toHaveLength(1);
+      expect(records[0].usedDate).toBe("2026-04-10");
+      expect(records[0].actualValue).toBe(50);
+    });
   });
 
   describe("getUnusedBenefitCount", () => {
@@ -415,16 +433,33 @@ describe("useCardStore", () => {
         ...overrides,
       });
 
-    it("writes N past-cycle rollover records derived from amount / faceValue", () => {
+    it("writes N past-cycle rollover records + a current-cycle marker on save", () => {
       const card = makeCard({ id: "c1", benefits: [rolloverAnnual()] });
       useCardStore.setState({ cards: [card] });
 
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 200);
 
       const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-      expect(records).toHaveLength(2);
       expect(records.every((r) => r.kind === "rollover")).toBe(true);
-      expect(records.map((r) => r.usedDate).sort()).toEqual(["2024-01-01", "2025-01-01"]);
+      expect(records.map((r) => r.usedDate).sort()).toEqual([
+        "2024-01-01",
+        "2025-01-01",
+        "2026-01-01",
+      ]);
+    });
+
+    it("marks the current cycle as used (isBenefitUsedInPeriod) after save", () => {
+      const card = makeCard({ id: "c1", benefits: [rolloverAnnual()] });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().replaceRolloverRecords("c1", "b1", 0);
+
+      // Even with amount=0, saving decides the current cycle: rollover marker
+      // at current cycle start makes isBenefitUsedInPeriod return true.
+      const benefit = useCardStore.getState().cards[0].benefits[0];
+      const currentMarker = benefit.usageRecords.find((r) => r.usedDate === "2026-01-01");
+      expect(currentMarker).toBeDefined();
+      expect(currentMarker?.kind).toBe("rollover");
     });
 
     it("is idempotent on identical amount", () => {
@@ -436,22 +471,24 @@ describe("useCardStore", () => {
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 200);
       const second = useCardStore.getState().cards[0].benefits[0].usageRecords;
 
-      expect(second).toHaveLength(2);
       expect(second.map((r) => r.usedDate).sort()).toEqual(first.map((r) => r.usedDate).sort());
     });
 
-    it("clamps to rolloverMaxYears * period multiplier", () => {
+    it("clamps past-cycle rollovers to rolloverMaxYears * period multiplier", () => {
       const card = makeCard({
         id: "c1",
         benefits: [rolloverAnnual({ rolloverMaxYears: 2 })],
       });
       useCardStore.setState({ cards: [card] });
 
-      // faceValue 100 + maxYears 2 caps at 2 records; 500 would want 5
+      // faceValue 100 + maxYears 2 caps past-cycle rollovers at 2; 500 would want 5.
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 500);
 
       const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(2);
+      const pastRollovers = records.filter(
+        (r) => r.kind === "rollover" && r.usedDate < "2026-01-01",
+      );
+      expect(pastRollovers).toHaveLength(2);
     });
 
     it("reducing amount prunes oldest past-cycle records", () => {
@@ -459,12 +496,15 @@ describe("useCardStore", () => {
       useCardStore.setState({ cards: [card] });
 
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 300);
-      expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(3);
+      // 3 past rollovers + 1 current-cycle marker
+      expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(4);
 
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 100);
       const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-      expect(records).toHaveLength(1);
-      expect(records[0].usedDate).toBe("2025-01-01");
+      // 1 past rollover + 1 current-cycle marker
+      expect(records).toHaveLength(2);
+      const pastRollover = records.find((r) => r.usedDate < "2026-01-01");
+      expect(pastRollover?.usedDate).toBe("2025-01-01");
     });
 
     it("reducing rolloverMaxYears silently prunes over-cap records on next replace", () => {
@@ -490,11 +530,14 @@ describe("useCardStore", () => {
 
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 300);
       const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(1);
-      expect(records[0].usedDate).toBe("2025-01-01");
+      const pastRollovers = records.filter(
+        (r) => r.kind === "rollover" && r.usedDate < "2026-01-01",
+      );
+      expect(pastRollovers).toHaveLength(1);
+      expect(pastRollovers[0].usedDate).toBe("2025-01-01");
     });
 
-    it("preserves a pre-existing current-cycle rollover record across save (legacy/migrated data)", () => {
+    it("replaces a pre-existing current-cycle rollover marker with a fresh one", () => {
       const card = makeCard({
         id: "c1",
         benefits: [
@@ -518,6 +561,29 @@ describe("useCardStore", () => {
       ]);
     });
 
+    it("skips the current-cycle marker when a usage record already exists in the current cycle", () => {
+      const card = makeCard({
+        id: "c1",
+        benefits: [
+          rolloverAnnual({
+            usageRecords: [
+              { usedDate: "2026-03-15", faceValue: 100, actualValue: 100, kind: "usage" },
+            ],
+          }),
+        ],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().replaceRolloverRecords("c1", "b1", 100);
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records.filter((r) => r.kind === "usage")).toHaveLength(1);
+      // Only a past-cycle rollover is written; no current-cycle marker because
+      // the user already consumed the cycle.
+      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(1);
+      expect(records.find((r) => r.kind === "rollover")?.usedDate).toBe("2025-01-01");
+    });
+
     it("preserves non-rollover usage records", () => {
       const card = makeCard({
         id: "c1",
@@ -534,8 +600,9 @@ describe("useCardStore", () => {
       useCardStore.getState().replaceRolloverRecords("c1", "b1", 100);
 
       const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      // 1 past usage (preserved) + 1 past-cycle rollover + 1 current-cycle marker
       expect(records.filter((r) => r.kind === "usage")).toHaveLength(1);
-      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(1);
+      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(2);
     });
 
     it("does nothing for non-rolloverable benefit", () => {
@@ -631,7 +698,7 @@ describe("useCardStore", () => {
       expect(records[0].kind).toBe("usage");
     });
 
-    it("preserves a pre-existing current-cycle rollover record (legacy/migrated data)", () => {
+    it("drops every rollover record, including the current-cycle marker", () => {
       const card = makeCard({
         id: "c1",
         benefits: [
@@ -641,9 +708,6 @@ describe("useCardStore", () => {
             rolloverMaxYears: 3,
             resetType: "calendar",
             resetConfig: { period: "annual" },
-            usageRecords: [
-              { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
-            ],
           }),
         ],
       });
@@ -653,9 +717,7 @@ describe("useCardStore", () => {
       useCardStore.getState().clearRolloverRecords("c1", "b1");
 
       const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-      expect(records).toHaveLength(1);
-      expect(records[0].kind).toBe("rollover");
-      expect(records[0].usedDate).toBe("2026-01-01");
+      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(0);
     });
   });
 
@@ -735,6 +797,24 @@ describe("useCardStore", () => {
         });
       const b = useCardStore.getState().cards[0].benefits[0];
       expect(b.usageRecords.some((r) => r.usedDate === "2026-08-15")).toBe(true);
+    });
+
+    it("clamps out-of-cycle usedDate so the record stays associated with the clicked cycle", () => {
+      // User clicked Q3 cycle [2026-07-01, 2026-09-30] but entered a date from
+      // a prior cycle (2026-04-16). Without clamping the record would be
+      // orphaned — findCycleRecord wouldn't see it for Q3.
+      useCardStore
+        .getState()
+        .setBenefitCycleUsed("c1", "b1", "2026-07-01", "2026-09-30", true, {
+          actualValue: 90,
+          usedDate: "2026-04-16",
+        });
+      const b = useCardStore.getState().cards[0].benefits[0];
+      const q3 = b.usageRecords.find(
+        (r) => r.usedDate >= "2026-07-01" && r.usedDate <= "2026-09-30",
+      );
+      expect(q3).toBeDefined();
+      expect(q3?.actualValue).toBe(90);
     });
 
     it("updates in place when used=true on a record in the same cycle", () => {

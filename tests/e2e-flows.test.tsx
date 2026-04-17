@@ -65,7 +65,7 @@ describe("E2E: Add card from template → verify in sidebar → view detail", ()
 
     // 3. Fill required fields
     fireEvent.change(screen.getByTestId("owner-input"), { target: { value: "Alice" } });
-    // Date is pre-filled by RollingDatePicker's initial emit — no interaction needed
+    fireEvent.change(screen.getByTestId("open-date-input"), { target: { value: "2024-03-15" } });
 
     // 4. Submit
     fireEvent.click(screen.getByTestId("submit-btn"));

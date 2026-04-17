@@ -36,9 +36,6 @@ export interface ResetConfig {
   /** For one_time benefits: ISO date before which the benefit is not yet
    * applicable. Used for promotional credits with a future start (e.g. H2). */
   availableFromDate?: string;
-  /** When resetType === "anniversary", align the cycle to the next statement
-   * close on-or-after the anniversary date. Requires CreditCard.statementClosingDay. */
-  resetsAtStatementClose?: boolean;
 }
 
 export interface BenefitTemplate {
@@ -110,9 +107,6 @@ export interface CreditCard {
   color: string;
   isEnabled: boolean;
   benefits: Benefit[];
-  /** Day of month (1-31) that the card's statement closes. Used by
-   * resetsAtStatementClose benefits. Clamped to last day of short months. */
-  statementClosingDay?: number;
   templateVersion?: number;
 }
 

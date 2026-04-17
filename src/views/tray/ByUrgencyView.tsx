@@ -26,7 +26,7 @@ export const ByUrgencyView = () => {
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
       if (!isInCurrentCycle(benefit, today)) continue;
-      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
+      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
       // Skip auto-recur subscriptions (they're handled automatically)
       if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;
 
@@ -34,7 +34,6 @@ export const ByUrgencyView = () => {
         resetType: benefit.resetType,
         resetConfig: benefit.resetConfig,
         cardOpenDate: card.cardOpenDate,
-        statementClosingDay: card.statementClosingDay,
       });
       const daysRemaining = deadline ? getDaysRemaining(today, deadline) : null;
 

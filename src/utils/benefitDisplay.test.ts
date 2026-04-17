@@ -67,6 +67,60 @@ describe("expandBenefitsForFilter — 可使用", () => {
   });
 });
 
+// CSP's $50 hotel credit is plain anniversary. A past-year usage record
+// (2025-04-16) belongs to cycle A:2025 and does NOT satisfy the current
+// cycle A:2026 — the user is owed a new $50 for the 2026 anniv year.
+describe("expandBenefitsForFilter — CSP hotel credit with prior-year record", () => {
+  // Today: 2026-04-16. Card opened 2024-04-11.
+  // Current cycle: A:2026 [2026-04-11, 2027-04-10] — fresh, no record.
+  // Prior cycle:   A:2025 [2025-04-11, 2026-04-10] — holds the 2025-04-16 record.
+  const today = new Date(2026, 3, 16);
+  const cspBenefit = (): Benefit =>
+    makeBenefit({
+      id: "hotel-50",
+      name: "$50 Annual Hotel Credit",
+      faceValue: 50,
+      category: "hotel",
+      resetType: "anniversary",
+      resetConfig: {},
+      usageRecords: [
+        { usedDate: "2025-04-16", faceValue: 50, actualValue: 50, kind: "usage" },
+      ],
+    });
+  const makeCspCard = (): CreditCard => ({
+    id: "csp",
+    owner: "me",
+    cardTypeSlug: "chase_sapphire_preferred",
+    annualFee: 95,
+    cardOpenDate: "2024-04-11",
+    color: "#2471A3",
+    isEnabled: true,
+    benefits: [cspBenefit()],
+  });
+
+  it("shows benefit in 可使用 — current cycle has no record yet", () => {
+    const items = expandBenefitsForFilter(makeCspCard(), "available", today, "anniversary");
+    expect(items).toHaveLength(1);
+    expect(items[0].benefit.id).toBe("hotel-50");
+    expect(items[0].variant).toBe("standard");
+  });
+
+  it("shows current cycle in 未使用 — prior-year record does not count", () => {
+    const items = expandBenefitsForFilter(makeCspCard(), "unused", today, "anniversary");
+    expect(items).toHaveLength(1);
+    expect(items[0].periodLabel).toBe("2026年度");
+    expect(items[0].cycleRecord).toBeUndefined();
+  });
+
+  it("shows prior cycle in 已使用 with the 2025 record", () => {
+    const items = expandBenefitsForFilter(makeCspCard(), "used", today, "anniversary");
+    expect(items).toHaveLength(1);
+    expect(items[0].periodLabel).toBe("2025年度");
+    expect(items[0].cycleRecord?.usedDate).toBe("2025-04-16");
+    expect(items[0].cycleRecord?.actualValue).toBe(50);
+  });
+});
+
 describe("expandBenefitsForFilter — 已隐藏", () => {
   it("returns only hidden benefits as standard variant", () => {
     const today = new Date(2026, 3, 14);

@@ -128,7 +128,9 @@ describe("RolloverEditDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
     const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(2);
+    // 2 past-cycle rollovers + 1 current-cycle marker (marks cycle as decided)
+    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(3);
+    expect(records.some((r) => r.usedDate === "2026-01-01")).toBe(true);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -201,8 +203,12 @@ describe("RolloverEditDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
     const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(1);
-    expect(records[0].usedDate).toBe("2025-01-01");
+    // 1 past-cycle rollover (2025-01-01) + 1 current-cycle marker (2026-01-01)
+    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(2);
+    expect(records.map((r) => r.usedDate).sort()).toEqual([
+      "2025-01-01",
+      "2026-01-01",
+    ]);
   });
 
   it("throws on mount in DEV when benefit is non-rolloverable", () => {

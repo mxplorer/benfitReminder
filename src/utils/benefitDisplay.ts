@@ -58,9 +58,10 @@ const buildAggregate = (
   cycles: PeriodCycle[],
   kind: "used" | "unused" | "all",
   propagatesForwardOverride: boolean,
+  cardOpenDate: string,
 ): BenefitDisplayItem["aggregate"] => {
   const months: AggregatedMonth[] = cycles.map((cycle) => {
-    const record = findCycleRecord(benefit, cycle);
+    const record = findCycleRecord(benefit, cycle, cardOpenDate);
     const used = propagatesForwardOverride || record !== undefined;
     return {
       label: cycle.label,
@@ -109,16 +110,16 @@ const expandUnused = (
     if (b.isHidden) continue;
     if (isStandardOnly(b)) {
       if (!isInCurrentCycle(b, today)) continue;
-      if (isBenefitUsedInPeriod(b, today, card.cardOpenDate, card.statementClosingDay)) continue;
+      if (isBenefitUsedInPeriod(b, today, card.cardOpenDate)) continue;
       items.push(standardItem(b, card));
       continue;
     }
     if (b.resetType === "subscription" && latestHasPropagate(b)) continue; // never unused
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
-      const unusedCycles = cycles.filter((c) => !findCycleRecord(b, c));
+      const unusedCycles = cycles.filter((c) => !findCycleRecord(b, c, card.cardOpenDate));
       if (unusedCycles.length === 0) continue;
-      const aggregate = buildAggregate(b, unusedCycles, "unused", false);
+      const aggregate = buildAggregate(b, unusedCycles, "unused", false, card.cardOpenDate);
       items.push({
         benefit: b,
         card,
@@ -133,7 +134,7 @@ const expandUnused = (
         // ends, that year's credit is forfeit and the cycle is no longer
         // actionable — hide past cycles from "未使用".
         if (b.resetType === "anniversary" && cycle.end < todayIso) continue;
-        if (!findCycleRecord(b, cycle)) {
+        if (!findCycleRecord(b, cycle, card.cardOpenDate)) {
           items.push(perCycleItem(b, card, cycle, undefined));
         }
       }
@@ -159,9 +160,9 @@ const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
       const propagatesForward = b.resetType === "subscription" && latestHasPropagate(b);
       const usedCycles = propagatesForward
         ? cycles
-        : cycles.filter((c) => findCycleRecord(b, c));
+        : cycles.filter((c) => findCycleRecord(b, c, card.cardOpenDate));
       if (usedCycles.length === 0) continue;
-      const aggregate = buildAggregate(b, usedCycles, "used", propagatesForward);
+      const aggregate = buildAggregate(b, usedCycles, "used", propagatesForward, card.cardOpenDate);
       items.push({
         benefit: b,
         card,
@@ -171,7 +172,7 @@ const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
       });
     } else {
       for (const cycle of cycles) {
-        const record = findCycleRecord(b, cycle);
+        const record = findCycleRecord(b, cycle, card.cardOpenDate);
         if (record) items.push(perCycleItem(b, card, cycle, record));
       }
     }
@@ -196,7 +197,7 @@ const expandAll = (
     if (isMonthlyLike(b)) {
       if (cycles.length === 0) continue;
       const propagatesForward = b.resetType === "subscription" && latestHasPropagate(b);
-      const aggregate = buildAggregate(b, cycles, "all", propagatesForward);
+      const aggregate = buildAggregate(b, cycles, "all", propagatesForward, card.cardOpenDate);
       items.push({
         benefit: b,
         card,
@@ -206,7 +207,7 @@ const expandAll = (
       });
     } else {
       for (const cycle of cycles) {
-        items.push(perCycleItem(b, card, cycle, findCycleRecord(b, cycle)));
+        items.push(perCycleItem(b, card, cycle, findCycleRecord(b, cycle, card.cardOpenDate)));
       }
     }
   }
@@ -229,7 +230,7 @@ export const expandBenefitsForFilter = (
     return card.benefits
       .filter((b) => !b.isHidden)
       .filter((b) => isApplicableNow(b, today))
-      .filter((b) => !isBenefitUsedInPeriod(b, today, card.cardOpenDate, card.statementClosingDay))
+      .filter((b) => !isBenefitUsedInPeriod(b, today, card.cardOpenDate))
       .map((b) => standardItem(b, card));
   }
 

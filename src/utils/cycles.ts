@@ -1,4 +1,5 @@
 import { formatDate, getAnniversaryRange, getMonthRange, lastDay } from "./period";
+import { cycleKeyForDate, cycleKeyForRecord } from "./cycleKey";
 import type { Benefit, UsageRecord } from "../models/types";
 import type { YearScope } from "./benefitDisplay";
 
@@ -106,7 +107,10 @@ const cyclesForAnnual = (scope: ScopeWindow, cardOpenDate: string): PeriodCycle[
   return cycles;
 };
 
-const cyclesForAnniversary = (scope: ScopeWindow, cardOpenDate: string): PeriodCycle[] => {
+const cyclesForAnniversary = (
+  scope: ScopeWindow,
+  cardOpenDate: string,
+): PeriodCycle[] => {
   const open = new Date(cardOpenDate + "T00:00:00");
   const scopeStart = new Date(scope.start + "T00:00:00");
   const scopeEnd = new Date(scope.end + "T00:00:00");
@@ -121,8 +125,12 @@ const cyclesForAnniversary = (scope: ScopeWindow, cardOpenDate: string): PeriodC
   for (let i = 0; i < 100; i += 1) {
     const nextAnniv = new Date(anniv);
     nextAnniv.setFullYear(nextAnniv.getFullYear() + 1);
-    const cs = formatDate(anniv);
-    const ce = formatDate(new Date(nextAnniv.getTime() - 86400000));
+
+    const startDate = anniv;
+    const endDate = new Date(nextAnniv.getTime() - 86400000);
+
+    const cs = formatDate(startDate);
+    const ce = formatDate(endDate);
     if (cs > scope.end) break;
     if (ce >= scope.start && ce >= cardOpenDate) {
       cycles.push({ start: cs, end: ce, label: `${String(anniv.getFullYear())}年度` });
@@ -198,20 +206,28 @@ export const getScopeCycles = (
 };
 
 export interface FindCycleRecordOptions {
-  /** Include rollover records in the search. Defaults to false — rollover
-   * records mark a cycle as rolled-forward, not used, so UI that asks
-   * "is this cycle consumed?" should skip them. */
+  /** Include rollover records in the search. Defaults to true — rollover
+   * markers mean "user rolled this cycle forward", which counts as consumed
+   * for UI purposes. Pass `false` to limit the search to real usage records
+   * (e.g., when collapsing/expanding usage-only analytics). */
   includeRollover?: boolean;
 }
 
 export const findCycleRecord = (
   benefit: Benefit,
   cycle: PeriodCycle,
+  cardOpenDate: string,
   options: FindCycleRecordOptions = {},
-): UsageRecord | undefined =>
-  benefit.usageRecords.find(
-    (r) =>
-      r.usedDate >= cycle.start &&
-      r.usedDate <= cycle.end &&
-      (options.includeRollover || r.kind !== "rollover"),
+): UsageRecord | undefined => {
+  const includeRollover = options.includeRollover ?? true;
+  const cycleKey = cycleKeyForDate(cycle.start, benefit, cardOpenDate);
+  const inCycle = (r: UsageRecord) =>
+    cycleKeyForRecord(r, benefit, cardOpenDate) === cycleKey;
+  // Prefer a real usage record over a rollover marker when both exist.
+  const usage = benefit.usageRecords.find(
+    (r) => inCycle(r) && r.kind !== "rollover",
   );
+  if (usage) return usage;
+  if (!includeRollover) return undefined;
+  return benefit.usageRecords.find((r) => inCycle(r) && r.kind === "rollover");
+};

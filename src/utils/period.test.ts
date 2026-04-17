@@ -10,7 +10,6 @@ import {
   isInCurrentCycle,
   getDeadline,
   getDaysRemaining,
-  getAnniversaryStatementClosingRange,
 } from "./period";
 
 const d = (iso: string) => new Date(iso + "T00:00:00");
@@ -339,9 +338,7 @@ describe("isBenefitUsedInPeriod", () => {
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
 
-  it("ignores rollover records — a cycle with only a rollover marker is not 'used'", () => {
-    // Regression: before kind, rolloverBenefit wrote a record inside the current
-    // cycle that findCycleRecord/isBenefitUsedInPeriod mistook for a real use.
+  it("treats a rollover marker in the current cycle as 'used' (cycle is decided)", () => {
     const benefit = makeBenefit({
       resetType: "calendar",
       resetConfig: { period: "quarterly" },
@@ -349,6 +346,19 @@ describe("isBenefitUsedInPeriod", () => {
       rolloverMaxYears: 2,
       usageRecords: [
         { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(true);
+  });
+
+  it("ignores past-cycle rollover markers when checking the current cycle", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
       ],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(false);
@@ -608,118 +618,4 @@ describe("monthly subscription — current-month usage", () => {
   });
 });
 
-describe("getAnniversaryStatementClosingRange", () => {
-  it("shifts both boundaries to the next statement close on or after anniversary", () => {
-    const today = new Date(2026, 5, 1);
-    const range = getAnniversaryStatementClosingRange(today, "2025-04-03", 7);
-    expect(range.start).toBe("2026-04-07");
-    expect(range.end).toBe("2027-04-06");
-  });
 
-  it("treats anniversary date that equals the closing day as the start (no shift)", () => {
-    const today = new Date(2026, 5, 1);
-    const range = getAnniversaryStatementClosingRange(today, "2025-04-07", 7);
-    expect(range.start).toBe("2026-04-07");
-    expect(range.end).toBe("2027-04-06");
-  });
-
-  it("clamps closing day 31 to last day of short months (Feb)", () => {
-    const today = new Date(2026, 2, 1);
-    const range = getAnniversaryStatementClosingRange(today, "2025-02-10", 31);
-    expect(range.start).toBe("2026-02-28");
-    expect(range.end).toBe("2027-02-27");
-  });
-
-  it("moves to next month when anniversary lands after that month's close", () => {
-    const today = new Date(2026, 5, 1);
-    const range = getAnniversaryStatementClosingRange(today, "2025-04-10", 7);
-    expect(range.start).toBe("2026-05-07");
-    expect(range.end).toBe("2027-05-06");
-  });
-
-  it("handles leap year anniversary + day 31 close", () => {
-    const today = new Date(2026, 5, 1);
-    const range = getAnniversaryStatementClosingRange(today, "2024-02-29", 31);
-    expect(range.start).toBe("2026-02-28");
-    expect(range.end).toBe("2027-02-27");
-  });
-});
-
-describe("getCurrentPeriodRange — statement-close routing", () => {
-  const today = new Date(2026, 5, 1);
-
-  it("uses statement-close helper when resetType=anniversary AND resetsAtStatementClose AND statementClosingDay set", () => {
-    const range = getCurrentPeriodRange(today, {
-      resetType: "anniversary",
-      resetConfig: { resetsAtStatementClose: true },
-      cardOpenDate: "2025-04-03",
-      statementClosingDay: 7,
-    });
-    expect(range?.start).toBe("2026-04-07");
-    expect(range?.end).toBe("2027-04-06");
-  });
-
-  it("falls back to pure anniversary when statementClosingDay is missing", () => {
-    const range = getCurrentPeriodRange(today, {
-      resetType: "anniversary",
-      resetConfig: { resetsAtStatementClose: true },
-      cardOpenDate: "2025-04-03",
-    });
-    expect(range?.start).toBe("2026-04-03");
-    expect(range?.end).toBe("2027-04-02");
-  });
-
-  it("falls back to pure anniversary when resetsAtStatementClose is false", () => {
-    const range = getCurrentPeriodRange(today, {
-      resetType: "anniversary",
-      resetConfig: {},
-      cardOpenDate: "2025-04-03",
-      statementClosingDay: 7,
-    });
-    expect(range?.start).toBe("2026-04-03");
-    expect(range?.end).toBe("2027-04-02");
-  });
-});
-
-describe("isBenefitUsedInPeriod — statement close aware", () => {
-  const today = new Date(2026, 5, 1);
-  const base: Benefit = {
-    id: "b",
-    name: "Hotel",
-    description: "",
-    faceValue: 50,
-    category: "hotel",
-    resetType: "anniversary",
-    resetConfig: { resetsAtStatementClose: true },
-    isHidden: false,
-    rolloverable: false,
-    rolloverMaxYears: 0,
-    usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50, kind: "usage" }],
-  };
-
-  it("treats a record dated 2026-04-05 as LAST cycle's usage (before shifted start 2026-04-07)", () => {
-    expect(isBenefitUsedInPeriod(base, today, "2025-04-03", 7)).toBe(false);
-  });
-
-  it("treats a record dated 2026-04-07 as CURRENT cycle's usage", () => {
-    const benefit = {
-      ...base,
-      usageRecords: [{ usedDate: "2026-04-07", faceValue: 50, actualValue: 50, kind: "usage" as const }],
-    };
-    expect(isBenefitUsedInPeriod(benefit, today, "2025-04-03", 7)).toBe(true);
-  });
-});
-
-describe("getDeadline — statement close aware", () => {
-  it("returns shifted end date when both card and benefit opt in", () => {
-    const today = new Date(2026, 5, 1);
-    expect(
-      getDeadline(today, {
-        resetType: "anniversary",
-        resetConfig: { resetsAtStatementClose: true },
-        cardOpenDate: "2025-04-03",
-        statementClosingDay: 7,
-      }),
-    ).toBe("2027-04-06");
-  });
-});

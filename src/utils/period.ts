@@ -1,4 +1,5 @@
 import type { Benefit, CalendarPeriod, ResetConfig, ResetType } from "../models/types";
+import { cycleKeyForRecord, currentCycleKey } from "./cycleKey";
 import { getLatestRecord } from "./usageRecords";
 
 export interface DateRange {
@@ -10,7 +11,6 @@ export interface PeriodInput {
   resetType: ResetType;
   resetConfig: ResetConfig;
   cardOpenDate?: string;
-  statementClosingDay?: number;
 }
 
 export const formatDate = (d: Date): string => {
@@ -80,7 +80,7 @@ export const getCalendarPeriodRange = (
 };
 
 // Clamp day to last day of target month (handles Feb 29 in non-leap years)
-const clampDate = (year: number, month: number, day: number): Date => {
+export const clampDate = (year: number, month: number, day: number): Date => {
   const maxDay = lastDay(year, month + 1); // month is 0-indexed, lastDay expects 1-indexed
   return new Date(year, month, Math.min(day, maxDay));
 };
@@ -108,38 +108,6 @@ export const getAnniversaryRange = (today: Date, cardOpenDate: string): DateRang
   return { start: formatDate(periodStart), end: formatDate(periodEnd) };
 };
 
-const firstCloseOnOrAfter = (anchor: Date, closingDay: number): Date => {
-  const year = anchor.getFullYear();
-  const month = anchor.getMonth();
-  const thisMonthClose = clampDate(year, month, closingDay);
-  if (thisMonthClose >= anchor) return thisMonthClose;
-  return clampDate(year, month + 1, closingDay);
-};
-
-/**
- * Shifts an anniversary-aligned window to align with statement close boundaries.
- * The "statement close" for a given (year, month) is min(day, lastDay(year, month)).
- * Both boundaries shift: start = first close on-or-after anniversaryStart;
- * end = (first close on-or-after nextAnniversaryStart) - 1 day.
- */
-export const getAnniversaryStatementClosingRange = (
-  today: Date,
-  cardOpenDate: string,
-  statementClosingDay: number,
-): DateRange => {
-  const anniversary = getAnniversaryRange(today, cardOpenDate);
-  const startAnchor = new Date(anniversary.start + "T00:00:00");
-  const endAnchorExclusive = new Date(anniversary.end + "T00:00:00");
-  endAnchorExclusive.setDate(endAnchorExclusive.getDate() + 1);
-
-  const shiftedStart = firstCloseOnOrAfter(startAnchor, statementClosingDay);
-  const shiftedEndExclusive = firstCloseOnOrAfter(endAnchorExclusive, statementClosingDay);
-  const shiftedEnd = new Date(shiftedEndExclusive);
-  shiftedEnd.setDate(shiftedEnd.getDate() - 1);
-
-  return { start: formatDate(shiftedStart), end: formatDate(shiftedEnd) };
-};
-
 export const getCurrentPeriodRange = (
   today: Date,
   input: PeriodInput,
@@ -152,17 +120,9 @@ export const getCurrentPeriodRange = (
     case "subscription":
       return getCalendarPeriodRange(today, "monthly");
 
-    case "anniversary": {
+    case "anniversary":
       if (!input.cardOpenDate) return null;
-      if (input.resetConfig.resetsAtStatementClose && input.statementClosingDay) {
-        return getAnniversaryStatementClosingRange(
-          today,
-          input.cardOpenDate,
-          input.statementClosingDay,
-        );
-      }
       return getAnniversaryRange(today, input.cardOpenDate);
-    }
 
     case "since_last_use":
       return null;
@@ -172,26 +132,22 @@ export const getCurrentPeriodRange = (
   }
 };
 
-const isDateInRange = (dateStr: string, range: DateRange): boolean => {
-  return dateStr >= range.start && dateStr <= range.end;
-};
-
 export const isBenefitUsedInPeriod = (
   benefit: Benefit,
   today: Date,
   cardOpenDate?: string,
-  statementClosingDay?: number,
 ): boolean => {
   const { resetType, resetConfig, usageRecords } = benefit;
-  // Rollover records mark a cycle as "rolled forward" — they never represent
-  // consumption, so exclude them from every "used?" check.
-  const usage = usageRecords.filter((r) => r.kind !== "rollover");
 
   if (resetType === "one_time") {
-    return usage.length > 0;
+    // one_time benefits aren't rolloverable, so rollover records shouldn't
+    // appear here — filter defensively.
+    return usageRecords.some((r) => r.kind !== "rollover");
   }
 
   if (resetType === "since_last_use") {
+    // Cooldown is measured against real usage, not rollover markers.
+    const usage = usageRecords.filter((r) => r.kind !== "rollover");
     if (usage.length === 0) return false;
     const cooldown = resetConfig.cooldownDays ?? 0;
     if (cooldown === 0) return false;
@@ -203,15 +159,14 @@ export const isBenefitUsedInPeriod = (
     return today < cooldownEnd;
   }
 
-  // calendar, anniversary, subscription
-  const range = getCurrentPeriodRange(today, {
-    resetType,
-    resetConfig,
-    cardOpenDate,
-    statementClosingDay,
-  });
-  if (!range) return false;
-  return usage.some((r) => isDateInRange(r.usedDate, range));
+  // calendar, anniversary, subscription — match by intrinsic cycle key.
+  // Rollover records count as "used" — a rollover marker means the user
+  // decided to roll this cycle forward.
+  const key = currentCycleKey(today, benefit, cardOpenDate);
+  if (!key) return false;
+  return usageRecords.some(
+    (r) => cycleKeyForRecord(r, benefit, cardOpenDate ?? "") === key,
+  );
 };
 
 export const isApplicableNow = (benefit: Benefit, today: Date): boolean => {
@@ -253,7 +208,6 @@ export interface DeadlineInput {
   resetType: ResetType;
   resetConfig: ResetConfig;
   cardOpenDate?: string;
-  statementClosingDay?: number;
 }
 
 export const getDeadline = (today: Date, input: DeadlineInput): string | null => {
@@ -267,7 +221,6 @@ export const getDeadline = (today: Date, input: DeadlineInput): string | null =>
     resetType: input.resetType,
     resetConfig: input.resetConfig,
     cardOpenDate: input.cardOpenDate,
-    statementClosingDay: input.statementClosingDay,
   });
   return range?.end ?? null;
 };

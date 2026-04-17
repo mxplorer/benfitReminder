@@ -1,11 +1,16 @@
 import { create } from "zustand";
 import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
-import { formatDate, isBenefitUsedInPeriod, isInCurrentCycle } from "../utils/period";
+import {
+  formatDate,
+  isBenefitUsedInPeriod,
+  isInCurrentCycle,
+} from "../utils/period";
+import { cycleKeyForDate, cycleKeyForRecord, currentCycleKey } from "../utils/cycleKey";
 import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
 import { syncAllCardsWithTemplates } from "../utils/templateSync";
 import { generateRolloverRecords } from "../utils/rollover";
-import { cycleStartForDate, makeUsageRecord } from "../utils/usageRecords";
+import { cycleStartForDate, makeRolloverRecord, makeUsageRecord } from "../utils/usageRecords";
 import { useCardTypeStore } from "./useCardTypeStore";
 
 interface CardStoreState {
@@ -126,18 +131,43 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       const benefit = card.benefits.find((b) => b.id === benefitId);
       if (!benefit) return state;
 
-      const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay);
+      const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
+
+      // Record attribution is by intrinsic cycle key, not by usedDate range.
+      // since_last_use has no cycle boundary — match any record when undoing,
+      // don't clamp when creating.
+      const isSinceLastUse = benefit.resetType === "since_last_use";
+      const currentKey = isSinceLastUse
+        ? null
+        : currentCycleKey(today, benefit, card.cardOpenDate);
+      const matchesCurrent = (r: UsageRecord): boolean => {
+        if (isSinceLastUse) return true;
+        if (!currentKey) return false;
+        return cycleKeyForRecord(r, benefit, card.cardOpenDate) === currentKey;
+      };
 
       if (isUsed) {
-        // Remove the most recent non-rollover record. Popping blindly would
-        // discard a concurrent rollover marker on rolloverable benefits.
+        // Prefer usage over rollover so unchecking an actually-used cycle
+        // clears the usage while unchecking a rolled-forward cycle clears the
+        // rollover.
         const records = [...benefit.usageRecords];
+        let removeIndex = -1;
         for (let i = records.length - 1; i >= 0; i -= 1) {
-          if (records[i].kind !== "rollover") {
-            records.splice(i, 1);
+          if (matchesCurrent(records[i]) && records[i].kind !== "rollover") {
+            removeIndex = i;
             break;
           }
         }
+        if (removeIndex === -1) {
+          for (let i = records.length - 1; i >= 0; i -= 1) {
+            if (matchesCurrent(records[i]) && records[i].kind === "rollover") {
+              removeIndex = i;
+              break;
+            }
+          }
+        }
+        if (removeIndex === -1) return state;
+        records.splice(removeIndex, 1);
         return {
           cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
             ...b,
@@ -146,9 +176,19 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         };
       }
 
-      // Add new record with faceValue snapshot
+      // Force the new record to attribute to the current cycle. If the user-
+      // supplied usedDate maps to a different cycle (e.g., picked last year's
+      // date by mistake), fall back to today — today's cycleKey is guaranteed
+      // to match the current cycle.
+      const todayIso = formatDate(today);
+      const requested = usedDate ?? todayIso;
+      const requestedKey = isSinceLastUse
+        ? null
+        : cycleKeyForDate(requested, benefit, card.cardOpenDate);
+      const effectiveUsedDate =
+        isSinceLastUse || requestedKey === currentKey ? requested : todayIso;
       const newRecord: UsageRecord = makeUsageRecord({
-        usedDate: usedDate ?? formatDate(today),
+        usedDate: effectiveUsedDate,
         faceValue: benefit.faceValue,
         actualValue: actualValue ?? benefit.faceValue,
       });
@@ -161,23 +201,38 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
     });
   },
 
-  setBenefitCycleUsed: (cardId, benefitId, cycleStart, cycleEnd, used, opts) => {
+  setBenefitCycleUsed: (cardId, benefitId, cycleStart, _cycleEnd, used, opts) => {
     set((state) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) return state;
       const benefit = card.benefits.find((b) => b.id === benefitId);
       if (!benefit) return state;
 
+      // Identify the target cycle by intrinsic cycle key.
+      const targetKey = cycleKeyForDate(cycleStart, benefit, card.cardOpenDate);
       const existingInCycle = benefit.usageRecords.find(
-        (r) => r.usedDate >= cycleStart && r.usedDate <= cycleEnd,
+        (r) => cycleKeyForRecord(r, benefit, card.cardOpenDate) === targetKey,
       );
+
+      // Force any user-supplied usedDate into the target cycle. An out-of-
+      // cycle date means the user picked the wrong date; fall back to today
+      // if it's in-cycle, else cycleStart.
+      const todayIso = formatDate(new Date());
+      const todayKey = cycleKeyForDate(todayIso, benefit, card.cardOpenDate);
+      const defaultDate = todayKey === targetKey ? todayIso : cycleStart;
+      const clampUsedDate = (d: string | undefined, fallback: string): string => {
+        if (d === undefined) return fallback;
+        const k = cycleKeyForDate(d, benefit, card.cardOpenDate);
+        if (k !== targetKey) return defaultDate;
+        return d;
+      };
 
       if (used) {
         if (existingInCycle) {
           const updated: UsageRecord = {
             ...existingInCycle,
             actualValue: opts?.actualValue ?? existingInCycle.actualValue,
-            usedDate: opts?.usedDate ?? existingInCycle.usedDate,
+            usedDate: clampUsedDate(opts?.usedDate, existingInCycle.usedDate),
             // `!== undefined` (not `??`) so an explicit `false` override wins.
             propagateNext:
               opts?.propagateNext !== undefined
@@ -193,11 +248,8 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
             })),
           };
         }
-        const todayIso = formatDate(new Date());
-        const defaultDate =
-          todayIso >= cycleStart && todayIso <= cycleEnd ? todayIso : cycleStart;
         const newRecord: UsageRecord = makeUsageRecord({
-          usedDate: opts?.usedDate ?? defaultDate,
+          usedDate: clampUsedDate(opts?.usedDate, defaultDate),
           faceValue: benefit.faceValue,
           actualValue: opts?.actualValue ?? benefit.faceValue,
           ...(opts?.propagateNext !== undefined ? { propagateNext: opts.propagateNext } : {}),
@@ -230,40 +282,39 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       const period = benefit.resetConfig.period;
       if (!period) return state;
 
-      // Past-cycle editor: keep usage records and any current-cycle rollover
-      // marker (written by the ⟳ shortcut), replace only past-cycle rollovers.
       const currentCycleStart = cycleStartForDate(today, period);
-      const preserved = benefit.usageRecords.filter(
-        (r) => r.kind !== "rollover" || r.usedDate >= currentCycleStart,
+      // Drop all existing rollover records; keep every usage record.
+      const preserved = benefit.usageRecords.filter((r) => r.kind !== "rollover");
+      const pastRegenerated = generateRolloverRecords(benefit, rolloverAmount, today);
+
+      // Saving the dialog also decides the current cycle: write a rollover
+      // marker so the benefit shows as used in this cycle. Skip when a usage
+      // record already exists in the current cycle — the user explicitly
+      // marked it consumed, don't overwrite.
+      const hasCurrentUsage = preserved.some(
+        (r) => r.usedDate >= currentCycleStart && r.kind === "usage",
       );
-      const regenerated = generateRolloverRecords(benefit, rolloverAmount, today);
+      const currentMarker = hasCurrentUsage ? [] : [makeRolloverRecord(currentCycleStart)];
+
       return {
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
-          usageRecords: [...preserved, ...regenerated],
+          usageRecords: [...preserved, ...pastRegenerated, ...currentMarker],
         })),
       };
     });
   },
 
   clearRolloverRecords: (cardId, benefitId) => {
-    const today = new Date();
     set((state) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) return state;
       const benefit = card.benefits.find((b) => b.id === benefitId);
       if (!benefit) return state;
-      const period = benefit.resetConfig.period;
-      // Mirror replaceRolloverRecords: clear past-cycle only, keep current-cycle ⟳.
-      const currentCycleStart = period ? cycleStartForDate(today, period) : undefined;
       return {
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
-          usageRecords: b.usageRecords.filter(
-            (r) =>
-              r.kind !== "rollover" ||
-              (currentCycleStart !== undefined && r.usedDate >= currentCycleStart),
-          ),
+          usageRecords: b.usageRecords.filter((r) => r.kind !== "rollover"),
         })),
       };
     });
@@ -287,7 +338,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       for (const benefit of card.benefits) {
         if (benefit.isHidden) continue;
         if (!isInCurrentCycle(benefit, today)) continue;
-        if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
+        if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
         count++;
       }
     }

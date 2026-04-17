@@ -29,7 +29,7 @@ export const computeTrayStatus = (
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
       if (!isInCurrentCycle(benefit, today)) continue;
-      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) {
+      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) {
         continue;
       }
       unusedCount++;

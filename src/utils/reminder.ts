@@ -21,13 +21,12 @@ export const getBenefitsDueForReminder = (
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
       if (!isApplicableNow(benefit, today)) continue;
-      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate, card.statementClosingDay)) continue;
+      if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
 
       const deadline = getDeadline(today, {
         resetType: benefit.resetType,
         resetConfig: benefit.resetConfig,
         cardOpenDate: card.cardOpenDate,
-        statementClosingDay: card.statementClosingDay,
       });
       if (!deadline) continue;
 

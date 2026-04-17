@@ -3,7 +3,7 @@
   "name": "Chase Sapphire Preferred",
   "defaultAnnualFee": 95,
   "color": "#2471A3",
-  "version": 1,
+  "version": 2,
   "defaultBenefits": [
     {
       "templateBenefitId": "chase_sapphire_preferred.hotel_credit",
@@ -12,7 +12,7 @@
       "faceValue": 50,
       "category": "hotel",
       "resetType": "anniversary",
-      "resetConfig": { "resetsAtStatementClose": true }
+      "resetConfig": {}
     },
     {
       "templateBenefitId": "chase_sapphire_preferred.dashpass_promo",
