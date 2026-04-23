@@ -281,7 +281,10 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                 onAddUsage={addBenefitUsage}
                 onAddCycleUsage={addCycleUsage}
                 onEditRollover={(_cardId, benefitId) => { setEditRolloverBenefitId(benefitId); }}
-                onToggleHidden={toggleBenefitHidden}
+                onToggleHidden={(cardId, benefitId) => {
+                  toggleBenefitHidden(cardId, benefitId);
+                  if (filter === "hidden") setFilter("all");
+                }}
                 onDelete={removeBenefit}
                 onManageUsage={handleManageUsage}
                 periodLabel={item.periodLabel}

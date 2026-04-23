@@ -45,7 +45,14 @@
 }
 
 .benefit-card.used { opacity: 0.68; }
-.benefit-card.hidden-benefit { opacity: 0.35; }
+
+/* Hidden benefits: fade content but keep action menu fully opaque so
+   clicking 取消隐藏 is visually clear. Parent-level opacity would cascade
+   to descendants and wash out the dropdown. */
+.benefit-card.hidden-benefit > *:not(.benefit-card__actions) {
+  opacity: 0.45;
+}
+.benefit-card.hidden-benefit::after { display: none; }
 
 /* Per-state glow color + speed */
 .benefit-card--ok {

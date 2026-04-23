@@ -290,8 +290,8 @@
   color: var(--accent);
 }
 
-/* Hidden benefit dimming */
-.benefit-card.hidden-benefit { opacity: 0.35; }
+/* Hidden-benefit dimming lives in BenefitCard.css (targets content only,
+   leaves the ⋯ action menu at full opacity). */
 
 /* Usage records */
 .card-detail__history-section {
