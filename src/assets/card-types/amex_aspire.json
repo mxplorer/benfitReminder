@@ -1,6 +1,7 @@
 {
   "slug": "amex_aspire",
   "name": "Hilton Aspire",
+  "issuer": "Amex",
   "defaultAnnualFee": 550,
   "color": "#1A5276",
   "version": 1,

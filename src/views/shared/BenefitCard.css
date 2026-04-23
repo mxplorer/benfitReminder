@@ -1,0 +1,371 @@
+/* Benefit tile — redesigned */
+@property --bc-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.benefit-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  --bc-glow: rgba(0, 122, 255, 0.95);
+  --bc-duration: 10s;
+  isolation: isolate;
+}
+
+/* Ambient running light — single bright bead chases around the perimeter */
+.benefit-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--bc-angle),
+    transparent 0deg,
+    transparent 270deg,
+    var(--bc-glow) 310deg,
+    transparent 350deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: bc-spin var(--bc-duration) linear infinite;
+  z-index: 1;
+}
+
+.benefit-card.used { opacity: 0.68; }
+.benefit-card.hidden-benefit { opacity: 0.35; }
+
+/* Per-state glow color + speed */
+.benefit-card--ok {
+  --bc-glow: rgba(0, 122, 255, 0.95);
+  --bc-duration: 10s;
+}
+.benefit-card--urgent {
+  --bc-glow: rgba(255, 59, 48, 1);
+  --bc-duration: 3s;
+}
+.benefit-card--used::after,
+.benefit-card--pending::after {
+  display: none;
+}
+
+@keyframes bc-spin {
+  to { --bc-angle: 360deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .benefit-card::after { animation: none; }
+}
+
+/* Head row */
+.benefit-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.benefit-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.benefit-card__name--used {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+.benefit-card__value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Description (small, single line) */
+.benefit-card__description {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: -4px;
+}
+
+/* Meta (period + badge) */
+.benefit-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.benefit-card__period {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.benefit-card__rollover-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 122, 255, 0.12);
+  color: var(--color-blue, #007aff);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Status row (dot + label + deadline) */
+.benefit-card__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.benefit-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+.benefit-card__status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.benefit-card__status-dot--urgent { background: var(--color-red); }
+.benefit-card__status-dot--ok { background: var(--color-blue, #007aff); }
+.benefit-card__status-dot--used { background: var(--text-tertiary); }
+.benefit-card__status-dot--pending { background: var(--text-tertiary); }
+
+.benefit-card--urgent .benefit-card__status { color: var(--color-red); font-weight: 600; }
+
+.benefit-card__deadline {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Actions row */
+.benefit-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.benefit-card__actions-icons {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.benefit-card__icon-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.benefit-card__icon-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+.benefit-card__icon-btn--danger:hover {
+  color: var(--color-red);
+  border-color: rgba(255, 59, 48, 0.3);
+}
+
+/* 结转 chip button */
+.benefit-card__chip-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.benefit-card__chip-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+.benefit-card__chip-icon {
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* Primary 使用 / 已勾选 button */
+.benefit-card__use-btn {
+  flex: 1;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+.benefit-card__use-btn--active {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.benefit-card__use-btn--active:hover {
+  background: #2c2c2e;
+}
+.benefit-card__use-btn--used {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.benefit-card__use-btn--used:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+/* Prompt (inline editor) — kept compatible with previous layout */
+.benefit-card__prompt {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+.benefit-card__prompt-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.benefit-card__prompt-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.benefit-card__prompt-label--checkbox {
+  flex-direction: row;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.benefit-card__prompt-input {
+  width: 64px;
+  padding: 4px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-primary, rgba(255, 255, 255, 0.6));
+  color: var(--text-primary);
+  font-size: 12px;
+  text-align: right;
+}
+.benefit-card__prompt-input--date {
+  width: 120px;
+  text-align: left;
+}
+.benefit-card__prompt-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Prompt action buttons (circular mini) */
+.benefit-card__action-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.benefit-card__action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.benefit-card__action-btn--danger:hover {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--color-red);
+}
+.benefit-card__action-btn--confirm {
+  color: var(--color-green, #34c759);
+}
+.benefit-card__action-btn--confirm:hover {
+  background: rgba(52, 199, 89, 0.12);
+  color: var(--color-green, #34c759);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .benefit-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .benefit-card__icon-btn,
+  .benefit-card__chip-btn {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .benefit-card__icon-btn:hover,
+  .benefit-card__chip-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .benefit-card__use-btn--active {
+    background: #f2f2f7;
+    color: #1c1c1e;
+    border-color: #f2f2f7;
+  }
+  .benefit-card__use-btn--active:hover {
+    background: #e5e5ea;
+  }
+  .benefit-card__use-btn--used {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .benefit-card__use-btn--used:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}

@@ -1,6 +1,7 @@
 {
   "slug": "chase_hyatt",
   "name": "Chase World of Hyatt",
+  "issuer": "Chase",
   "defaultAnnualFee": 95,
   "color": "#1C2951",
   "version": 1,

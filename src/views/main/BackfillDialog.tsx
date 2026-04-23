@@ -54,6 +54,7 @@ const formatPeriodLabel = (
 const buildNonRolloverEntries = (
   benefits: Benefit[],
   today: Date,
+  cardOpenDate: string,
 ): NonRolloverEntry[] => {
   const entries: NonRolloverEntry[] = [];
   for (const b of benefits) {
@@ -64,6 +65,9 @@ const buildNonRolloverEntries = (
 
     const pastPeriods = getPastPeriods(period, today, 12);
     for (const range of pastPeriods) {
+      // Skip periods that ended before the card was held — nothing to backfill.
+      // Use range.end so periods that were already in progress at open date still count.
+      if (range.end < cardOpenDate) continue;
       entries.push({
         benefitId: b.id,
         benefitName: b.name,
@@ -154,12 +158,14 @@ export const BackfillDialog = ({ card, onDone }: BackfillDialogProps) => {
   const backfillBenefitUsage = useCardStore((s) => s.backfillBenefitUsage);
   const today = useMemo(() => new Date(), []);
 
-  const nonRolloverBenefits = card.benefits.filter(
-    (b) => !b.rolloverable && b.resetType === "calendar" && b.resetConfig.period,
+  const initialEntries = useMemo(
+    () => buildNonRolloverEntries(card.benefits, today, card.cardOpenDate),
+    [card.benefits, today, card.cardOpenDate],
   );
   const rolloverBenefits = card.benefits.filter((b) => b.rolloverable);
 
-  const hasNonRollover = nonRolloverBenefits.length > 0;
+  // Step 1 shows only if there are actual entries after the cardOpenDate filter.
+  const hasNonRollover = initialEntries.length > 0;
   const hasRollover = rolloverBenefits.length > 0;
 
   const steps = useMemo(() => {
@@ -174,9 +180,7 @@ export const BackfillDialog = ({ card, onDone }: BackfillDialogProps) => {
   const currentStep = steps[stepIndex];
 
   // Step 1 state: non-rollover entries
-  const [entries, setEntries] = useState<NonRolloverEntry[]>(() =>
-    buildNonRolloverEntries(card.benefits, today),
-  );
+  const [entries, setEntries] = useState<NonRolloverEntry[]>(initialEntries);
 
   // Step 2 state: rollover amounts per benefit
   const [rolloverAmounts, setRolloverAmounts] = useState<Record<string, number>>(

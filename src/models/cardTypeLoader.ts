@@ -17,6 +17,9 @@ export const parseCardTypeJson = (raw: unknown): Omit<CardType, "isBuiltin"> => 
   if (typeof obj.name !== "string" || !obj.name) {
     throw new Error("Card type missing required field: name");
   }
+  if (typeof obj.issuer !== "string" || !obj.issuer) {
+    throw new Error("Card type missing required field: issuer");
+  }
   if (typeof obj.color !== "string" || !obj.color) {
     throw new Error("Card type missing required field: color");
   }
@@ -24,6 +27,7 @@ export const parseCardTypeJson = (raw: unknown): Omit<CardType, "isBuiltin"> => 
   return {
     slug: obj.slug,
     name: obj.name,
+    issuer: obj.issuer,
     defaultAnnualFee: typeof obj.defaultAnnualFee === "number" ? obj.defaultAnnualFee : 0,
     color: obj.color,
     version: typeof obj.version === "number" ? obj.version : 0,

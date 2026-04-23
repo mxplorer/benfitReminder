@@ -53,6 +53,7 @@ export interface BenefitTemplate {
 export interface CardType {
   slug: string;
   name: string;
+  issuer: string;       // issuing bank, e.g. "Amex", "Chase"
   defaultAnnualFee: number;
   color: string;
   image?: string;       // optional card face image URL

@@ -15,6 +15,7 @@ const createMockTransport = (): LogTransport & { entries: LogEntry[] } => {
 const makeTemplate = (overrides?: Partial<CardType>): CardType => ({
   slug: "test_card",
   name: "Test Card",
+  issuer: "Amex",
   defaultAnnualFee: 100,
   color: "#000",
   isBuiltin: true,

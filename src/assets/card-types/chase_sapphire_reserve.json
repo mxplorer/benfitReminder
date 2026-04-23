@@ -1,6 +1,7 @@
 {
   "slug": "chase_sapphire_reserve",
   "name": "Chase Sapphire Reserve",
+  "issuer": "Chase",
   "defaultAnnualFee": 795,
   "color": "#1A1A2E",
   "version": 1,

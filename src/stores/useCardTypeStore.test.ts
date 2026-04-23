@@ -5,6 +5,7 @@ import type { CardType } from "../models/types";
 const mockBuiltin: CardType = {
   slug: "amex_platinum",
   name: "Amex Platinum",
+  issuer: "Amex",
   defaultAnnualFee: 895,
   color: "#8E9EAF",
   image: "/amex.webp",
@@ -16,6 +17,7 @@ const mockBuiltin: CardType = {
 const mockUser: CardType = {
   slug: "custom_card",
   name: "My Custom Card",
+  issuer: "Chase",
   defaultAnnualFee: 200,
   color: "#FF0000",
   isBuiltin: false,

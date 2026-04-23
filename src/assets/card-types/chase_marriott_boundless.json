@@ -1,6 +1,7 @@
 {
   "slug": "chase_marriott_boundless",
   "name": "Chase Marriott Boundless",
+  "issuer": "Chase",
   "defaultAnnualFee": 95,
   "color": "#6B2D5B",
   "version": 1,

@@ -12,6 +12,7 @@ import { CardDetail } from "./CardDetail";
 import { CardEditor } from "./CardEditor";
 import { BenefitEditor } from "./BenefitEditor";
 import { BackfillDialog } from "./BackfillDialog";
+import { getPastPeriods } from "../../utils/rollover";
 import "./MainWindow.css";
 
 export type ActiveView =
@@ -91,19 +92,17 @@ export const MainWindow = () => {
           <div data-testid="view-card-editor">
             <CardEditor
               card={editCard}
-              onDone={() => {
+              onDone={(result) => {
                 if (activeView.cardId) {
+                  // Edit mode — return to the card detail view
                   setActiveView({ type: "card", cardId: activeView.cardId });
+                } else if (result?.newCardId) {
+                  // New card submitted — prompt for backfill and jump to detail
+                  setBackfillCardId(result.newCardId);
+                  setActiveView({ type: "card", cardId: result.newCardId });
                 } else {
-                  // New card added — navigate to the newest card in the store
-                  const latest = useCardStore.getState().cards;
-                  const newest = latest[latest.length - 1] as { id: string } | undefined;
-                  if (newest) {
-                    setBackfillCardId(newest.id);
-                    setActiveView({ type: "card", cardId: newest.id });
-                  } else {
-                    setActiveView("dashboard");
-                  }
+                  // Cancelled — go back to dashboard without triggering backfill
+                  setActiveView("dashboard");
                 }
               }}
             />
@@ -143,10 +142,19 @@ export const MainWindow = () => {
       {backfillCardId && (() => {
         const backfillCard = cards.find((c) => c.id === backfillCardId);
         if (!backfillCard) return null;
-        const hasPastPeriods = backfillCard.benefits.some(
-          (b) => b.resetType === "calendar" && b.resetConfig.period,
-        );
-        if (!hasPastPeriods) return null;
+        // Only open the dialog when at least one benefit has a past period
+        // whose start is on/after the card's open date — otherwise there is
+        // nothing the user could meaningfully backfill.
+        const today = new Date();
+        const hasBackfillableContent = backfillCard.benefits.some((b) => {
+          if (b.resetType !== "calendar") return false;
+          const period = b.resetConfig.period;
+          if (!period) return false;
+          return getPastPeriods(period, today, 12).some(
+            (p) => p.end >= backfillCard.cardOpenDate,
+          );
+        });
+        if (!hasBackfillableContent) return null;
         return (
           <BackfillDialog
             card={backfillCard}

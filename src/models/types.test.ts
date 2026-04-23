@@ -46,6 +46,7 @@ describe("CardType", () => {
     const ct: CardType = {
       slug: "test",
       name: "Test",
+      issuer: "Amex",
       defaultAnnualFee: 0,
       color: "#000",
       defaultBenefits: [],
@@ -61,6 +62,7 @@ describe("CardType", () => {
     const ct: CardType = {
       slug: "test",
       name: "Test",
+      issuer: "Chase",
       defaultAnnualFee: 0,
       color: "#000",
       defaultBenefits: [],

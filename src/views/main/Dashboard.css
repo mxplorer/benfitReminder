@@ -1,167 +1,814 @@
 .dashboard {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 900px;
+  gap: 20px;
+  max-width: 1040px;
 }
 
-/* Period info bar */
-.dashboard__period-bar {
+/* ---------- Header ---------- */
+.dashboard__header {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.dashboard__period-pill {
-  padding: 4px 12px;
-  border-radius: 20px;
+.dashboard__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashboard__title-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  background: var(--accent-subtle);
-  color: var(--accent);
-  border: 1px solid var(--accent);
-}
-
-/* Year selector */
-.dashboard__year-selector {
-  display: flex;
-  gap: 8px;
-}
-
-.dashboard__year-btn {
-  padding: 6px 16px;
-  border-radius: 20px;
-  border: 1px solid var(--border-subtle);
-  background: none;
-  cursor: pointer;
-  font-size: 13px;
+  letter-spacing: 0.02em;
   color: var(--text-secondary);
-  transition: all 0.15s ease;
 }
 
-.dashboard__year-btn--active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+.dashboard__title-kicker-eyebrow {
+  color: var(--text-secondary);
 }
 
-.dashboard__year-btn:hover:not(.dashboard__year-btn--active) {
+.dashboard__title-kicker-now {
+  color: var(--text-primary);
+}
+
+.dashboard__title-kicker-sep {
+  color: var(--text-tertiary);
+}
+
+.dashboard__title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.1;
+}
+
+.dashboard__year-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 999px;
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard__year-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dashboard__year-arrow:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
-/* ROI summary grid */
-.dashboard__roi-summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+.dashboard__year-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
 }
 
-.dashboard__roi-cell {
+/* ---------- Hero ---------- */
+/* Wrapper provides the containing block and clip for the aurora layer
+   that sits behind the frosted-glass hero card. */
+.dashboard__hero-wrap {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.dashboard__hero {
+  position: relative;
+  display: grid;
+  /* 等效年费 (dominant) · 待拿 (narrow) · 活跃卡片 */
+  grid-template-columns: 1.4fr 0.9fr 1.3fr;
+  gap: 0;
   padding: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+@media (prefers-color-scheme: dark) {
+  .dashboard__hero {
+    background: rgba(24, 24, 28, 0.5);
+  }
+}
+
+.dashboard__hero--two {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Aurora gradient backdrop — sibling to hero, behind the frosted glass */
+.dashboard__hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 45% 60% at 18% 30%, rgba(147, 197, 253, 0.45), transparent 70%),
+    radial-gradient(ellipse 40% 55% at 82% 40%, rgba(196, 181, 253, 0.40), transparent 70%),
+    radial-gradient(ellipse 50% 65% at 55% 85%, rgba(167, 243, 208, 0.36), transparent 70%),
+    radial-gradient(ellipse 35% 50% at 92% 90%, rgba(251, 207, 232, 0.30), transparent 70%);
+  filter: blur(20px);
+  animation: aurora-drift 22s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1);   }
+  50%  { transform: translate3d(2%, -1%, 0) scale(1.04); }
+  100% { transform: translate3d(-1%, 2%, 0) scale(0.98); }
+}
+
+.dashboard__hero-cell {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
+  padding: 10px 18px;
 }
 
-.dashboard__scope-caption {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: -16px;
+.dashboard__hero-cell + .dashboard__hero-cell {
+  border-left: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.dashboard__roi-label {
+@media (prefers-color-scheme: dark) {
+  .dashboard__hero-cell + .dashboard__hero-cell {
+    border-left-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.dashboard__kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+/* Net value + 本月 tag on the same baseline */
+.dashboard__net-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboard__net-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-green);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Sub + progress bar grouped. Extra margin-top pushes the sub line away from
+   the net above for hierarchy; internal gap keeps sub tight to the bar. */
+.dashboard__recovery-wrap {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Shared gradient for the two animated hero numbers (等效年费 + 待拿).
+   The gradient is stored in a custom property so descendants (e.g. the $ span)
+   can re-apply background-clip:text with the same palette — nested spans under
+   opacity don't inherit the parent's clipped-text paint, so $ would otherwise
+   render invisible. */
+.dashboard__net,
+.dashboard__hero-big--gradient {
+  --net-gradient: linear-gradient(
+    90deg,
+    oklch(0.55 0.18 260) 0%,
+    oklch(0.60 0.20 300) 33%,
+    oklch(0.60 0.18 200) 66%,
+    oklch(0.55 0.18 260) 100%
+  );
+  background-image: var(--net-gradient);
+  /* Fixed-pixel tile so all three hero numbers sample the gradient at the
+     same absolute rate. With percentage sizing, wider elements animated
+     faster per pixel and the hues desynced. Repeating the gradient works
+     because the first and last stops share a color (seamless loop). */
+  background-size: 360px 100%;
+  background-repeat: repeat-x;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Gradient animated net value — dominates the 等效年费 cell */
+.dashboard__net {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* 待拿 + 活跃卡片 — same palette, retains .dashboard__hero-big size (32px).
+   The compound selector wins against .dashboard__hero-big's color rule below. */
+.dashboard__hero-big.dashboard__hero-big--gradient {
+  display: inline-flex;
+  align-items: baseline;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard__net {
+    animation:
+      flow 8s linear infinite,
+      net-enter 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+  .dashboard__hero-big--gradient,
+  .dashboard__net-currency {
+    animation: flow 8s linear infinite;
+  }
+}
+
+.dashboard__net--recovered {
+  --net-gradient: linear-gradient(
+    90deg,
+    oklch(0.55 0.15 160) 0%,
+    oklch(0.68 0.18 150) 33%,
+    oklch(0.70 0.15 190) 66%,
+    oklch(0.55 0.15 160) 100%
+  );
+}
+
+@keyframes flow {
+  from { background-position:    0px 50%; }
+  to   { background-position: -360px 50%; }
+}
+
+@keyframes net-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* $ rendered quieter than the digits. Re-applies the clipped gradient on
+   itself — parent's background-clip:text doesn't paint through a child
+   opacity group, so the $ would otherwise disappear. */
+.dashboard__net-currency {
+  opacity: 0.55;
+  margin-right: 2px;
+  background-image: var(--net-gradient);
+  background-size: 360px 100%;
+  background-repeat: repeat-x;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dashboard__net-sign {
+  margin-right: 2px;
+}
+
+.dashboard__hero-big {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.dashboard__hero-sub {
   font-size: 12px;
   color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Recovery bar under 等效年费 */
+.dashboard__recovery-bar {
+  position: relative;
+  margin-top: auto;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.dashboard__recovery-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.6s ease;
+}
+
+.dashboard__recovery-bar--recovered .dashboard__recovery-bar-fill {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.dashboard__recovery-bar--warning .dashboard__recovery-bar-fill {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.dashboard__recovery-bar--danger .dashboard__recovery-bar-fill {
+  background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+/* Review button */
+.dashboard__review-btn {
+  position: relative;
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-card);
+  background: var(--bg-card-hover);
+  font-size: 13px;
   font-weight: 500;
-}
-
-.dashboard__roi-value {
-  font-size: 24px;
-  font-weight: 700;
   color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-/* Per-card rows */
+.dashboard__review-btn:hover:not(:disabled) {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.dashboard__review-btn:disabled {
+  opacity: 0.5;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+/* Shimmer border when urgent */
+.dashboard__review-btn--urgent {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--color-orange);
+  font-weight: 600;
+}
+
+.dashboard__review-btn--urgent::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: 999px;
+  background: conic-gradient(
+    from var(--shimmer-angle, 0deg),
+    rgba(251, 146, 60, 0.1) 0deg,
+    #f97316 90deg,
+    #fbbf24 180deg,
+    #f97316 270deg,
+    rgba(251, 146, 60, 0.1) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: shimmer-rotate 3s linear infinite;
+}
+
+@property --shimmer-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes shimmer-rotate {
+  to { --shimmer-angle: 360deg; }
+}
+
+/* Active cards cell: count + overlapping chip stack on one row */
+.dashboard__active-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.dashboard__chip-stack {
+  display: inline-flex;
+  align-items: center;
+}
+
+.dashboard__chip-item {
+  display: inline-flex;
+  margin-left: -10px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
+.dashboard__chip-item:first-child {
+  margin-left: 0;
+}
+
+.dashboard__chip-img {
+  display: block;
+  width: 34px;
+  height: 21px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dashboard__chip-item {
+    box-shadow: 0 0 0 1.5px rgba(16, 16, 20, 0.9);
+  }
+}
+
+.dashboard__health-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__health {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard__health-sep {
+  color: var(--text-tertiary);
+}
+
+.dashboard__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dashboard__dot--positive { background: var(--color-green); }
+.dashboard__dot--warning  { background: var(--color-orange); }
+.dashboard__dot--info     { background: var(--accent); }
+
+/* ---------- Cards section ---------- */
 .dashboard__cards-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .dashboard__section-title {
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 4px;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
-.dashboard__card-row {
-  padding: 14px 16px;
+.dashboard__cards-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  border-left: 3px solid transparent;
+}
+
+.dashboard__sort {
+  position: relative;
+}
+
+.dashboard__sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-card);
+  border-radius: 6px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.dashboard__card-row--not-recovered {
-  border-left-color: var(--danger, #ef4444);
+.dashboard__sort-btn:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.dashboard__card-img {
-  width: 28px;
-  height: 18px;
-  object-fit: cover;
-  border-radius: 3px;
+@media (prefers-color-scheme: dark) {
+  .dashboard__sort-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.dashboard__sort-icon {
   flex-shrink: 0;
 }
 
-.dashboard__card-meta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.dashboard__sort-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 140px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  z-index: 20;
 }
 
-.dashboard__card-name {
-  font-size: 14px;
+.dashboard__sort-option {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dashboard__sort-option:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .dashboard__sort-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.dashboard__sort-option--active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dashboard__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .dashboard__tiles {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tile — grid keeps header / net / bar / footer rows aligned across tiles.
+   Padding is equal on all sides so the progress bar (width:100%) sits
+   symmetrically between the tile's left and right edges. */
+.dashboard__tile {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  row-gap: 9px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  font: inherit;
+  color: inherit;
+}
+
+.dashboard__tile:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.dashboard__tile-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.dashboard__tile-visual {
+  position: relative;
+  width: 90px;
+  height: 57px;
+  border-radius: 7px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.13);
+}
+
+.dashboard__tile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Conic sheen sweep */
+.dashboard__tile-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 65%
+  );
+  transform: translateX(-140%);
+  animation: sheen-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+@keyframes sheen-sweep {
+  0%, 15%   { transform: translateX(-140%); }
+  55%, 100% { transform: translateX(140%); }
+}
+
+.dashboard__tile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboard__tile-issuer {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  line-height: 1.3;
+  min-height: 12px;
+}
+
+.dashboard__tile-name {
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.dashboard__card-sub {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.dashboard__card-progress-wrap {
-  width: 120px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-end;
-}
-
-.dashboard__card-progress-bar {
-  width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border-subtle);
+  line-height: 1.25;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dashboard__card-progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-  transition: width 0.3s ease;
+.dashboard__tile-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
 }
 
-.dashboard__card-roi-pct {
-  font-size: 12px;
+/* "等效年费" label + number on the same baseline */
+.dashboard__tile-effective {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.dashboard__tile-effective-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+/* Big colored net */
+.dashboard__tile-net {
+  font-size: 20px;
   font-weight: 700;
-  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: net-gradient 6s ease-in-out infinite;
+}
+
+.dashboard__tile[data-status="recovered"] .dashboard__tile-net {
+  background-image: linear-gradient(90deg, #059669, #10b981, #34d399, #10b981, #059669);
+}
+.dashboard__tile[data-status="warning"] .dashboard__tile-net {
+  background-image: linear-gradient(90deg, #b45309, #f59e0b, #fbbf24, #f59e0b, #b45309);
+}
+.dashboard__tile[data-status="danger"] .dashboard__tile-net {
+  background-image: linear-gradient(90deg, #b91c1c, #ef4444, #f97316, #ef4444, #b91c1c);
+}
+
+/* Progress bar */
+/* Progress bar: fill gradient uses card color (--tile-color); status is conveyed by
+   a soft glow underneath the bar so you can still tell recovered/warning/danger apart.
+   Width 100% so the bar's left/right edges are equidistant from the tile edges
+   (via the tile's symmetric horizontal padding). */
+.dashboard__tile-bar {
+  position: relative;
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: box-shadow 0.25s ease;
+}
+
+.dashboard__tile-bar-fill {
+  position: relative;
+  height: 100%;
+  /* keep a visible sliver even at 0% so the bar isn't silent */
+  min-width: 6px;
+  border-radius: inherit;
+  transition: width 0.6s ease;
+  background-image: linear-gradient(
+    90deg,
+    var(--tile-color, #888),
+    color-mix(in srgb, var(--tile-color, #888) 55%, white) 50%,
+    var(--tile-color, #888)
+  );
+  background-size: 220% 100%;
+  animation: tile-bar-shimmer 4s ease-in-out infinite;
+}
+
+@keyframes tile-bar-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* Status glow: drawn under the bar, doesn't fight the card color */
+.dashboard__tile[data-status="recovered"] .dashboard__tile-bar {
+  box-shadow: 0 0 10px 0 rgba(16, 185, 129, 0.32);
+}
+.dashboard__tile[data-status="warning"] .dashboard__tile-bar {
+  box-shadow: 0 0 10px 0 rgba(245, 158, 11, 0.30);
+}
+.dashboard__tile[data-status="danger"] .dashboard__tile-bar {
+  box-shadow: 0 0 10px 0 rgba(239, 68, 68, 0.30);
+}
+
+.dashboard__tile-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dashboard__tile-footer {
+    border-top-color: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.dashboard__tile-unused {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard__tile-ratio {
+  color: var(--text-tertiary);
+}
+
+/* Reduced-motion: disable animations */
+@media (prefers-reduced-motion: reduce) {
+  .dashboard__hero-bg,
+  .dashboard__net,
+  .dashboard__net-currency,
+  .dashboard__hero-big--gradient,
+  .dashboard__tile-net,
+  .dashboard__tile-sheen,
+  .dashboard__tile-bar-fill,
+  .dashboard__review-btn--urgent::before {
+    animation: none;
+  }
 }

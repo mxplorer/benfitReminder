@@ -56,7 +56,7 @@ describe("E2E: Add card from template → verify in sidebar → view detail", ()
     render(<MainWindow />);
 
     // 1. Click "+ 添加卡片" in sidebar
-    fireEvent.click(screen.getByText("+ 添加卡片"));
+    fireEvent.click(screen.getByRole("button", { name: /添加卡片/ }));
     expect(screen.getByTestId("view-card-editor")).toBeInTheDocument();
 
     // 2. Select Amex Platinum template

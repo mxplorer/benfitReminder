@@ -279,6 +279,7 @@ describe("useCardStore", () => {
           {
             slug: "test_card",
             name: "Test Card",
+            issuer: "Amex",
             defaultAnnualFee: 0,
             color: "#000",
             isBuiltin: true,

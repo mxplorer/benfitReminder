@@ -1,6 +1,7 @@
 {
   "slug": "chase_sapphire_preferred",
   "name": "Chase Sapphire Preferred",
+  "issuer": "Chase",
   "defaultAnnualFee": 95,
   "color": "#2471A3",
   "version": 2,

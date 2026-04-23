@@ -53,7 +53,8 @@ const CardFacePreview = ({ color, image, onColorChange }: CardFacePreviewProps) 
 interface CardEditorProps {
   /** If provided, pre-fills the form for editing */
   card?: CreditCard;
-  onDone: () => void;
+  /** Called on submit with the new card's id (create mode) or on cancel with no argument. */
+  onDone: (result?: { newCardId: string }) => void;
 }
 
 interface FormState {
@@ -113,6 +114,7 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
         cardOpenDate: form.cardOpenDate,
         color: form.color,
       });
+      onDone();
     } else {
       const template = cardTypes.find((t) => t.slug === form.templateSlug);
       const newCard: CreditCard = {
@@ -142,8 +144,8 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
       } catch {
         // metrics not initialized in test environment
       }
+      onDone({ newCardId: newCard.id });
     }
-    onDone();
   };
 
   return (
@@ -230,7 +232,7 @@ export const CardEditor = ({ card, onDone }: CardEditorProps) => {
       <button type="submit" data-testid="submit-btn">
         {isEdit ? "保存" : "添加"}
       </button>
-      <button type="button" onClick={onDone}>
+      <button type="button" onClick={() => { onDone(); }}>
         取消
       </button>
     </form>

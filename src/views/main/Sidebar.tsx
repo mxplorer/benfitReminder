@@ -109,7 +109,8 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
           className="sidebar__add-card-btn"
           onClick={() => { onNavigate({ type: "card-editor" }); }}
         >
-          + 添加卡片
+          <span className="sidebar__add-card-icon" aria-hidden="true">+</span>
+          <span>添加卡片</span>
         </button>
       </div>
     </nav>

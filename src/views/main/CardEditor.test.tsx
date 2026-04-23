@@ -26,6 +26,7 @@ beforeEach(() => {
       {
         slug: "amex_platinum",
         name: "Amex Platinum",
+        issuer: "Amex",
         defaultAnnualFee: 895,
         color: "#8E9EAF",
         isBuiltin: true,

@@ -16,6 +16,7 @@ describe("parseCardTypeJson", () => {
   const validJson = {
     slug: "test_card",
     name: "Test Card",
+    issuer: "Amex",
     defaultAnnualFee: 100,
     color: "#FF0000",
     defaultBenefits: [],
@@ -25,6 +26,7 @@ describe("parseCardTypeJson", () => {
     const result = parseCardTypeJson(validJson);
     expect(result.slug).toBe("test_card");
     expect(result.name).toBe("Test Card");
+    expect(result.issuer).toBe("Amex");
     expect(result.defaultAnnualFee).toBe(100);
   });
 
@@ -36,6 +38,11 @@ describe("parseCardTypeJson", () => {
   it("throws on missing name", () => {
     const bad = { ...validJson, name: undefined };
     expect(() => parseCardTypeJson(bad)).toThrow("name");
+  });
+
+  it("throws on missing issuer", () => {
+    const bad = { ...validJson, issuer: undefined };
+    expect(() => parseCardTypeJson(bad)).toThrow("issuer");
   });
 
   it("throws on missing color", () => {
@@ -54,6 +61,7 @@ describe("mergeCardTypes", () => {
   const builtin: CardType = {
     slug: "builtin_card",
     name: "Built-in",
+    issuer: "Amex",
     defaultAnnualFee: 100,
     color: "#000",
     isBuiltin: true,
@@ -64,6 +72,7 @@ describe("mergeCardTypes", () => {
   const userCard: CardType = {
     slug: "user_card",
     name: "User Card",
+    issuer: "Chase",
     defaultAnnualFee: 50,
     color: "#FFF",
     isBuiltin: false,

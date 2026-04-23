@@ -31,6 +31,7 @@ describe("serializeUserCardType", () => {
   const baseCardType = (overrides: Partial<CardType> = {}): CardType => ({
     slug: "my_card",
     name: "My Card",
+    issuer: "Amex",
     defaultAnnualFee: 0,
     color: "#fff",
     isBuiltin: false,
@@ -78,6 +79,7 @@ describe("saveAndSyncUserCardType", () => {
   const baseCardType = (overrides: Partial<CardType> = {}): CardType => ({
     slug: "my_card",
     name: "My Card",
+    issuer: "Amex",
     defaultAnnualFee: 0,
     color: "#fff",
     isBuiltin: false,

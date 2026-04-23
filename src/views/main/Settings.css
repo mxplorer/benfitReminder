@@ -34,13 +34,20 @@
 .settings__section input[type="number"] {
   width: 80px;
   padding: 6px 10px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 6px;
-  background: var(--bg-card);
+  background: #fff;
   color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font-family);
   outline: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .settings__section input[type="number"] {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
 }
 
 .settings__section input[type="number"]:focus {
