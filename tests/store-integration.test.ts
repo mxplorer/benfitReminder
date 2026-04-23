@@ -294,10 +294,19 @@ describe("Auto-recur + ROI integration", () => {
 
 describe("JSON persistence round-trip", () => {
   beforeEach(() => {
+    // Freeze to a date within the last seeded subscription cycle so that
+    // the batch-6 importData materialization step has nothing to do; this
+    // lets us keep asserting deep equality across round-trip.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-15T12:00:00"));
     useCardStore.setState({
       cards: [],
       settings: useCardStore.getState().settings,
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("multi-card multi-benefit state survives export → import", () => {
@@ -929,5 +938,120 @@ describe("multi-record cumulative behavior", () => {
     expect(benefit.usageRecords).toHaveLength(3);
     // 50 + 75 + 80 = 205 >= 200 → used.
     expect(isBenefitUsedInPeriod(benefit, new Date(), "2024-03-15")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Batch 6: subscription propagateNext materialization on hydrate (importData)
+// ---------------------------------------------------------------------------
+
+describe("hydrate materializes subscription propagateNext chains", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T12:00:00"));
+    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("importData materializes a 2-month propagateNext chain up to today's cycle", () => {
+    const benefit: Benefit = {
+      id: "b",
+      name: "Netflix",
+      description: "",
+      faceValue: 20,
+      category: "streaming",
+      resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false,
+      rolloverable: false,
+      rolloverMaxYears: 0,
+      usageRecords: [
+        {
+          usedDate: "2026-02-01",
+          faceValue: 20,
+          actualValue: 13,
+          kind: "usage",
+          propagateNext: true,
+        },
+      ],
+    };
+    const card: CreditCard = {
+      id: "c",
+      owner: "me",
+      cardTypeSlug: "x",
+      annualFee: 0,
+      cardOpenDate: "2024-01-01",
+      color: "#000",
+      isEnabled: true,
+      benefits: [benefit],
+    };
+    const json = JSON.stringify({
+      version: 1,
+      cards: [card],
+      settings: useCardStore.getState().settings,
+    });
+
+    useCardStore.getState().importData(json);
+
+    const loaded = useCardStore.getState().cards[0].benefits[0];
+    const dates = loaded.usageRecords.map((r) => r.usedDate).sort();
+    expect(dates).toEqual(["2026-02-01", "2026-03-01", "2026-04-01"]);
+    for (const r of loaded.usageRecords) {
+      expect(r.actualValue).toBe(13);
+      expect(r.propagateNext).toBe(true);
+    }
+  });
+
+  it("re-hydrating the same data does not duplicate materialized records", () => {
+    const benefit: Benefit = {
+      id: "b",
+      name: "Netflix",
+      description: "",
+      faceValue: 20,
+      category: "streaming",
+      resetType: "subscription",
+      resetConfig: { period: "monthly" },
+      isHidden: false,
+      rolloverable: false,
+      rolloverMaxYears: 0,
+      usageRecords: [
+        {
+          usedDate: "2026-02-01",
+          faceValue: 20,
+          actualValue: 13,
+          kind: "usage",
+          propagateNext: true,
+        },
+      ],
+    };
+    const card: CreditCard = {
+      id: "c",
+      owner: "me",
+      cardTypeSlug: "x",
+      annualFee: 0,
+      cardOpenDate: "2024-01-01",
+      color: "#000",
+      isEnabled: true,
+      benefits: [benefit],
+    };
+    const json = JSON.stringify({
+      version: 1,
+      cards: [card],
+      settings: useCardStore.getState().settings,
+    });
+
+    useCardStore.getState().importData(json);
+    const firstPass = useCardStore.getState().cards[0].benefits[0].usageRecords.length;
+    expect(firstPass).toBe(3);
+
+    // Export what's now in store, import it again — should be a no-op
+    // (materialize is idempotent).
+    const secondJson = useCardStore.getState().exportData();
+    useCardStore.getState().importData(secondJson);
+    const secondPass = useCardStore.getState().cards[0].benefits[0].usageRecords.length;
+    expect(secondPass).toBe(3);
   });
 });

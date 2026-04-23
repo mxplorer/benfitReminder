@@ -8,6 +8,7 @@ import {
 import { cycleKeyForDate, cycleKeyForRecord, currentCycleKey } from "../utils/cycleKey";
 import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
+import { materializeSubscriptionPropagation } from "../utils/propagate";
 import { syncAllCardsWithTemplates } from "../utils/templateSync";
 import { generateRolloverRecords } from "../utils/rollover";
 import { cycleStartForDate, makeRolloverRecord, makeUsageRecord } from "../utils/usageRecords";
@@ -518,11 +519,16 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
 
     const migrated = migrateCards(data.cards as CreditCard[]);
     const templates = useCardTypeStore.getState().cardTypes;
-    const today = formatDate(new Date());
+    const todayDate = new Date();
+    const today = formatDate(todayDate);
     const { cards: synced } = syncAllCardsWithTemplates(migrated, templates, today);
+    // Batch-6: after migration + template sync, walk every subscription
+    // benefit and auto-create propagateNext records for missed months so
+    // consumers don't have to virtually compute forward chains. Idempotent.
+    const materialized = materializeSubscriptionPropagation(synced, todayDate);
 
     set({
-      cards: synced,
+      cards: materialized,
       // Merge onto defaults so imports from older versions don't leave
       // newly-added fields (e.g. theme) undefined.
       settings: {
