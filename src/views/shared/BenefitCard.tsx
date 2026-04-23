@@ -10,6 +10,20 @@ import "./BenefitCard.css";
 /** Reset types where the refresh date depends on when the benefit was used. */
 const DATE_REQUIRED_RESET_TYPES: ReadonlySet<ResetType> = new Set(["anniversary", "since_last_use"]);
 
+interface AddUsageOpts {
+  consumedFace: number;
+  actualValue: number;
+  usedDate: string;
+  propagateNext?: boolean;
+}
+
+interface AddCycleUsageOpts {
+  consumedFace: number;
+  actualValue: number;
+  usedDate?: string;
+  propagateNext?: boolean;
+}
+
 interface BenefitCardProps {
   benefit: Benefit;
   card: CreditCard;
@@ -30,6 +44,17 @@ interface BenefitCardProps {
     cycleEnd: string,
     used: boolean,
     opts?: { actualValue?: number; usedDate?: string; propagateNext?: boolean },
+  ) => void;
+  /** New record-level append (non-cycle). Preferred over onToggleUsage. */
+  onAddUsage?: (cardId: string, benefitId: string, opts: AddUsageOpts) => void;
+  /** New record-level append within an explicit cycle. Preferred over
+   *  onSetCycleUsed for NEW additions. */
+  onAddCycleUsage?: (
+    cardId: string,
+    benefitId: string,
+    cycleStart: string,
+    cycleEnd: string,
+    opts: AddCycleUsageOpts,
   ) => void;
 }
 
@@ -94,6 +119,8 @@ export const BenefitCard = ({
   cycleStart,
   cycleEnd,
   onSetCycleUsed,
+  onAddUsage,
+  onAddCycleUsage,
 }: BenefitCardProps) => {
   const today = useToday();
   const reminderDays = useCardStore((s) => s.settings.reminderDays);
@@ -101,6 +128,30 @@ export const BenefitCard = ({
   const availableValue = getAvailableValue(benefit, today);
   const displayValue = cycleRecord ? cycleRecord.actualValue : availableValue;
   const cycleContext = cycleStart && cycleEnd ? { start: cycleStart, end: cycleEnd } : null;
+
+  // Per-cycle remaining + record count. For cycle-scoped views we sum
+  // record.faceValue within the explicit [cycleStart, cycleEnd] window; for
+  // the standard view we defer to getAvailableValue (which already subtracts
+  // cumulative consumption from faceValue + rollover).
+  const cycleRecordsInWindow = cycleContext
+    ? benefit.usageRecords.filter(
+        (r) => r.usedDate >= cycleContext.start && r.usedDate <= cycleContext.end,
+      )
+    : null;
+  const cycleConsumed = cycleRecordsInWindow
+    ? cycleRecordsInWindow.reduce((s, r) => s + r.faceValue, 0)
+    : 0;
+  const cycleRemaining = cycleContext
+    ? Math.max(0, benefit.faceValue - cycleConsumed)
+    : availableValue;
+  const cycleRecordCount = cycleRecordsInWindow ? cycleRecordsInWindow.length : 0;
+  // For the standard (non-cycle) view, "records in cycle" comes from the
+  // already-computed isUsed + availableValue: if isUsed with 0 remaining,
+  // at least one record exists; otherwise we derive from record count in the
+  // current period. Keep it simple: use faceValue - availableValue>0 as the
+  // "has any consumption" signal for the standard view.
+  const standardHasRecord = !cycleContext && availableValue < benefit.faceValue;
+
   const todayIso = formatDate(today);
   const defaultPendingDate = cycleContext
     ? todayIso >= cycleContext.start && todayIso <= cycleContext.end
@@ -108,6 +159,8 @@ export const BenefitCard = ({
       : cycleContext.start
     : todayIso;
   const [pendingValue, setPendingValue] = useState<string | null>(null);
+  const [pendingConsumedFace, setPendingConsumedFace] = useState<string>("0");
+  const [actualManuallyEdited, setActualManuallyEdited] = useState<boolean>(false);
   const [pendingDate, setPendingDate] = useState<string>(defaultPendingDate);
   const [pendingPropagate, setPendingPropagate] = useState<boolean>(false);
   const [editMode, setEditMode] = useState<"add" | "edit">("add");
@@ -141,7 +194,13 @@ export const BenefitCard = ({
   const handleClick = () => {
     if (isUsed) {
       if (monthlyLike && cycleContext && onSetCycleUsed && cycleRecord) {
+        // Edit mode (monthly subscription single-record upsert). Defaults
+        // come from the existing record. TODO: wire consumedFace edit —
+        // currently 本次面值 is shown but routes through the legacy
+        // onSetCycleUsed upsert which does not carry consumedFace (Batch 5).
         setPendingValue(String(cycleRecord.actualValue));
+        setPendingConsumedFace(String(cycleRecord.faceValue));
+        setActualManuallyEdited(true); // don't auto-sync in edit mode
         setPendingDate(cycleRecord.usedDate);
         setPendingPropagate(cycleRecord.propagateNext === true);
         setEditMode("edit");
@@ -154,18 +213,63 @@ export const BenefitCard = ({
       onToggleUsage(card.id, benefit.id);
       return;
     }
-    setPendingValue(String(benefit.faceValue));
+    // Add mode — default consumedFace to remaining in this cycle
+    // (getAvailableValue for standard; faceValue - cycleConsumed for per-cycle).
+    const defaultRemaining = cycleContext ? cycleRemaining : availableValue;
+    setPendingConsumedFace(String(defaultRemaining));
+    setPendingValue(String(defaultRemaining));
+    setActualManuallyEdited(false);
     setPendingDate(defaultPendingDate);
     setPendingPropagate(latestHasPropagate(benefit));
     setEditMode("add");
+  };
+
+  const handleConsumedFaceChange = (next: string) => {
+    setPendingConsumedFace(next);
+    // Auto-sync 实际到手 to the same number as long as the user hasn't
+    // manually edited 实际到手 yet.
+    if (!actualManuallyEdited) {
+      setPendingValue(next);
+    }
+  };
+
+  const handleActualValueChange = (next: string) => {
+    setPendingValue(next);
+    setActualManuallyEdited(true);
   };
 
   const handleConfirm = () => {
     if (pendingValue === null) return;
     const value = Number(pendingValue);
     if (isNaN(value) || value < 0) return;
+    const consumedFace = Number(pendingConsumedFace);
+    if (isNaN(consumedFace) || consumedFace < 0) return;
     if (dateRequired && !pendingDate) return;
     const propagateOpt = monthlyLike ? { propagateNext: pendingPropagate } : {};
+
+    // New-append path (Batch 3): prefer record-level callbacks.
+    if (editMode === "add" && cycleContext && onAddCycleUsage) {
+      onAddCycleUsage(card.id, benefit.id, cycleContext.start, cycleContext.end, {
+        consumedFace,
+        actualValue: value,
+        usedDate: pendingDate || undefined,
+        ...propagateOpt,
+      });
+      setPendingValue(null);
+      return;
+    }
+    if (editMode === "add" && !cycleContext && onAddUsage) {
+      onAddUsage(card.id, benefit.id, {
+        consumedFace,
+        actualValue: value,
+        usedDate: pendingDate || todayIso,
+        ...propagateOpt,
+      });
+      setPendingValue(null);
+      return;
+    }
+
+    // Fall-back / edit path: legacy callbacks (do not carry consumedFace).
     if (cycleContext && onSetCycleUsed) {
       onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, true, {
         actualValue: value,
@@ -190,7 +294,12 @@ export const BenefitCard = ({
   };
 
   const valueText = displayValue > 0 ? `$${String(displayValue)}` : "—";
-  const accumulatedBonus = cycleRecord ? 0 : Math.max(0, displayValue - benefit.faceValue);
+  // Button text content by remaining + whether any record exists in this cycle.
+  // remaining == 0 (and isUsed) → "✓ 已用完"
+  // remaining > 0, no records yet → "+ 使用 $X"
+  // remaining > 0, ≥ 1 record → "+ 再用一次 ($X 剩)"
+  const hasAnyRecordInCycle = cycleContext ? cycleRecordCount > 0 : standardHasRecord;
+  const remainingForBtn = cycleContext ? cycleRemaining : availableValue;
 
   return (
     <div className={cardClasses}>
@@ -300,16 +409,20 @@ export const BenefitCard = ({
             type="button"
             className={`benefit-card__use-btn benefit-card__use-btn--${isUsed ? "used" : "active"}`}
             onClick={handleClick}
-            aria-label={isUsed ? "取消使用" : "标记使用"}
+            disabled={tileKind === "pending"}
+            aria-label={isUsed ? "取消使用" : tileKind === "pending" ? "未激活" : "标记使用"}
+            title={tileKind === "pending" && cycleStart ? `将于 ${cycleStart} 激活` : undefined}
           >
             {isUsed ? (
               <>
-                <span aria-hidden="true">✓</span> 已勾选
+                <span aria-hidden="true">✓</span> 已用完
               </>
-            ) : accumulatedBonus > 0 ? (
-              <>使用 ${String(displayValue)}</>
+            ) : tileKind === "pending" ? (
+              <>未激活</>
+            ) : hasAnyRecordInCycle ? (
+              <>+ 再用一次 (${String(remainingForBtn)} 剩)</>
             ) : (
-              <>使用</>
+              <>+ 使用 ${String(remainingForBtn)}</>
             )}
           </button>
         </div>
@@ -317,19 +430,35 @@ export const BenefitCard = ({
         <div className="benefit-card__prompt" role="group">
           <div className="benefit-card__prompt-fields">
             <label className="benefit-card__prompt-label">
+              本次面值
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={pendingConsumedFace}
+                onChange={(e) => { handleConsumedFaceChange(e.target.value); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirm();
+                  if (e.key === "Escape") handleCancel();
+                }}
+                aria-label="本次面值"
+                autoFocus
+                className="benefit-card__prompt-input"
+              />
+            </label>
+            <label className="benefit-card__prompt-label">
               实际到手
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={pendingValue}
-                onChange={(e) => { setPendingValue(e.target.value); }}
+                onChange={(e) => { handleActualValueChange(e.target.value); }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleConfirm();
                   if (e.key === "Escape") handleCancel();
                 }}
                 aria-label="实际到手"
-                autoFocus
                 className="benefit-card__prompt-input"
               />
             </label>

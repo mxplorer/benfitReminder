@@ -407,7 +407,7 @@ describe("BenefitCard — cycle-scoped toggle", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  it("checking an unused past cycle defaults pendingDate to cycleStart and routes through onSetCycleUsed", () => {
+  it("disables the use button on a future (not-yet-active) cycle to prevent accidental check-off", () => {
     const benefit = makeBenefit({ id: "b1", faceValue: 100, resetConfig: { period: "quarterly" } });
     const card = makeCard({ id: "c1" });
     const setCycleUsed = vi.fn();
@@ -423,18 +423,10 @@ describe("BenefitCard — cycle-scoped toggle", () => {
         cycleUsed={false}
       />,
     );
-    fireEvent.click(screen.getByLabelText("标记使用"));
-    const dateInput = screen.getByLabelText<HTMLInputElement>("使用日期");
-    expect(dateInput.value).toBe("2026-07-01");
-    fireEvent.click(screen.getByLabelText("确认"));
-    expect(setCycleUsed).toHaveBeenCalledWith(
-      "c1",
-      "b1",
-      "2026-07-01",
-      "2026-09-30",
-      true,
-      { actualValue: 100, usedDate: "2026-07-01" },
-    );
+    const btn = screen.getByLabelText<HTMLButtonElement>("未激活");
+    expect(btn).toBeDisabled();
+    fireEvent.click(btn);
+    expect(setCycleUsed).not.toHaveBeenCalled();
   });
 
   it("checking an unused current cycle defaults pendingDate to today", () => {
@@ -665,5 +657,215 @@ describe("BenefitCard — propagateNext prompt (Task 7)", () => {
       "2026-04-30",
       false,
     );
+  });
+});
+
+describe("BenefitCard — Batch 3 本次面值 + remaining-aware button", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    useCardStore.getState().recalculate();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("prompt defaults 本次面值 to remaining (no records → full face)", () => {
+    const benefit = makeBenefit({ id: "b1", faceValue: 100, usageRecords: [] });
+    render(
+      <BenefitCard benefit={benefit} card={makeCard({ id: "c1" })} onToggleUsage={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const input = screen.getByLabelText<HTMLInputElement>("本次面值");
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe("100");
+  });
+
+  it("prompt defaults 本次面值 to cycle remaining when ≥1 record already exists", () => {
+    const benefit = makeBenefit({
+      id: "b1",
+      faceValue: 100,
+      resetConfig: { period: "quarterly" },
+      usageRecords: [
+        { usedDate: "2026-04-10", faceValue: 30, actualValue: 30, kind: "usage" },
+      ],
+    });
+    const record: UsageRecord = {
+      usedDate: "2026-04-10", faceValue: 30, actualValue: 30, kind: "usage",
+    };
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard({ id: "c1" })}
+        onToggleUsage={vi.fn()}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-06-30"
+        cycleUsed={false}
+        cycleRecord={record}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const input = screen.getByLabelText<HTMLInputElement>("本次面值");
+    expect(input.value).toBe("70");
+  });
+
+  it("editing 本次面值 auto-syncs 实际到手 on first keystroke", () => {
+    const benefit = makeBenefit({ id: "b1", faceValue: 100 });
+    render(
+      <BenefitCard benefit={benefit} card={makeCard({ id: "c1" })} onToggleUsage={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const consumed = screen.getByLabelText<HTMLInputElement>("本次面值");
+    const actual = screen.getByLabelText<HTMLInputElement>("实际到手");
+    expect(actual.value).toBe("100");
+    fireEvent.change(consumed, { target: { value: "40" } });
+    expect(actual.value).toBe("40");
+  });
+
+  it("after user edits 实际到手 manually, further 本次面值 changes do NOT overwrite actual", () => {
+    const benefit = makeBenefit({ id: "b1", faceValue: 100 });
+    render(
+      <BenefitCard benefit={benefit} card={makeCard({ id: "c1" })} onToggleUsage={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    const consumed = screen.getByLabelText<HTMLInputElement>("本次面值");
+    const actual = screen.getByLabelText<HTMLInputElement>("实际到手");
+    fireEvent.change(actual, { target: { value: "35" } });
+    expect(actual.value).toBe("35");
+    fireEvent.change(consumed, { target: { value: "40" } });
+    expect(actual.value).toBe("35");
+  });
+
+  it("confirming with onAddUsage receives consumedFace/actualValue/usedDate", () => {
+    const onAddUsage = vi.fn();
+    const benefit = makeBenefit({ id: "b1", faceValue: 100 });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard({ id: "c1" })}
+        onToggleUsage={vi.fn()}
+        onAddUsage={onAddUsage}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.change(screen.getByLabelText("本次面值"), { target: { value: "40" } });
+    fireEvent.change(screen.getByLabelText("实际到手"), { target: { value: "35" } });
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(onAddUsage).toHaveBeenCalledWith(
+      "c1",
+      "b1",
+      expect.objectContaining({
+        consumedFace: 40,
+        actualValue: 35,
+        usedDate: "2026-04-25",
+      }),
+    );
+  });
+
+  it("confirming with onAddCycleUsage passes cycle window + consumedFace", () => {
+    const onAddCycleUsage = vi.fn();
+    const benefit = makeBenefit({
+      id: "b1",
+      faceValue: 100,
+      resetConfig: { period: "quarterly" },
+    });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard({ id: "c1" })}
+        onToggleUsage={vi.fn()}
+        onAddCycleUsage={onAddCycleUsage}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-06-30"
+        cycleUsed={false}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("标记使用"));
+    fireEvent.change(screen.getByLabelText("本次面值"), { target: { value: "60" } });
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(onAddCycleUsage).toHaveBeenCalledWith(
+      "c1",
+      "b1",
+      "2026-04-01",
+      "2026-06-30",
+      expect.objectContaining({
+        consumedFace: 60,
+        actualValue: 60,
+        usedDate: "2026-04-25",
+      }),
+    );
+  });
+
+  it("button shows '+ 使用 $X' when 0 records in cycle", () => {
+    const benefit = makeBenefit({
+      id: "b1",
+      faceValue: 50,
+      resetConfig: { period: "quarterly" },
+    });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard({ id: "c1" })}
+        onToggleUsage={vi.fn()}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-06-30"
+        cycleUsed={false}
+      />,
+    );
+    expect(screen.getByText("+ 使用 $50")).toBeInTheDocument();
+  });
+
+  it("button shows '+ 再用一次 ($X 剩)' when ≥1 record exists in cycle and remaining > 0", () => {
+    const benefit = makeBenefit({
+      id: "b1",
+      faceValue: 100,
+      resetConfig: { period: "quarterly" },
+      usageRecords: [
+        { usedDate: "2026-04-10", faceValue: 30, actualValue: 30, kind: "usage" },
+      ],
+    });
+    const record: UsageRecord = {
+      usedDate: "2026-04-10", faceValue: 30, actualValue: 30, kind: "usage",
+    };
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard({ id: "c1" })}
+        onToggleUsage={vi.fn()}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-06-30"
+        cycleUsed={false}
+        cycleRecord={record}
+      />,
+    );
+    expect(screen.getByText("+ 再用一次 ($70 剩)")).toBeInTheDocument();
+  });
+
+  it("button shows '✓ 已用完' when remaining == 0", () => {
+    const benefit = makeBenefit({
+      id: "b1",
+      faceValue: 100,
+      resetConfig: { period: "quarterly" },
+      usageRecords: [
+        { usedDate: "2026-04-10", faceValue: 100, actualValue: 100, kind: "usage" },
+      ],
+    });
+    const record: UsageRecord = {
+      usedDate: "2026-04-10", faceValue: 100, actualValue: 100, kind: "usage",
+    };
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard({ id: "c1" })}
+        onToggleUsage={vi.fn()}
+        cycleStart="2026-04-01"
+        cycleEnd="2026-06-30"
+        cycleUsed
+        cycleRecord={record}
+      />,
+    );
+    expect(screen.getByText("已用完")).toBeInTheDocument();
+    expect(screen.getByText("✓")).toBeInTheDocument();
+    expect(screen.getByLabelText("取消使用")).toBeInTheDocument();
   });
 });
