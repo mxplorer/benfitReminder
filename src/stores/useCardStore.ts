@@ -21,6 +21,27 @@ interface CardStoreState {
   now: Date;
 }
 
+interface AddBenefitUsageOpts {
+  consumedFace: number;
+  actualValue: number;
+  usedDate: string;
+  propagateNext?: boolean;
+}
+
+interface AddCycleUsageOpts {
+  consumedFace: number;
+  actualValue: number;
+  usedDate?: string;
+  propagateNext?: boolean;
+}
+
+interface UpdateUsageRecordPatch {
+  consumedFace?: number;
+  actualValue?: number;
+  usedDate?: string;
+  propagateNext?: boolean;
+}
+
 interface CardStoreActions {
   addCard: (card: CreditCard) => void;
   removeCard: (cardId: string) => void;
@@ -29,7 +50,40 @@ interface CardStoreActions {
   addBenefit: (cardId: string, benefit: Benefit) => void;
   removeBenefit: (cardId: string, benefitId: string) => void;
   toggleBenefitHidden: (cardId: string, benefitId: string) => void;
+  /**
+   * Primary record-level actions. Prefer these for new UI code.
+   */
+  addBenefitUsage: (cardId: string, benefitId: string, opts: AddBenefitUsageOpts) => void;
+  addCycleUsage: (
+    cardId: string,
+    benefitId: string,
+    cycleStart: string,
+    cycleEnd: string,
+    opts: AddCycleUsageOpts,
+  ) => void;
+  removeBenefitUsageRecord: (cardId: string, benefitId: string, recordIndex: number) => void;
+  updateBenefitUsageRecord: (
+    cardId: string,
+    benefitId: string,
+    recordIndex: number,
+    patch: UpdateUsageRecordPatch,
+  ) => void;
+  removeCycleRecords: (
+    cardId: string,
+    benefitId: string,
+    cycleStart: string,
+    cycleEnd: string,
+  ) => void;
+  /**
+   * DEPRECATED: prefer `addBenefitUsage` / `removeBenefitUsageRecord` for new code.
+   * Thin wrapper kept for backward compatibility; preserves the prefer-usage-
+   * over-rollover undo behavior.
+   */
   toggleBenefitUsage: (cardId: string, benefitId: string, actualValue?: number, usedDate?: string) => void;
+  /**
+   * DEPRECATED: prefer `addCycleUsage` / `removeCycleRecords` / `updateBenefitUsageRecord`
+   * for new code. Upsert-style wrapper kept for backward compatibility.
+   */
   setBenefitCycleUsed: (
     cardId: string,
     benefitId: string,
@@ -57,6 +111,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   reminderDays: 3,
   dismissedDate: null,
   trayOpacity: 100,
+  theme: "system",
 };
 
 const updateBenefitInCards = (
@@ -123,7 +178,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
     }));
   },
 
-  toggleBenefitUsage: (cardId, benefitId, actualValue?, usedDate?) => {
+  addBenefitUsage: (cardId, benefitId, opts) => {
     const today = new Date();
     set((state) => {
       const card = state.cards.find((c) => c.id === cardId);
@@ -131,66 +186,23 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       const benefit = card.benefits.find((b) => b.id === benefitId);
       if (!benefit) return state;
 
-      const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
-
-      // Record attribution is by intrinsic cycle key, not by usedDate range.
-      // since_last_use has no cycle boundary — match any record when undoing,
-      // don't clamp when creating.
+      // since_last_use has no cycle boundary; don't clamp.
       const isSinceLastUse = benefit.resetType === "since_last_use";
-      const currentKey = isSinceLastUse
-        ? null
-        : currentCycleKey(today, benefit, card.cardOpenDate);
-      const matchesCurrent = (r: UsageRecord): boolean => {
-        if (isSinceLastUse) return true;
-        if (!currentKey) return false;
-        return cycleKeyForRecord(r, benefit, card.cardOpenDate) === currentKey;
-      };
-
-      if (isUsed) {
-        // Prefer usage over rollover so unchecking an actually-used cycle
-        // clears the usage while unchecking a rolled-forward cycle clears the
-        // rollover.
-        const records = [...benefit.usageRecords];
-        let removeIndex = -1;
-        for (let i = records.length - 1; i >= 0; i -= 1) {
-          if (matchesCurrent(records[i]) && records[i].kind !== "rollover") {
-            removeIndex = i;
-            break;
-          }
-        }
-        if (removeIndex === -1) {
-          for (let i = records.length - 1; i >= 0; i -= 1) {
-            if (matchesCurrent(records[i]) && records[i].kind === "rollover") {
-              removeIndex = i;
-              break;
-            }
-          }
-        }
-        if (removeIndex === -1) return state;
-        records.splice(removeIndex, 1);
-        return {
-          cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
-            ...b,
-            usageRecords: records,
-          })),
-        };
-      }
-
-      // Force the new record to attribute to the current cycle. If the user-
-      // supplied usedDate maps to a different cycle (e.g., picked last year's
-      // date by mistake), fall back to today — today's cycleKey is guaranteed
-      // to match the current cycle.
       const todayIso = formatDate(today);
-      const requested = usedDate ?? todayIso;
-      const requestedKey = isSinceLastUse
-        ? null
-        : cycleKeyForDate(requested, benefit, card.cardOpenDate);
-      const effectiveUsedDate =
-        isSinceLastUse || requestedKey === currentKey ? requested : todayIso;
+      const requested = opts.usedDate;
+      const effectiveUsedDate = (() => {
+        if (isSinceLastUse) return requested;
+        const currentKey = currentCycleKey(today, benefit, card.cardOpenDate);
+        if (!currentKey) return todayIso;
+        const requestedKey = cycleKeyForDate(requested, benefit, card.cardOpenDate);
+        return requestedKey === currentKey ? requested : todayIso;
+      })();
+
       const newRecord: UsageRecord = makeUsageRecord({
         usedDate: effectiveUsedDate,
-        faceValue: benefit.faceValue,
-        actualValue: actualValue ?? benefit.faceValue,
+        faceValue: opts.consumedFace,
+        actualValue: opts.actualValue,
+        ...(opts.propagateNext !== undefined ? { propagateNext: opts.propagateNext } : {}),
       });
       return {
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
@@ -201,74 +213,199 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
     });
   },
 
-  setBenefitCycleUsed: (cardId, benefitId, cycleStart, _cycleEnd, used, opts) => {
+  addCycleUsage: (cardId, benefitId, cycleStart, _cycleEnd, opts) => {
     set((state) => {
       const card = state.cards.find((c) => c.id === cardId);
       if (!card) return state;
       const benefit = card.benefits.find((b) => b.id === benefitId);
       if (!benefit) return state;
 
-      // Identify the target cycle by intrinsic cycle key.
       const targetKey = cycleKeyForDate(cycleStart, benefit, card.cardOpenDate);
-      const existingInCycle = benefit.usageRecords.find(
-        (r) => cycleKeyForRecord(r, benefit, card.cardOpenDate) === targetKey,
-      );
-
-      // Force any user-supplied usedDate into the target cycle. An out-of-
-      // cycle date means the user picked the wrong date; fall back to today
-      // if it's in-cycle, else cycleStart.
       const todayIso = formatDate(new Date());
       const todayKey = cycleKeyForDate(todayIso, benefit, card.cardOpenDate);
       const defaultDate = todayKey === targetKey ? todayIso : cycleStart;
-      const clampUsedDate = (d: string | undefined, fallback: string): string => {
-        if (d === undefined) return fallback;
+
+      const clampUsedDate = (d: string | undefined): string => {
+        if (d === undefined) return defaultDate;
         const k = cycleKeyForDate(d, benefit, card.cardOpenDate);
         if (k !== targetKey) return defaultDate;
         return d;
       };
 
-      if (used) {
-        if (existingInCycle) {
-          const updated: UsageRecord = {
-            ...existingInCycle,
-            actualValue: opts?.actualValue ?? existingInCycle.actualValue,
-            usedDate: clampUsedDate(opts?.usedDate, existingInCycle.usedDate),
-            // `!== undefined` (not `??`) so an explicit `false` override wins.
-            propagateNext:
-              opts?.propagateNext !== undefined
-                ? opts.propagateNext
-                : existingInCycle.propagateNext,
-          };
-          return {
-            cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
-              ...b,
-              usageRecords: b.usageRecords.map((r) =>
-                r === existingInCycle ? updated : r,
-              ),
-            })),
-          };
-        }
-        const newRecord: UsageRecord = makeUsageRecord({
-          usedDate: clampUsedDate(opts?.usedDate, defaultDate),
-          faceValue: benefit.faceValue,
-          actualValue: opts?.actualValue ?? benefit.faceValue,
-          ...(opts?.propagateNext !== undefined ? { propagateNext: opts.propagateNext } : {}),
-        });
-        return {
-          cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
-            ...b,
-            usageRecords: [...b.usageRecords, newRecord],
-          })),
-        };
-      }
-
-      if (!existingInCycle) return state;
+      const newRecord: UsageRecord = makeUsageRecord({
+        usedDate: clampUsedDate(opts.usedDate),
+        faceValue: opts.consumedFace,
+        actualValue: opts.actualValue,
+        ...(opts.propagateNext !== undefined ? { propagateNext: opts.propagateNext } : {}),
+      });
       return {
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
-          usageRecords: b.usageRecords.filter((r) => r !== existingInCycle),
+          usageRecords: [...b.usageRecords, newRecord],
         })),
       };
+    });
+  },
+
+  removeBenefitUsageRecord: (cardId, benefitId, recordIndex) => {
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit) return state;
+      if (recordIndex < 0 || recordIndex >= benefit.usageRecords.length) return state;
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: b.usageRecords.filter((_, i) => i !== recordIndex),
+        })),
+      };
+    });
+  },
+
+  updateBenefitUsageRecord: (cardId, benefitId, recordIndex, patch) => {
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit) return state;
+      if (recordIndex < 0 || recordIndex >= benefit.usageRecords.length) return state;
+
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: b.usageRecords.map((r, i) => {
+            if (i !== recordIndex) return r;
+            const next: UsageRecord = { ...r };
+            // consumedFace (API) → faceValue (storage).
+            if (patch.consumedFace !== undefined) next.faceValue = patch.consumedFace;
+            if (patch.actualValue !== undefined) next.actualValue = patch.actualValue;
+            if (patch.usedDate !== undefined) next.usedDate = patch.usedDate;
+            // `!== undefined` so an explicit `false` override wins.
+            if (patch.propagateNext !== undefined) next.propagateNext = patch.propagateNext;
+            return next;
+          }),
+        })),
+      };
+    });
+  },
+
+  removeCycleRecords: (cardId, benefitId, cycleStart, _cycleEnd) => {
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit) return state;
+      const targetKey = cycleKeyForDate(cycleStart, benefit, card.cardOpenDate);
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: b.usageRecords.filter(
+            (r) => cycleKeyForRecord(r, benefit, card.cardOpenDate) !== targetKey,
+          ),
+        })),
+      };
+    });
+  },
+
+  toggleBenefitUsage: (cardId, benefitId, actualValue?, usedDate?) => {
+    const today = new Date();
+    const { cards } = get();
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const benefit = card.benefits.find((b) => b.id === benefitId);
+    if (!benefit) return;
+
+    const isUsed = isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
+
+    if (!isUsed) {
+      // Add path — defer to addBenefitUsage which clamps usedDate into the
+      // current cycle and preserves the old behavior.
+      const todayIso = formatDate(today);
+      get().addBenefitUsage(cardId, benefitId, {
+        consumedFace: benefit.faceValue,
+        actualValue: actualValue ?? benefit.faceValue,
+        usedDate: usedDate ?? todayIso,
+      });
+      return;
+    }
+
+    // Undo path — preserve prefer-usage-over-rollover ordering by finding
+    // the target record's index and delegating to removeBenefitUsageRecord.
+    const isSinceLastUse = benefit.resetType === "since_last_use";
+    const currentKey = isSinceLastUse
+      ? null
+      : currentCycleKey(today, benefit, card.cardOpenDate);
+    const matchesCurrent = (r: UsageRecord): boolean => {
+      if (isSinceLastUse) return true;
+      if (!currentKey) return false;
+      return cycleKeyForRecord(r, benefit, card.cardOpenDate) === currentKey;
+    };
+    let removeIndex = -1;
+    for (let i = benefit.usageRecords.length - 1; i >= 0; i -= 1) {
+      if (matchesCurrent(benefit.usageRecords[i]) && benefit.usageRecords[i].kind !== "rollover") {
+        removeIndex = i;
+        break;
+      }
+    }
+    if (removeIndex === -1) {
+      for (let i = benefit.usageRecords.length - 1; i >= 0; i -= 1) {
+        if (matchesCurrent(benefit.usageRecords[i]) && benefit.usageRecords[i].kind === "rollover") {
+          removeIndex = i;
+          break;
+        }
+      }
+    }
+    if (removeIndex === -1) return;
+    get().removeBenefitUsageRecord(cardId, benefitId, removeIndex);
+  },
+
+  setBenefitCycleUsed: (cardId, benefitId, cycleStart, cycleEnd, used, opts) => {
+    const { cards } = get();
+    const card = cards.find((c) => c.id === cardId);
+    if (!card) return;
+    const benefit = card.benefits.find((b) => b.id === benefitId);
+    if (!benefit) return;
+
+    if (!used) {
+      get().removeCycleRecords(cardId, benefitId, cycleStart, cycleEnd);
+      return;
+    }
+
+    // Used path — upsert: if a record already exists in the target cycle,
+    // patch it in place; otherwise append via addCycleUsage.
+    const targetKey = cycleKeyForDate(cycleStart, benefit, card.cardOpenDate);
+    const existingIndex = benefit.usageRecords.findIndex(
+      (r) => cycleKeyForRecord(r, benefit, card.cardOpenDate) === targetKey,
+    );
+
+    if (existingIndex !== -1) {
+      // Clamp any user-supplied usedDate into the target cycle; an out-of-
+      // cycle date falls back to today (if in-cycle) or cycleStart.
+      const todayIso = formatDate(new Date());
+      const todayKey = cycleKeyForDate(todayIso, benefit, card.cardOpenDate);
+      const defaultDate = todayKey === targetKey ? todayIso : cycleStart;
+      const existing = benefit.usageRecords[existingIndex];
+      const clampedUsedDate = (() => {
+        if (opts?.usedDate === undefined) return existing.usedDate;
+        const k = cycleKeyForDate(opts.usedDate, benefit, card.cardOpenDate);
+        return k === targetKey ? opts.usedDate : defaultDate;
+      })();
+
+      const patch: UpdateUsageRecordPatch = {
+        usedDate: clampedUsedDate,
+      };
+      if (opts?.actualValue !== undefined) patch.actualValue = opts.actualValue;
+      if (opts?.propagateNext !== undefined) patch.propagateNext = opts.propagateNext;
+      get().updateBenefitUsageRecord(cardId, benefitId, existingIndex, patch);
+      return;
+    }
+
+    get().addCycleUsage(cardId, benefitId, cycleStart, cycleEnd, {
+      consumedFace: benefit.faceValue,
+      actualValue: opts?.actualValue ?? benefit.faceValue,
+      ...(opts?.usedDate !== undefined ? { usedDate: opts.usedDate } : {}),
+      ...(opts?.propagateNext !== undefined ? { propagateNext: opts.propagateNext } : {}),
     });
   },
 
@@ -386,7 +523,12 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
 
     set({
       cards: synced,
-      settings: (data.settings as AppSettings | undefined) ?? { ...DEFAULT_SETTINGS },
+      // Merge onto defaults so imports from older versions don't leave
+      // newly-added fields (e.g. theme) undefined.
+      settings: {
+        ...DEFAULT_SETTINGS,
+        ...((data.settings as Partial<AppSettings> | undefined) ?? {}),
+      },
     });
   },
 

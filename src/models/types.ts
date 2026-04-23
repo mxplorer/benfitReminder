@@ -111,6 +111,8 @@ export interface CreditCard {
   templateVersion?: number;
 }
 
+export type ThemePreference = "light" | "dark" | "system";
+
 export interface AppSettings {
   logLevel: "debug" | "info" | "warn" | "error";
   debugLogEnabled: boolean;
@@ -119,6 +121,8 @@ export interface AppSettings {
   dismissedDate: string | null;
   /** Tray panel background opacity 0–100. */
   trayOpacity: number;
+  /** User-chosen theme. "system" follows prefers-color-scheme. */
+  theme: ThemePreference;
 }
 
 export interface AppData {

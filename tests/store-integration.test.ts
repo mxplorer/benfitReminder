@@ -525,3 +525,409 @@ describe("auto-replicate subscription flow", () => {
     ).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Batch 2: record-level primary API
+// ---------------------------------------------------------------------------
+
+describe("addBenefitUsage", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("appends a record with full face consumption", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 200 }));
+
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 200,
+      actualValue: 180,
+      usedDate: "2026-04-05",
+    });
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      usedDate: "2026-04-05",
+      faceValue: 200,
+      actualValue: 180,
+      kind: "usage",
+    });
+  });
+
+  it("stores consumedFace at record.faceValue for partial face", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 200 }));
+
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 50,
+      actualValue: 45,
+      usedDate: "2026-04-05",
+    });
+
+    const record = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(record.faceValue).toBe(50);
+    expect(record.actualValue).toBe(45);
+  });
+
+  it("appends multiple records in the same cycle", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 200 }));
+
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 50,
+      actualValue: 50,
+      usedDate: "2026-04-05",
+    });
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 75,
+      actualValue: 75,
+      usedDate: "2026-04-08",
+    });
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(2);
+    expect(records.map((r) => r.faceValue)).toEqual([50, 75]);
+  });
+
+  it("clamps out-of-cycle usedDate to today", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 100 }));
+
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 100,
+      actualValue: 100,
+      // Last year — different cycle key for monthly reset.
+      usedDate: "2025-04-05",
+    });
+
+    const record = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    // System time is 2026-04-10, which is the "today" fallback.
+    expect(record.usedDate).toBe("2026-04-10");
+  });
+
+  it("keeps propagateNext when provided explicitly false", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit(
+      "c1",
+      makeBenefit({ id: "b1", resetType: "subscription", faceValue: 25 }),
+    );
+
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 25,
+      actualValue: 25,
+      usedDate: "2026-04-01",
+      propagateNext: false,
+    });
+
+    const record = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(record.propagateNext).toBe(false);
+  });
+});
+
+describe("addCycleUsage", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("adds to past cycle with usedDate defaulting to cycleStart", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 100 }));
+
+    // Feb 2026 is past (today = Apr 10 2026).
+    useCardStore.getState().addCycleUsage("c1", "b1", "2026-02-01", "2026-02-28", {
+      consumedFace: 100,
+      actualValue: 90,
+    });
+
+    const record = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(record.usedDate).toBe("2026-02-01");
+    expect(record.faceValue).toBe(100);
+    expect(record.actualValue).toBe(90);
+  });
+
+  it("adds to current cycle with usedDate defaulting to today", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 100 }));
+
+    useCardStore.getState().addCycleUsage("c1", "b1", "2026-04-01", "2026-04-30", {
+      consumedFace: 100,
+      actualValue: 100,
+    });
+
+    const record = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(record.usedDate).toBe("2026-04-10");
+  });
+
+  it("clamps out-of-cycle usedDate to cycleStart when today is not in cycle", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 100 }));
+
+    useCardStore.getState().addCycleUsage("c1", "b1", "2026-02-01", "2026-02-28", {
+      consumedFace: 100,
+      actualValue: 100,
+      // Apr 2026 is a different cycle.
+      usedDate: "2026-04-05",
+    });
+
+    const record = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(record.usedDate).toBe("2026-02-01");
+  });
+
+  it("clamps out-of-cycle usedDate to today when today is in cycle", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 100 }));
+
+    useCardStore.getState().addCycleUsage("c1", "b1", "2026-04-01", "2026-04-30", {
+      consumedFace: 100,
+      actualValue: 100,
+      // Feb 2026 is a different cycle; current cycle is April, today = Apr 10.
+      usedDate: "2026-02-05",
+    });
+
+    const record = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(record.usedDate).toBe("2026-04-10");
+  });
+});
+
+describe("removeBenefitUsageRecord", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("removes exact record at the given index", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit(
+      "c1",
+      makeBenefit({
+        id: "b1",
+        faceValue: 100,
+        usageRecords: [
+          { usedDate: "2026-04-01", faceValue: 50, actualValue: 50, kind: "usage" },
+          { usedDate: "2026-04-05", faceValue: 60, actualValue: 60, kind: "usage" },
+          { usedDate: "2026-04-10", faceValue: 70, actualValue: 70, kind: "usage" },
+        ],
+      }),
+    );
+
+    useCardStore.getState().removeBenefitUsageRecord("c1", "b1", 1);
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(2);
+    expect(records.map((r) => r.actualValue)).toEqual([50, 70]);
+  });
+
+  it("is a no-op for out-of-range indices", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit(
+      "c1",
+      makeBenefit({
+        id: "b1",
+        usageRecords: [{ usedDate: "2026-04-05", faceValue: 50, actualValue: 50, kind: "usage" }],
+      }),
+    );
+
+    useCardStore.getState().removeBenefitUsageRecord("c1", "b1", 5);
+    useCardStore.getState().removeBenefitUsageRecord("c1", "b1", -1);
+
+    expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
+  });
+
+  it("works for both usage and rollover records", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit(
+      "c1",
+      makeBenefit({
+        id: "b1",
+        rolloverable: true,
+        usageRecords: [
+          { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+          { usedDate: "2026-04-05", faceValue: 50, actualValue: 50, kind: "usage" },
+        ],
+      }),
+    );
+
+    useCardStore.getState().removeBenefitUsageRecord("c1", "b1", 0);
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(1);
+    expect(records[0].kind).toBe("usage");
+  });
+});
+
+describe("updateBenefitUsageRecord", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const seedRecord = () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit(
+      "c1",
+      makeBenefit({
+        id: "b1",
+        faceValue: 100,
+        usageRecords: [
+          {
+            usedDate: "2026-04-05",
+            faceValue: 50,
+            actualValue: 45,
+            kind: "usage",
+            propagateNext: true,
+          },
+        ],
+      }),
+    );
+  };
+
+  it("updates actualValue", () => {
+    seedRecord();
+    useCardStore.getState().updateBenefitUsageRecord("c1", "b1", 0, { actualValue: 99 });
+    const r = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(r.actualValue).toBe(99);
+    // Other fields untouched.
+    expect(r.faceValue).toBe(50);
+    expect(r.usedDate).toBe("2026-04-05");
+    expect(r.propagateNext).toBe(true);
+  });
+
+  it("updates consumedFace (stored as record.faceValue)", () => {
+    seedRecord();
+    useCardStore.getState().updateBenefitUsageRecord("c1", "b1", 0, { consumedFace: 80 });
+    const r = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(r.faceValue).toBe(80);
+  });
+
+  it("updates usedDate", () => {
+    seedRecord();
+    useCardStore.getState().updateBenefitUsageRecord("c1", "b1", 0, { usedDate: "2026-04-09" });
+    const r = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(r.usedDate).toBe("2026-04-09");
+  });
+
+  it("updates propagateNext including explicit false", () => {
+    seedRecord();
+    useCardStore.getState().updateBenefitUsageRecord("c1", "b1", 0, { propagateNext: false });
+    const r = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(r.propagateNext).toBe(false);
+  });
+
+  it("is a no-op for out-of-range indices", () => {
+    seedRecord();
+    useCardStore.getState().updateBenefitUsageRecord("c1", "b1", 5, { actualValue: 1 });
+    useCardStore.getState().updateBenefitUsageRecord("c1", "b1", -1, { actualValue: 1 });
+    const r = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(r.actualValue).toBe(45);
+  });
+
+  it("partial patch leaves untouched fields alone", () => {
+    seedRecord();
+    useCardStore
+      .getState()
+      .updateBenefitUsageRecord("c1", "b1", 0, { actualValue: 10, consumedFace: 20 });
+    const r = useCardStore.getState().cards[0].benefits[0].usageRecords[0];
+    expect(r.actualValue).toBe(10);
+    expect(r.faceValue).toBe(20);
+    expect(r.usedDate).toBe("2026-04-05");
+    expect(r.propagateNext).toBe(true);
+    expect(r.kind).toBe("usage");
+  });
+});
+
+describe("removeCycleRecords", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("removes all records (usage + rollover) matching the cycle and leaves other cycles untouched", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit(
+      "c1",
+      makeBenefit({
+        id: "b1",
+        rolloverable: true,
+        faceValue: 100,
+        usageRecords: [
+          { usedDate: "2026-03-01", faceValue: 100, actualValue: 100, kind: "usage" },
+          { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+          { usedDate: "2026-04-05", faceValue: 40, actualValue: 40, kind: "usage" },
+          { usedDate: "2026-04-08", faceValue: 30, actualValue: 30, kind: "usage" },
+          { usedDate: "2026-05-02", faceValue: 50, actualValue: 50, kind: "usage" },
+        ],
+      }),
+    );
+
+    useCardStore.getState().removeCycleRecords("c1", "b1", "2026-04-01", "2026-04-30");
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(2);
+    expect(records.map((r) => r.usedDate).sort()).toEqual(["2026-03-01", "2026-05-02"]);
+  });
+});
+
+describe("multi-record cumulative behavior", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("two partial records under face keep benefit unused; third crosses threshold → used", () => {
+    useCardStore.getState().addCard(makeCard({ id: "c1" }));
+    useCardStore.getState().addBenefit("c1", makeBenefit({ id: "b1", faceValue: 200 }));
+
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 50,
+      actualValue: 50,
+      usedDate: "2026-04-02",
+    });
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 75,
+      actualValue: 75,
+      usedDate: "2026-04-05",
+    });
+
+    let benefit = useCardStore.getState().cards[0].benefits[0];
+    expect(benefit.usageRecords).toHaveLength(2);
+    expect(isBenefitUsedInPeriod(benefit, new Date(), "2024-03-15")).toBe(false);
+
+    useCardStore.getState().addBenefitUsage("c1", "b1", {
+      consumedFace: 80,
+      actualValue: 80,
+      usedDate: "2026-04-07",
+    });
+
+    benefit = useCardStore.getState().cards[0].benefits[0];
+    expect(benefit.usageRecords).toHaveLength(3);
+    // 50 + 75 + 80 = 205 >= 200 → used.
+    expect(isBenefitUsedInPeriod(benefit, new Date(), "2024-03-15")).toBe(true);
+  });
+});
