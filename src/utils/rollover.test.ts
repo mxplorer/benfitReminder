@@ -6,6 +6,7 @@ import {
   getAvailableValue,
   getPastPeriods,
   generateRolloverRecords,
+  getTotalFaceWithRollover,
 } from "./rollover";
 
 const d = (iso: string) => new Date(iso + "T00:00:00");
@@ -274,5 +275,108 @@ describe("generateRolloverRecords", () => {
 
   it("returns empty array for non-rolloverable benefit", () => {
     expect(generateRolloverRecords(makeBenefit({ rolloverable: false }), 300, d("2026-07-15"))).toEqual([]);
+  });
+});
+
+// --- Batch 1: remaining = totalFace − consumed ---
+describe("getAvailableValue — cumulative consumption semantics", () => {
+  it("face=100, prior rollover=50 worth of credit, consumed=30 in current cycle → 120", () => {
+    // Using face=100, semi_annual. Prior rollover marker at H1 rolls 100 in.
+    // Current H2 consumed so far: 80. Remaining = 200 - 80 = 120.
+    const b = makeBenefit({
+      faceValue: 100,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [
+        { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-07-20", faceValue: 80, actualValue: 80, kind: "usage" },
+      ],
+    });
+    expect(getAvailableValue(b, d("2026-08-15"))).toBe(120);
+  });
+
+  it("face=100 + rolled-in 100, consumed=150 → remaining 50 (no clamp needed)", () => {
+    const b = makeBenefit({
+      faceValue: 100,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [
+        { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-07-05", faceValue: 100, actualValue: 100, kind: "usage" },
+        { usedDate: "2026-08-01", faceValue: 50, actualValue: 50, kind: "usage" },
+      ],
+    });
+    // totalFace = 200, consumed = 150 → remaining = 50. Reword:
+    // The spec example said consumed=150 → 0 which implies totalFace=100 only
+    // (no prior rollover). Handle both by asserting ≥0 clamp separately below.
+    expect(getAvailableValue(b, d("2026-08-15"))).toBe(50);
+  });
+
+  it("face=100, no prior rollover, consumed=100 in current cycle → 0", () => {
+    const b = makeBenefit({
+      faceValue: 100,
+      rolloverable: false,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [
+        { usedDate: "2026-07-20", faceValue: 100, actualValue: 100, kind: "usage" },
+      ],
+    });
+    expect(getAvailableValue(b, d("2026-08-15"))).toBe(0);
+  });
+
+  it("face=100, no prior rollover, consumed=150 → clamps to 0 (never negative)", () => {
+    const b = makeBenefit({
+      faceValue: 100,
+      rolloverable: false,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [
+        { usedDate: "2026-07-05", faceValue: 100, actualValue: 100, kind: "usage" },
+        { usedDate: "2026-08-01", faceValue: 50, actualValue: 50, kind: "usage" },
+      ],
+    });
+    expect(getAvailableValue(b, d("2026-08-15"))).toBe(0);
+  });
+
+  it("face=100, no records at all → 100 (full face remaining)", () => {
+    const b = makeBenefit({
+      faceValue: 100,
+      rolloverable: false,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [],
+    });
+    expect(getAvailableValue(b, d("2026-08-15"))).toBe(100);
+  });
+});
+
+describe("getTotalFaceWithRollover — pure totalFace (no subtraction)", () => {
+  it("returns faceValue when no prior rollover exists", () => {
+    const b = makeBenefit({
+      faceValue: 300,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [],
+    });
+    expect(getTotalFaceWithRollover(b, d("2026-07-15"))).toBe(300);
+  });
+
+  it("accumulates prior rollover periods", () => {
+    const b = makeBenefit({
+      faceValue: 300,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [
+        { usedDate: "2026-03-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    expect(getTotalFaceWithRollover(b, d("2026-07-15"))).toBe(600);
+  });
+
+  it("is independent of current-cycle consumption", () => {
+    // Adding a usage record in the current period must not change totalFace.
+    const b = makeBenefit({
+      faceValue: 300,
+      resetConfig: { period: "semi_annual" },
+      usageRecords: [
+        { usedDate: "2026-03-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-08-01", faceValue: 200, actualValue: 200, kind: "usage" },
+      ],
+    });
+    expect(getTotalFaceWithRollover(b, d("2026-08-10"))).toBe(600);
   });
 });

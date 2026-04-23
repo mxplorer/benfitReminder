@@ -209,7 +209,11 @@ describe("expandBenefitsForFilter — 已使用", () => {
     expect(expandBenefitsForFilter(card, "used", today, "calendar")).toHaveLength(0);
   });
 
-  it("aggregates subscription as 12 used months when latest record has propagateNext=true", () => {
+  it("aggregates subscription used months per cumulative rule (propagateNext no longer forces all-used)", () => {
+    // Under the new semantic, propagateNext is purely a materialisation
+    // hint handled at the store level — it does NOT retroactively mark
+    // other months as "used". Only cycles with consumed >= faceValue
+    // count as used. Here only March has a record → 1 used month.
     const b = makeBenefit({
       id: "b1",
       resetType: "subscription",
@@ -222,7 +226,7 @@ describe("expandBenefitsForFilter — 已使用", () => {
     const card = makeCard([b]);
     const items = expandBenefitsForFilter(card, "used", today, "calendar");
     expect(items).toHaveLength(1);
-    expect(items[0].aggregate?.usedCount).toBe(12);
+    expect(items[0].aggregate?.usedCount).toBe(1);
   });
 });
 
@@ -301,7 +305,10 @@ describe("expandBenefitsForFilter — 未使用", () => {
     expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);
   });
 
-  it("emits 0 items for subscription whose latest record has propagateNext=true (everything is used)", () => {
+  it("subscription with one propagate-tagged record still shows remaining months as unused", () => {
+    // Under the new semantic, propagateNext does not retroactively
+    // fill every month. With only the March record materialised, the
+    // other 11 months of the calendar year are unused.
     const b = makeBenefit({
       id: "b1",
       resetType: "subscription",
@@ -311,7 +318,9 @@ describe("expandBenefitsForFilter — 未使用", () => {
       ],
     });
     const card = makeCard([b]);
-    expect(expandBenefitsForFilter(card, "unused", today, "calendar")).toHaveLength(0);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    expect(items).toHaveLength(1);
+    expect(items[0].aggregate?.unusedCount).toBe(11);
   });
 
   it("excludes already-ended anniversary cycles (prior year's credit is forfeit)", () => {
@@ -418,5 +427,185 @@ describe("expandBenefitsForFilter — 全部", () => {
     const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2026-04-10" };
     const items = expandBenefitsForFilter(card, "all", today, "calendar");
     expect(items.map((i) => i.periodLabel)).toEqual(["Q2 2026", "Q3 2026", "Q4 2026"]);
+  });
+});
+
+// --- Batch 1: cumulative face-value rule at the aggregate/cycle level ---
+describe("expandBenefitsForFilter — cumulative consumption (Batch 1)", () => {
+  const today = new Date(2026, 3, 14); // 2026-04-14
+
+  it("months[].consumedValue sums faceValue across all records (usage + rollover) in the cycle", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 15,
+      usageRecords: [
+        // Jan: two partial records → consumedValue = 15
+        { usedDate: "2026-01-05", faceValue: 5, actualValue: 5, kind: "usage" },
+        { usedDate: "2026-01-20", faceValue: 10, actualValue: 10, kind: "usage" },
+        // Feb: rollover (face=0) → consumedValue = 0
+        { usedDate: "2026-02-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        // Mar: exact face → consumedValue = 15
+        { usedDate: "2026-03-10", faceValue: 15, actualValue: 15, kind: "usage" },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    expect(items).toHaveLength(1);
+    const months = items[0].aggregate?.months;
+    expect(months?.[0].consumedValue).toBe(15);
+    expect(months?.[1].consumedValue).toBe(0);
+    expect(months?.[2].consumedValue).toBe(15);
+  });
+
+  it("months[].used flips only when consumedValue >= faceValue (partial stays unused)", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 20,
+      usageRecords: [
+        // Jan: partial (5 of 20) → NOT used
+        { usedDate: "2026-01-15", faceValue: 5, actualValue: 5, kind: "usage" },
+        // Feb: exact (20 of 20) → USED
+        { usedDate: "2026-02-15", faceValue: 20, actualValue: 20, kind: "usage" },
+        // Mar: over (25 of 20) → USED
+        { usedDate: "2026-03-15", faceValue: 25, actualValue: 25, kind: "usage" },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    const months = items[0].aggregate?.months;
+    expect(months?.[0].used).toBe(false); // Jan partial
+    expect(months?.[1].used).toBe(true); // Feb exact
+    expect(months?.[2].used).toBe(true); // Mar over
+  });
+
+  it("partial-consumed current cycle → NOT in 未使用, NOT in 已使用 (→ in 可使用)", () => {
+    // faceValue=200 with 50 consumed this month. Not unused (has a record),
+    // not used (consumed < face), so it should appear in 可使用.
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "calendar",
+      resetConfig: { period: "monthly" },
+      faceValue: 200,
+      usageRecords: [
+        { usedDate: "2026-04-02", faceValue: 50, actualValue: 50, kind: "usage" },
+      ],
+    });
+    const card = makeCard([b]);
+
+    // Not unused: current cycle has a record, so strict rule excludes it.
+    const unused = expandBenefitsForFilter(card, "unused", today, "calendar");
+    const aprUnused = unused[0]?.aggregate?.months.find(
+      (m) => m.cycleStart === "2026-04-01",
+    );
+    expect(aprUnused).toBeUndefined();
+
+    // Not used: consumed (50) < faceValue (200).
+    const used = expandBenefitsForFilter(card, "used", today, "calendar");
+    const aprUsed = used[0]?.aggregate?.months.find(
+      (m) => m.cycleStart === "2026-04-01",
+    );
+    expect(aprUsed).toBeUndefined();
+
+    // In 可使用: available filter returns the benefit since isBenefitUsedInPeriod is false.
+    const available = expandBenefitsForFilter(card, "available", today, "calendar");
+    expect(available.map((i) => i.benefit.id)).toContain("b1");
+  });
+
+  it("current cycle subscription with 0 records → in 未使用 (with other empty months)", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      faceValue: 20,
+      resetConfig: {},
+      usageRecords: [],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    expect(items).toHaveLength(1);
+    // Apr 2026 cycle (current) is included — 0 records and not a future cycle.
+    const hasApr = items[0].aggregate?.months.some(
+      (m) => m.cycleStart === "2026-04-01",
+    );
+    expect(hasApr).toBe(true);
+  });
+
+  it("future cycle with propagated record → STILL in 未使用 (notYetActive dominates)", () => {
+    // Today: 2026-04-14. A subscription that has a propagated record for
+    // May 2026 (cycle.start > today). Under the new strict rule, future
+    // cycles appear in 未使用 regardless of whether a record has been
+    // materialised ahead of time.
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      faceValue: 20,
+      resetConfig: {},
+      usageRecords: [
+        { usedDate: "2026-04-01", faceValue: 20, actualValue: 20, propagateNext: true, kind: "usage" },
+        // Pre-materialised future record — should NOT prevent May from being unused.
+        { usedDate: "2026-05-01", faceValue: 20, actualValue: 20, kind: "usage" },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    expect(items).toHaveLength(1);
+    const mayMonth = items[0].aggregate?.months.find(
+      (m) => m.cycleStart === "2026-05-01",
+    );
+    expect(mayMonth).toBeDefined();
+  });
+
+  it("current cycle subscription with partial record → NOT in 未使用 (has record, not future)", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "subscription",
+      faceValue: 20,
+      resetConfig: {},
+      usageRecords: [
+        { usedDate: "2026-04-05", faceValue: 5, actualValue: 5, kind: "usage" },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "unused", today, "calendar");
+    // Aggregated entry should not contain the April cycle.
+    const aprMonth = items[0]?.aggregate?.months.find(
+      (m) => m.cycleStart === "2026-04-01",
+    );
+    expect(aprMonth).toBeUndefined();
+  });
+
+  it("benefit faceValue=0 with one usage record → in 已使用", () => {
+    // e.g. a free-night award — no face value, single-shot.
+    const b = makeBenefit({
+      id: "b1",
+      resetType: "anniversary",
+      faceValue: 0,
+      resetConfig: {},
+      usageRecords: [
+        { usedDate: "2026-05-01", faceValue: 0, actualValue: 0, kind: "usage" },
+      ],
+    });
+    const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2025-03-10" };
+    const items = expandBenefitsForFilter(card, "used", today, "anniversary");
+    expect(items).toHaveLength(1);
+    expect(items[0].cycleUsed).toBe(true);
+  });
+
+  it("totalActualValue sums actualValue across all records in a cycle (multi-record)", () => {
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 15,
+      usageRecords: [
+        { usedDate: "2026-01-05", faceValue: 5, actualValue: 4, kind: "usage" },
+        { usedDate: "2026-01-20", faceValue: 10, actualValue: 9, kind: "usage" },
+        { usedDate: "2026-02-10", faceValue: 15, actualValue: 15, kind: "usage" },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    // Total actual = 4 + 9 + 15 = 28
+    expect(items[0].aggregate?.totalActualValue).toBe(28);
   });
 });

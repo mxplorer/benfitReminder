@@ -1,6 +1,7 @@
 import type { Benefit, CalendarPeriod, ResetConfig, ResetType } from "../models/types";
 import { cycleKeyForRecord, currentCycleKey } from "./cycleKey";
 import { getLatestRecord } from "./usageRecords";
+import { getTotalFaceWithRollover } from "./rollover";
 
 export interface DateRange {
   start: string;
@@ -132,6 +133,25 @@ export const getCurrentPeriodRange = (
   }
 };
 
+/** Sum of `record.faceValue` across all records (both usage and rollover
+ * kinds) that fall within the current cycle. Rollover records have
+ * faceValue = 0 by convention, so in practice this sums usage records —
+ * but we include rollover defensively so the contract matches the spec
+ * ("all records contribute to consumed face value"). */
+export const getConsumedInPeriod = (
+  benefit: Benefit,
+  today: Date,
+  cardOpenDate?: string,
+): number => {
+  const { resetType, usageRecords } = benefit;
+  if (resetType === "one_time" || resetType === "since_last_use") return 0;
+  const key = currentCycleKey(today, benefit, cardOpenDate);
+  if (!key) return 0;
+  return usageRecords
+    .filter((r) => cycleKeyForRecord(r, benefit, cardOpenDate ?? "") === key)
+    .reduce((sum, r) => sum + r.faceValue, 0);
+};
+
 export const isBenefitUsedInPeriod = (
   benefit: Benefit,
   today: Date,
@@ -159,13 +179,25 @@ export const isBenefitUsedInPeriod = (
     return today < cooldownEnd;
   }
 
-  // calendar, anniversary, subscription — match by intrinsic cycle key.
-  // Rollover records count as "used" — a rollover marker means the user
-  // decided to roll this cycle forward.
+  // calendar, anniversary, subscription — cumulative face-value model.
   const key = currentCycleKey(today, benefit, cardOpenDate);
   if (!key) return false;
+
+  if (benefit.faceValue > 0) {
+    // "used" = cumulative consumed >= total available (face + rolled-in).
+    const consumed = getConsumedInPeriod(benefit, today, cardOpenDate);
+    const totalFace = getTotalFaceWithRollover(benefit, today);
+    return consumed >= totalFace;
+  }
+
+  // faceValue == 0 — non-face benefits keep single-shot semantics. Any usage
+  // record (not rollover) in the current cycle marks it used. Rollover alone
+  // doesn't count (non-face benefits aren't rolloverable in practice, but
+  // be defensive).
   return usageRecords.some(
-    (r) => cycleKeyForRecord(r, benefit, cardOpenDate ?? "") === key,
+    (r) =>
+      r.kind === "usage" &&
+      cycleKeyForRecord(r, benefit, cardOpenDate ?? "") === key,
   );
 };
 

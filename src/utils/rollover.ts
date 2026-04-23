@@ -1,6 +1,7 @@
 import type { Benefit, CalendarPeriod, UsageRecord } from "../models/types";
 import type { DateRange } from "./period";
 import { getCalendarPeriodRange } from "./period";
+import { cycleKeyForRecord, currentCycleKey } from "./cycleKey";
 import { makeRolloverRecord } from "./usageRecords";
 
 export const getPeriodRangeAt = (
@@ -89,7 +90,13 @@ export const generateRolloverRecords = (
   return records;
 };
 
-export const getAvailableValue = (benefit: Benefit, today: Date): number => {
+/** Total face value this cycle has access to: the benefit's own faceValue
+ * plus whatever was rolled in from prior cycles. Does NOT subtract
+ * consumption — this is the ceiling, not the remaining. */
+export const getTotalFaceWithRollover = (
+  benefit: Benefit,
+  today: Date,
+): number => {
   if (!benefit.rolloverable || benefit.resetType !== "calendar")
     return benefit.faceValue;
 
@@ -115,4 +122,24 @@ export const getAvailableValue = (benefit: Benefit, today: Date): number => {
   }
 
   return accumulated;
+};
+
+/** Sum of `faceValue` across all records (usage or rollover) that live in
+ * the current cycle. Mirrors period.ts#getConsumedInPeriod but lives here
+ * to avoid a circular import — period.ts already depends on rollover.ts. */
+const consumedInCurrentCycle = (benefit: Benefit, today: Date): number => {
+  const key = currentCycleKey(today, benefit);
+  if (!key) return 0;
+  return benefit.usageRecords
+    .filter((r) => cycleKeyForRecord(r, benefit, "") === key)
+    .reduce((sum, r) => sum + r.faceValue, 0);
+};
+
+/** Remaining face value in the current cycle: totalFace (own + rolled-in)
+ * minus what's already been consumed (sum of record.faceValue in cycle).
+ * Clamped to >= 0 so callers don't have to worry about over-consumption. */
+export const getAvailableValue = (benefit: Benefit, today: Date): number => {
+  const totalFace = getTotalFaceWithRollover(benefit, today);
+  const consumed = consumedInCurrentCycle(benefit, today);
+  return Math.max(0, totalFace - consumed);
 };

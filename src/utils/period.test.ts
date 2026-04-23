@@ -10,6 +10,7 @@ import {
   isInCurrentCycle,
   getDeadline,
   getDaysRemaining,
+  getConsumedInPeriod,
 } from "./period";
 
 const d = (iso: string) => new Date(iso + "T00:00:00");
@@ -311,11 +312,11 @@ describe("isBenefitUsedInPeriod", () => {
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
 
-  it("returns true for anniversary when used in current membership year", () => {
+  it("returns true for anniversary when used in current membership year (consumed == faceValue)", () => {
     const benefit = makeBenefit({
       resetType: "anniversary",
       resetConfig: {},
-      usageRecords: [{ usedDate: "2026-04-01", faceValue: 50, actualValue: 50, kind: "usage" }],
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 100, actualValue: 50, kind: "usage" }],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"), "2024-03-15")).toBe(true);
   });
@@ -338,7 +339,10 @@ describe("isBenefitUsedInPeriod", () => {
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
 
-  it("treats a rollover marker in the current cycle as 'used' (cycle is decided)", () => {
+  it("rollover marker alone (faceValue=0 contribution) does not mark cycle as used under cumulative rule", () => {
+    // Under the new cumulative face-value semantic, rollover records have
+    // faceValue = 0 and therefore do not consume any of the cycle's face
+    // value. A lone rollover marker leaves the cycle available, not used.
     const benefit = makeBenefit({
       resetType: "calendar",
       resetConfig: { period: "quarterly" },
@@ -348,7 +352,7 @@ describe("isBenefitUsedInPeriod", () => {
         { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
       ],
     });
-    expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(true);
+    expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(false);
   });
 
   it("ignores past-cycle rollover markers when checking the current cycle", () => {
@@ -615,6 +619,232 @@ describe("monthly subscription — current-month usage", () => {
         resetConfig: { period: "monthly" },
       }),
     ).toBe("2026-04-30");
+  });
+});
+
+// --- Batch 1: cumulative face-value semantics ---
+describe("cumulative face-value used-ness", () => {
+  describe("faceValue > 0: used iff sum(records.faceValue) >= totalFace", () => {
+    it("partial consumption (50 of 200) → NOT used", () => {
+      const b = makeBenefit({
+        faceValue: 200,
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+        usageRecords: [
+          { usedDate: "2026-04-01", faceValue: 50, actualValue: 50, kind: "usage" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(false);
+    });
+
+    it("exact consumption (50+75+75=200 of 200) → USED", () => {
+      const b = makeBenefit({
+        faceValue: 200,
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+        usageRecords: [
+          { usedDate: "2026-02-01", faceValue: 50, actualValue: 50, kind: "usage" },
+          { usedDate: "2026-03-15", faceValue: 75, actualValue: 75, kind: "usage" },
+          { usedDate: "2026-04-02", faceValue: 75, actualValue: 75, kind: "usage" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(true);
+    });
+
+    it("over-consumption (50+75+80=205 of 200) → USED", () => {
+      const b = makeBenefit({
+        faceValue: 200,
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+        usageRecords: [
+          { usedDate: "2026-02-01", faceValue: 50, actualValue: 50, kind: "usage" },
+          { usedDate: "2026-03-15", faceValue: 75, actualValue: 75, kind: "usage" },
+          { usedDate: "2026-04-02", faceValue: 80, actualValue: 80, kind: "usage" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(true);
+    });
+  });
+
+  describe("faceValue == 0: any usage record in the cycle → USED", () => {
+    it("one usage record → USED", () => {
+      const b = makeBenefit({
+        faceValue: 0,
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+        usageRecords: [
+          { usedDate: "2026-04-05", faceValue: 0, actualValue: 0, kind: "usage" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(true);
+    });
+
+    it("only rollover record (no usage) → NOT used", () => {
+      const b = makeBenefit({
+        faceValue: 0,
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+        usageRecords: [
+          { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(false);
+    });
+
+    it("no records → NOT used", () => {
+      const b = makeBenefit({
+        faceValue: 0,
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+        usageRecords: [],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(false);
+    });
+  });
+
+  describe("subscription benefits follow the same cumulative rule", () => {
+    it("subscription faceValue=20, single record faceValue=20 → USED", () => {
+      const b = makeBenefit({
+        faceValue: 20,
+        resetType: "subscription",
+        resetConfig: {},
+        usageRecords: [
+          { usedDate: "2026-04-05", faceValue: 20, actualValue: 20, kind: "usage" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(true);
+    });
+
+    it("subscription faceValue=20, partial record faceValue=5 → NOT used", () => {
+      const b = makeBenefit({
+        faceValue: 20,
+        resetType: "subscription",
+        resetConfig: {},
+        usageRecords: [
+          { usedDate: "2026-04-05", faceValue: 5, actualValue: 5, kind: "usage" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-04-10"))).toBe(false);
+    });
+  });
+
+  describe("rollover accumulates totalFace, not consumption", () => {
+    it("rolled-in 200 + face 200, consumed 200 → NOT used (remaining 200)", () => {
+      const b = makeBenefit({
+        faceValue: 200,
+        rolloverable: true,
+        rolloverMaxYears: 1,
+        resetType: "calendar",
+        resetConfig: { period: "semi_annual" },
+        usageRecords: [
+          // H1 rolled over
+          { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+          // H2 so far: 200 consumed
+          { usedDate: "2026-07-15", faceValue: 200, actualValue: 200, kind: "usage" },
+        ],
+      });
+      // H2 totalFace = 200 + 200 (rolled) = 400. Consumed = 200. Remaining = 200.
+      expect(isBenefitUsedInPeriod(b, d("2026-07-20"))).toBe(false);
+    });
+
+    it("rolled-in 200 + face 200, consumed 400 → USED", () => {
+      const b = makeBenefit({
+        faceValue: 200,
+        rolloverable: true,
+        rolloverMaxYears: 1,
+        resetType: "calendar",
+        resetConfig: { period: "semi_annual" },
+        usageRecords: [
+          { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+          { usedDate: "2026-07-15", faceValue: 200, actualValue: 200, kind: "usage" },
+          { usedDate: "2026-08-10", faceValue: 200, actualValue: 200, kind: "usage" },
+        ],
+      });
+      expect(isBenefitUsedInPeriod(b, d("2026-09-01"))).toBe(true);
+    });
+  });
+});
+
+describe("getConsumedInPeriod", () => {
+  it("returns 0 for benefit with no records", () => {
+    const b = makeBenefit({ usageRecords: [] });
+    expect(getConsumedInPeriod(b, d("2026-04-10"))).toBe(0);
+  });
+
+  it("sums faceValue across multiple usage records in the current cycle", () => {
+    const b = makeBenefit({
+      faceValue: 200,
+      resetType: "calendar",
+      resetConfig: { period: "annual" },
+      usageRecords: [
+        { usedDate: "2026-02-01", faceValue: 30, actualValue: 30, kind: "usage" },
+        { usedDate: "2026-03-15", faceValue: 70, actualValue: 60, kind: "usage" },
+      ],
+    });
+    expect(getConsumedInPeriod(b, d("2026-04-10"))).toBe(100);
+  });
+
+  it("sums both usage and rollover kinds (rollover contributes 0 by convention)", () => {
+    const b = makeBenefit({
+      faceValue: 100,
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      usageRecords: [
+        { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-05-10", faceValue: 60, actualValue: 60, kind: "usage" },
+      ],
+    });
+    // Q2 2026 current cycle → rollover(0) + usage(60) = 60
+    expect(getConsumedInPeriod(b, d("2026-05-20"))).toBe(60);
+  });
+
+  it("ignores records outside the current cycle", () => {
+    const b = makeBenefit({
+      faceValue: 100,
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      usageRecords: [
+        { usedDate: "2026-01-15", faceValue: 100, actualValue: 100, kind: "usage" }, // Q1
+        { usedDate: "2026-05-10", faceValue: 40, actualValue: 40, kind: "usage" }, // Q2
+      ],
+    });
+    expect(getConsumedInPeriod(b, d("2026-05-20"))).toBe(40);
+  });
+
+  it("returns 0 for one_time and since_last_use (no cycle concept)", () => {
+    const ot = makeBenefit({
+      resetType: "one_time",
+      resetConfig: {},
+      usageRecords: [
+        { usedDate: "2026-01-01", faceValue: 50, actualValue: 50, kind: "usage" },
+      ],
+    });
+    expect(getConsumedInPeriod(ot, d("2026-04-10"))).toBe(0);
+
+    const slu = makeBenefit({
+      resetType: "since_last_use",
+      resetConfig: { cooldownDays: 30 },
+      usageRecords: [
+        { usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" },
+      ],
+    });
+    expect(getConsumedInPeriod(slu, d("2026-04-10"))).toBe(0);
+  });
+
+  it("sums anniversary-cycle records using cardOpenDate", () => {
+    const b = makeBenefit({
+      faceValue: 500,
+      resetType: "anniversary",
+      resetConfig: {},
+      usageRecords: [
+        // Cycle A:2026 runs [2026-03-15, 2027-03-14]
+        { usedDate: "2026-04-01", faceValue: 100, actualValue: 100, kind: "usage" },
+        { usedDate: "2026-08-10", faceValue: 150, actualValue: 150, kind: "usage" },
+        // Previous cycle A:2025 — should be excluded
+        { usedDate: "2025-04-01", faceValue: 300, actualValue: 300, kind: "usage" },
+      ],
+    });
+    expect(getConsumedInPeriod(b, d("2026-10-01"), "2024-03-15")).toBe(250);
   });
 });
 

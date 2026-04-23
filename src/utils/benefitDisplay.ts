@@ -2,7 +2,7 @@ import type { Benefit, CreditCard, UsageRecord } from "../models/types";
 import { formatDate, isApplicableNow, isBenefitUsedInPeriod, isInCurrentCycle } from "./period";
 import { getScopeWindow, getScopeCycles, findCycleRecord } from "./cycles";
 import type { PeriodCycle } from "./cycles";
-import { latestHasPropagate } from "./usageRecords";
+import { cycleKeyForDate, cycleKeyForRecord } from "./cycleKey";
 
 export type FilterMode = "available" | "unused" | "used" | "hidden" | "all";
 export type YearScope = "calendar" | "anniversary";
@@ -12,6 +12,15 @@ export interface AggregatedMonth {
   used: boolean;
   record?: UsageRecord;
   faceValue: number;
+  /** Sum of `record.faceValue` for every record (usage + rollover) that
+   * falls in this cycle. Drives the new "cumulative consumption" model:
+   * `used` flips when consumedValue >= faceValue (for face>0 benefits).
+   *
+   * Optional for backward compatibility with legacy fixture construction
+   * sites (e.g., BackfillDialog); the canonical `buildAggregate` always
+   * provides it. Later batches will make this required once all
+   * constructors are migrated. */
+  consumedValue?: number;
   cycleStart: string;
   cycleEnd: string;
 }
@@ -53,29 +62,119 @@ const isMonthlyLike = (b: Benefit): boolean =>
 const isStandardOnly = (b: Benefit): boolean =>
   b.resetType === "one_time" || b.resetType === "since_last_use";
 
+/** Sum of all records (any kind) whose cycleKey matches the given cycle. */
+const consumedForCycle = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  cardOpenDate: string,
+): number => {
+  const key = cycleKeyForDate(cycle.start, benefit, cardOpenDate);
+  return benefit.usageRecords
+    .filter((r) => cycleKeyForRecord(r, benefit, cardOpenDate) === key)
+    .reduce((sum, r) => sum + r.faceValue, 0);
+};
+
+/** Sum of actualValue across all records (any kind) in the cycle. */
+const actualValueForCycle = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  cardOpenDate: string,
+): number => {
+  const key = cycleKeyForDate(cycle.start, benefit, cardOpenDate);
+  return benefit.usageRecords
+    .filter((r) => cycleKeyForRecord(r, benefit, cardOpenDate) === key)
+    .reduce((sum, r) => sum + r.actualValue, 0);
+};
+
+/** True when any record in the cycle is kind "usage" (rollover-only doesn't
+ * count). Used for faceValue == 0 benefits where cumulative model doesn't
+ * apply. */
+const hasUsageRecordInCycle = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  cardOpenDate: string,
+): boolean => {
+  const key = cycleKeyForDate(cycle.start, benefit, cardOpenDate);
+  return benefit.usageRecords.some(
+    (r) => r.kind === "usage" && cycleKeyForRecord(r, benefit, cardOpenDate) === key,
+  );
+};
+
+/** Number of records (any kind) in the cycle. */
+const recordCountInCycle = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  cardOpenDate: string,
+): number => {
+  const key = cycleKeyForDate(cycle.start, benefit, cardOpenDate);
+  return benefit.usageRecords.filter(
+    (r) => cycleKeyForRecord(r, benefit, cardOpenDate) === key,
+  ).length;
+};
+
+/** Cycle starts after today — future cycle. ISO string compare is
+ * sufficient since both inputs are `YYYY-MM-DD`. */
+const isNotYetActive = (cycle: PeriodCycle, todayIso: string): boolean =>
+  cycle.start > todayIso;
+
+/** Strict "未使用" filter membership per the new spec: a cycle qualifies
+ * when it has zero records OR it hasn't started yet. A future cycle
+ * dominates — even if a propagated record has been materialised ahead of
+ * time, the cycle still belongs in 未使用. */
+const isInUnusedFilter = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  todayIso: string,
+  cardOpenDate: string,
+): boolean => {
+  if (isNotYetActive(cycle, todayIso)) return true;
+  return recordCountInCycle(benefit, cycle, cardOpenDate) === 0;
+};
+
+/** Per-cycle "used" decision used when walking cycles inside a card.
+ *   - faceValue > 0: consumed >= faceValue (no rollover in per-cycle math
+ *     — rollover contribution is accounted for via consumedValue already)
+ *   - faceValue == 0: any usage kind record in the cycle */
+const isCycleUsed = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  cardOpenDate: string,
+): boolean => {
+  if (benefit.faceValue > 0) {
+    return consumedForCycle(benefit, cycle, cardOpenDate) >= benefit.faceValue;
+  }
+  return hasUsageRecordInCycle(benefit, cycle, cardOpenDate);
+};
+
 const buildAggregate = (
   benefit: Benefit,
   cycles: PeriodCycle[],
   kind: "used" | "unused" | "all",
-  propagatesForwardOverride: boolean,
   cardOpenDate: string,
 ): BenefitDisplayItem["aggregate"] => {
   const months: AggregatedMonth[] = cycles.map((cycle) => {
     const record = findCycleRecord(benefit, cycle, cardOpenDate);
-    const used = propagatesForwardOverride || record !== undefined;
+    const consumedValue = consumedForCycle(benefit, cycle, cardOpenDate);
+    // Cumulative face-value rule:
+    //   faceValue > 0 → used when consumed >= faceValue
+    //   faceValue == 0 → used when cycle has any "usage" kind record
+    const used = isCycleUsed(benefit, cycle, cardOpenDate);
     return {
       label: cycle.label,
       used,
       record,
       faceValue: benefit.faceValue,
+      consumedValue,
       cycleStart: cycle.start,
       cycleEnd: cycle.end,
     };
   });
   const usedCount = months.filter((m) => m.used).length;
   const unusedCount = months.length - usedCount;
-  const totalActualValue = months.reduce(
-    (s, m) => s + (m.record?.actualValue ?? 0),
+  // totalActualValue now sums across all records in the cycle, not just the
+  // "representative" one — matches the new multi-record-per-cycle model.
+  const totalActualValue = cycles.reduce(
+    (sum, cycle) => sum + actualValueForCycle(benefit, cycle, cardOpenDate),
     0,
   );
   const totalFaceValue = months.reduce((s, m) => s + m.faceValue, 0);
@@ -105,6 +204,7 @@ const expandUnused = (
   scope: YearScope,
 ): BenefitDisplayItem[] => {
   const window = getScopeWindow(scope, today, card.cardOpenDate);
+  const todayIso = formatDate(today);
   const items: BenefitDisplayItem[] = [];
   for (const b of card.benefits) {
     if (b.isHidden) continue;
@@ -114,12 +214,17 @@ const expandUnused = (
       items.push(standardItem(b, card));
       continue;
     }
-    if (b.resetType === "subscription" && latestHasPropagate(b)) continue; // never unused
+    // Strict "未使用" rule: cycle qualifies iff it has no records OR starts
+    // after today. The prior subscription-propagate short-circuit is
+    // superseded by `isNotYetActive` — a future cycle with a pre-
+    // materialised propagate record still belongs in 未使用.
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
-      const unusedCycles = cycles.filter((c) => !findCycleRecord(b, c, card.cardOpenDate));
+      const unusedCycles = cycles.filter((c) =>
+        isInUnusedFilter(b, c, todayIso, card.cardOpenDate),
+      );
       if (unusedCycles.length === 0) continue;
-      const aggregate = buildAggregate(b, unusedCycles, "unused", false, card.cardOpenDate);
+      const aggregate = buildAggregate(b, unusedCycles, "unused", card.cardOpenDate);
       items.push({
         benefit: b,
         card,
@@ -128,13 +233,12 @@ const expandUnused = (
         aggregate,
       });
     } else {
-      const todayIso = formatDate(today);
       for (const cycle of cycles) {
         // Anniversary benefits allocate one credit per cycle. Once the cycle
         // ends, that year's credit is forfeit and the cycle is no longer
         // actionable — hide past cycles from "未使用".
         if (b.resetType === "anniversary" && cycle.end < todayIso) continue;
-        if (!findCycleRecord(b, cycle, card.cardOpenDate)) {
+        if (isInUnusedFilter(b, cycle, todayIso, card.cardOpenDate)) {
           items.push(perCycleItem(b, card, cycle, undefined));
         }
       }
@@ -157,12 +261,14 @@ const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
     }
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
-      const propagatesForward = b.resetType === "subscription" && latestHasPropagate(b);
-      const usedCycles = propagatesForward
-        ? cycles
-        : cycles.filter((c) => findCycleRecord(b, c, card.cardOpenDate));
+      // Cumulative face-value rule: a cycle is "used" when consumed >=
+      // faceValue (for face>0) or when any usage record exists (for
+      // face==0). Partial-consumed cycles go into available, not used.
+      const usedCycles = cycles.filter((c) =>
+        isCycleUsed(b, c, card.cardOpenDate),
+      );
       if (usedCycles.length === 0) continue;
-      const aggregate = buildAggregate(b, usedCycles, "used", propagatesForward, card.cardOpenDate);
+      const aggregate = buildAggregate(b, usedCycles, "used", card.cardOpenDate);
       items.push({
         benefit: b,
         card,
@@ -172,8 +278,10 @@ const expandUsed = (card: CreditCard, today: Date): BenefitDisplayItem[] => {
       });
     } else {
       for (const cycle of cycles) {
-        const record = findCycleRecord(b, cycle, card.cardOpenDate);
-        if (record) items.push(perCycleItem(b, card, cycle, record));
+        if (isCycleUsed(b, cycle, card.cardOpenDate)) {
+          const record = findCycleRecord(b, cycle, card.cardOpenDate);
+          items.push(perCycleItem(b, card, cycle, record));
+        }
       }
     }
   }
@@ -196,8 +304,7 @@ const expandAll = (
     const cycles = getScopeCycles(b, window, card.cardOpenDate);
     if (isMonthlyLike(b)) {
       if (cycles.length === 0) continue;
-      const propagatesForward = b.resetType === "subscription" && latestHasPropagate(b);
-      const aggregate = buildAggregate(b, cycles, "all", propagatesForward, card.cardOpenDate);
+      const aggregate = buildAggregate(b, cycles, "all", card.cardOpenDate);
       items.push({
         benefit: b,
         card,
@@ -207,7 +314,13 @@ const expandAll = (
       });
     } else {
       for (const cycle of cycles) {
-        items.push(perCycleItem(b, card, cycle, findCycleRecord(b, cycle, card.cardOpenDate)));
+        const record = findCycleRecord(b, cycle, card.cardOpenDate);
+        // cycleUsed reflects the new cumulative rule.
+        const cycleUsed = isCycleUsed(b, cycle, card.cardOpenDate);
+        items.push({
+          ...perCycleItem(b, card, cycle, record),
+          cycleUsed,
+        });
       }
     }
   }
