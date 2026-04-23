@@ -46,6 +46,12 @@
 
 .benefit-card.used { opacity: 0.68; }
 
+/* Lift the tile above siblings while its ⋯ dropdown is open, otherwise the
+   menu overflow gets painted under adjacent tiles (each tile establishes its
+   own stacking context via isolation:isolate, so later-painted siblings cover
+   earlier tiles' absolute children). */
+.benefit-card--menu-open { z-index: 20; }
+
 /* Hidden benefits: fade content but keep action menu fully opaque so
    clicking 取消隐藏 is visually clear. Parent-level opacity would cascade
    to descendants and wash out the dropdown. */

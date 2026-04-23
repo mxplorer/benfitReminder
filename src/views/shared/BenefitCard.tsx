@@ -206,6 +206,7 @@ export const BenefitCard = ({
     benefit.isHidden ? "hidden-benefit" : "",
     urgencyClass,
     `benefit-card--${tileKind}`,
+    menuOpen ? "benefit-card--menu-open" : "",
   ].filter(Boolean).join(" ");
 
   const handleClick = () => {
