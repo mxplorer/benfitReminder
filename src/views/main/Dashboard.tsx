@@ -10,6 +10,7 @@ import {
   isApplicableNow,
   isBenefitUsedInPeriod,
 } from "../../utils/period";
+import { getAvailableValue } from "../../utils/rollover";
 import { CardChip } from "../shared/CardChip";
 import type { ActiveView } from "./MainWindow";
 import "./Dashboard.css";
@@ -141,7 +142,10 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
         if (!isApplicableNow(benefit, today)) continue;
         if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
         cardUnusedCount += 1;
-        leftSum += benefit.faceValue;
+        // Cumulative-consumption model: a benefit is "unused" when consumed <
+        // totalFace. The remaining (not the raw faceValue) is what's still
+        // left to redeem. Accounts for partial consumption AND rollover.
+        leftSum += getAvailableValue(benefit, today);
         firstUnused ??= card.id;
         const deadline = getDeadline(today, {
           resetType: benefit.resetType,
@@ -229,8 +233,6 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
       <div className="dashboard__header">
         <div className="dashboard__title-block">
           <div className="dashboard__title-kicker" data-testid="period-bar">
-            <span className="dashboard__title-kicker-eyebrow">仪表盘</span>
-            <span className="dashboard__title-kicker-sep">·</span>
             <span className="dashboard__title-kicker-now">{MONTH_NAMES[monthIndex]}</span>
             <span className="dashboard__title-kicker-sep">·</span>
             <span>{QUARTER_LABELS[monthIndex]}</span>

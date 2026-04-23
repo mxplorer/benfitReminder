@@ -296,6 +296,34 @@ describe("Dashboard", () => {
     expect(tile).toHaveTextContent("$895");
   });
 
+  it("uses remaining face (not raw faceValue) for 待拿 under cumulative consumption", () => {
+    // Benefit with faceValue $200, already $60 consumed this cycle.
+    // Cumulative model: not fully used → should be counted as unused, but
+    // only $140 is still on the table, not $200.
+    const card = makeCard({
+      benefits: [{
+        id: "b1",
+        name: "Partial",
+        description: "",
+        faceValue: 200,
+        category: "other",
+        resetType: "calendar",
+        resetConfig: { period: "monthly" },
+        isHidden: false,
+        rolloverable: false,
+        rolloverMaxYears: 2,
+        usageRecords: [
+          { usedDate: "2026-04-05", faceValue: 60, actualValue: 50, kind: "usage" },
+        ],
+      }],
+    });
+    useCardStore.setState({ cards: [card] });
+
+    render(<Dashboard />);
+    // Remaining face = 200 - 60 = 140
+    expect(screen.getByTestId("left-on-table")).toHaveTextContent("$140");
+  });
+
   it("navigates to card detail when tile is clicked", () => {
     const card = makeCard({ id: "c42" });
     useCardStore.setState({ cards: [card] });

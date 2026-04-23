@@ -120,79 +120,87 @@ export const AggregatedBenefitCard = ({
       )}
       {expanded && !pending && (
         <ul className="agg-benefit-card__rows">
-          {agg.months.map((m) => (
-            <li
-              key={m.label}
-              data-testid={`agg-month-row-${m.label}`}
-              className={`agg-benefit-card__row${m.used ? " agg-benefit-card__row--used" : ""}`}
-            >
-              <span className="agg-benefit-card__row-label">{m.label}</span>
-              <span className="agg-benefit-card__row-value">
-                {m.used && m.record
-                  ? `$${String(m.record.actualValue)}`
-                  : `$${String(m.faceValue)}`}
-              </span>
-              {m.used ? (
-                <>
-                  <span className="agg-benefit-card__row-date">{m.record?.usedDate ?? ""}</span>
-                  {onSetCycleUsed && (
-                    <button
-                      data-testid={`agg-month-uncheck-${m.label}`}
-                      className="agg-benefit-card__row-uncheck"
-                      onClick={() => {
-                        onSetCycleUsed(
-                          item.card.id,
-                          item.benefit.id,
-                          m.cycleStart,
-                          m.cycleEnd,
-                          false,
-                        );
-                      }}
-                      aria-label="取消使用"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </>
-              ) : onSetCycleUsed ? (
-                <button
-                  data-testid={`agg-month-check-${m.label}`}
-                  className="agg-benefit-card__row-check"
-                  onClick={() => {
-                    onSetCycleUsed(
-                      item.card.id,
-                      item.benefit.id,
-                      m.cycleStart,
-                      m.cycleEnd,
-                      true,
-                      { actualValue: m.faceValue },
-                    );
-                  }}
-                  aria-label="标记使用"
-                >
-                  ✓
-                </button>
-              ) : (
-                onToggleUsage && (
+          {agg.months.map((m) => {
+            const consumed = m.consumedValue ?? 0;
+            // Partial: not fully used (still in unused bucket) but has some
+            // cumulative consumption this cycle. Surface it so users can see
+            // they've used part of the credit already.
+            const isPartial = !m.used && consumed > 0 && consumed < m.faceValue;
+            const valueText = m.used && m.record
+              ? `$${String(m.record.actualValue)}`
+              : isPartial
+                ? `已用 $${String(consumed)} / $${String(m.faceValue)}`
+                : `$${String(m.faceValue)}`;
+            return (
+              <li
+                key={m.label}
+                data-testid={`agg-month-row-${m.label}`}
+                className={`agg-benefit-card__row${m.used ? " agg-benefit-card__row--used" : ""}${isPartial ? " agg-benefit-card__row--partial" : ""}`}
+              >
+                <span className="agg-benefit-card__row-label">{m.label}</span>
+                <span className="agg-benefit-card__row-value">{valueText}</span>
+                {m.used ? (
+                  <>
+                    <span className="agg-benefit-card__row-date">{m.record?.usedDate ?? ""}</span>
+                    {onSetCycleUsed && (
+                      <button
+                        data-testid={`agg-month-uncheck-${m.label}`}
+                        className="agg-benefit-card__row-uncheck"
+                        onClick={() => {
+                          onSetCycleUsed(
+                            item.card.id,
+                            item.benefit.id,
+                            m.cycleStart,
+                            m.cycleEnd,
+                            false,
+                          );
+                        }}
+                        aria-label="取消使用"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </>
+                ) : onSetCycleUsed ? (
                   <button
                     data-testid={`agg-month-check-${m.label}`}
                     className="agg-benefit-card__row-check"
                     onClick={() => {
-                      onToggleUsage(
+                      onSetCycleUsed(
                         item.card.id,
                         item.benefit.id,
-                        m.faceValue,
                         m.cycleStart,
+                        m.cycleEnd,
+                        true,
+                        { actualValue: m.faceValue },
                       );
                     }}
                     aria-label="标记使用"
                   >
                     ✓
                   </button>
-                )
-              )}
-            </li>
-          ))}
+                ) : (
+                  onToggleUsage && (
+                    <button
+                      data-testid={`agg-month-check-${m.label}`}
+                      className="agg-benefit-card__row-check"
+                      onClick={() => {
+                        onToggleUsage(
+                          item.card.id,
+                          item.benefit.id,
+                          m.faceValue,
+                          m.cycleStart,
+                        );
+                      }}
+                      aria-label="标记使用"
+                    >
+                      ✓
+                    </button>
+                  )
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </GlassContainer>

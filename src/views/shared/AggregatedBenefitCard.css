@@ -41,6 +41,10 @@
 .agg-benefit-card__row--used {
   color: var(--text-primary);
 }
+.agg-benefit-card__row--partial .agg-benefit-card__row-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
 .agg-benefit-card__row-check {
   padding: 2px 8px;
   border: 1px solid var(--border-subtle);

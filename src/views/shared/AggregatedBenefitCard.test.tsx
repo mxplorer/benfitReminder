@@ -82,6 +82,31 @@ describe("AggregatedBenefitCard", () => {
   });
 });
 
+describe("AggregatedBenefitCard — partial consumption display", () => {
+  it("shows 'used $X / $F' for months with partial consumption (consumed > 0 but < faceValue)", () => {
+    const item: BenefitDisplayItem = {
+      benefit, card, key: "agg-all", variant: "aggregated",
+      aggregate: {
+        kind: "all",
+        months: [
+          // partial: consumed 6 of 15
+          { label: "2月", used: false, faceValue: 15, consumedValue: 6, cycleStart: "2026-02-01", cycleEnd: "2026-02-28" },
+          // fully unused (no consumption yet)
+          { label: "3月", used: false, faceValue: 15, consumedValue: 0, cycleStart: "2026-03-01", cycleEnd: "2026-03-31" },
+        ],
+        usedCount: 0, unusedCount: 2, totalActualValue: 5, totalFaceValue: 30,
+      },
+    };
+    render(<AggregatedBenefitCard item={item} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    const partialRow = screen.getByTestId("agg-month-row-2月");
+    expect(partialRow).toHaveTextContent("已用 $6 / $15");
+    expect(partialRow.className).toContain("agg-benefit-card__row--partial");
+    // Fully-unused month still shows plain face value
+    expect(screen.getByTestId("agg-month-row-3月")).toHaveTextContent("$15");
+  });
+});
+
 describe("AggregatedBenefitCard — uncheck used row", () => {
   const allKindItem: BenefitDisplayItem = {
     benefit,
