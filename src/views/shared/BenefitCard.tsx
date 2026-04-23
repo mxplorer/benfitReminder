@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Benefit, CreditCard, ResetType, UsageRecord } from "../../models/types";
 import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
 import { getAvailableValue } from "../../utils/rollover";
@@ -31,6 +31,9 @@ interface BenefitCardProps {
   onEditRollover?: (cardId: string, benefitId: string) => void;
   onToggleHidden?: (cardId: string, benefitId: string) => void;
   onDelete?: (cardId: string, benefitId: string) => void;
+  /** New in Batch 4 — opens usage-record manager for this benefit. Wired to
+   *  CardDetail navigation in Batch 5. */
+  onManageUsage?: (cardId: string, benefitId: string) => void;
   compact?: boolean;
   periodLabel?: string;
   cycleRecord?: UsageRecord;
@@ -112,6 +115,7 @@ export const BenefitCard = ({
   onEditRollover,
   onToggleHidden,
   onDelete,
+  onManageUsage,
   compact = false,
   periodLabel,
   cycleRecord,
@@ -164,8 +168,21 @@ export const BenefitCard = ({
   const [pendingDate, setPendingDate] = useState<string>(defaultPendingDate);
   const [pendingPropagate, setPendingPropagate] = useState<boolean>(false);
   const [editMode, setEditMode] = useState<"add" | "edit">("add");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);
   const monthlyLike = isMonthlyLikeBenefit(benefit);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => { document.removeEventListener("mousedown", handler); };
+  }, [menuOpen]);
 
   const deadline = getDeadline(today, {
     resetType: benefit.resetType,
@@ -345,54 +362,72 @@ export const BenefitCard = ({
 
       {pendingValue === null ? (
         <div className="benefit-card__actions">
-          <div className="benefit-card__actions-icons">
-            {onToggleHidden && (
-              <button
-                type="button"
-                className="benefit-card__icon-btn"
-                onClick={() => { onToggleHidden(card.id, benefit.id); }}
-                aria-label={benefit.isHidden ? "取消隐藏" : "隐藏"}
-                title={benefit.isHidden ? "取消隐藏" : "隐藏"}
-              >
-                {benefit.isHidden ? (
-                  <svg
-                    width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth={2}
-                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                  >
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                ) : (
-                  <svg
-                    width="14" height="14" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth={2}
-                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                  >
-                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                    <line x1="2" x2="22" y1="2" y2="22" />
-                  </svg>
-                )}
-              </button>
-            )}
-            {onDelete && !benefit.templateBenefitId && (
-              <button
-                type="button"
-                className="benefit-card__icon-btn benefit-card__icon-btn--danger"
-                onClick={() => {
-                  if (window.confirm(`确定删除权益 "${benefit.name}" 吗？`)) {
-                    onDelete(card.id, benefit.id);
-                  }
-                }}
-                aria-label="删除权益"
-                title="删除权益"
-              >
-                ✕
-              </button>
-            )}
+          {(onManageUsage ||
+            onToggleHidden ||
+            (onDelete && !benefit.templateBenefitId)) && (
+          <div className="benefit-card__actions-menu-wrap" ref={menuRef}>
+            <button
+              type="button"
+              className="benefit-card__icon-btn"
+              onClick={() => { setMenuOpen((o) => !o); }}
+              aria-label="更多操作"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              title="更多操作"
+            >
+              <span aria-hidden="true">⋯</span>
+            </button>
+            <div
+              className={`benefit-card__actions-menu${menuOpen ? " benefit-card__actions-menu--open" : ""}`}
+              role="menu"
+            >
+              {onManageUsage && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="benefit-card__actions-menu-item"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onManageUsage(card.id, benefit.id);
+                  }}
+                  aria-label="管理使用"
+                >
+                  管理使用
+                </button>
+              )}
+              {onToggleHidden && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="benefit-card__actions-menu-item"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onToggleHidden(card.id, benefit.id);
+                  }}
+                  aria-label={benefit.isHidden ? "取消隐藏" : "隐藏"}
+                >
+                  {benefit.isHidden ? "取消隐藏" : "隐藏"}
+                </button>
+              )}
+              {onDelete && !benefit.templateBenefitId && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="benefit-card__actions-menu-item benefit-card__actions-menu-item--danger"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (window.confirm(`确定删除权益 "${benefit.name}" 吗？`)) {
+                      onDelete(card.id, benefit.id);
+                    }
+                  }}
+                  aria-label="删除权益"
+                >
+                  删除权益
+                </button>
+              )}
+            </div>
           </div>
+          )}
           {onEditRollover && benefit.rolloverable && (
             <button
               type="button"

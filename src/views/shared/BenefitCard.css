@@ -171,11 +171,45 @@
   gap: 6px;
   margin-top: 2px;
 }
-.benefit-card__actions-icons {
-  display: flex;
-  gap: 2px;
+/* Batch 4 — ⋯ dropdown menu anchor */
+.benefit-card__actions-menu-wrap {
+  position: relative;
   flex-shrink: 0;
 }
+
+.benefit-card__actions-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  display: none;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+.benefit-card__actions-menu--open { display: flex; }
+
+.benefit-card__actions-menu-item {
+  background: none;
+  border: none;
+  padding: 7px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-family: inherit;
+  border-radius: 5px;
+  transition: background 0.15s ease;
+}
+.benefit-card__actions-menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+.benefit-card__actions-menu-item--danger { color: var(--color-red); }
+.benefit-card__actions-menu-item--danger:hover { background: rgba(255, 59, 48, 0.08); }
 
 .benefit-card__icon-btn {
   width: 28px;
@@ -196,11 +230,6 @@
   background: rgba(0, 0, 0, 0.04);
   color: var(--text-primary);
 }
-.benefit-card__icon-btn--danger:hover {
-  color: var(--color-red);
-  border-color: rgba(255, 59, 48, 0.3);
-}
-
 /* 结转 chip button */
 .benefit-card__chip-btn {
   height: 28px;
@@ -364,6 +393,17 @@
   .benefit-card__icon-btn:hover,
   .benefit-card__chip-btn:hover {
     background: rgba(255, 255, 255, 0.06);
+  }
+  .benefit-card__actions-menu {
+    background: rgba(40, 40, 45, 0.98);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  }
+  .benefit-card__actions-menu-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .benefit-card__actions-menu-item--danger:hover {
+    background: rgba(255, 59, 48, 0.14);
   }
   .benefit-card__use-btn--active {
     background: #f2f2f7;

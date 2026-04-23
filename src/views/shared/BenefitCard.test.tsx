@@ -869,3 +869,118 @@ describe("BenefitCard — Batch 3 本次面值 + remaining-aware button", () => 
     expect(screen.getByLabelText("取消使用")).toBeInTheDocument();
   });
 });
+
+describe("BenefitCard — Batch 4 ⋯ action menu", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    useCardStore.getState().recalculate();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("menu is closed by default — menu container lacks --open class", () => {
+    const benefit = makeBenefit();
+    const { container } = render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onToggleHidden={vi.fn()}
+      />,
+    );
+    const menu = container.querySelector(".benefit-card__actions-menu");
+    expect(menu).not.toBeNull();
+    expect(menu?.className).not.toContain("benefit-card__actions-menu--open");
+    // items are still in DOM so existing getByLabelText continues to work
+    expect(screen.getByLabelText("隐藏")).toBeInTheDocument();
+  });
+
+  it("clicking ⋯ trigger opens the menu", () => {
+    const benefit = makeBenefit();
+    const { container } = render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onToggleHidden={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByLabelText("更多操作");
+    fireEvent.click(trigger);
+    const menu = container.querySelector(".benefit-card__actions-menu");
+    expect(menu?.className).toContain("benefit-card__actions-menu--open");
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("clicking 管理使用 fires onManageUsage with (cardId, benefitId) and closes menu", () => {
+    const onManageUsage = vi.fn();
+    const benefit = makeBenefit({ id: "b1" });
+    const card = makeCard({ id: "c1" });
+    const { container } = render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={vi.fn()}
+        onManageUsage={onManageUsage}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("更多操作"));
+    fireEvent.click(screen.getByLabelText("管理使用"));
+    expect(onManageUsage).toHaveBeenCalledTimes(1);
+    expect(onManageUsage).toHaveBeenCalledWith("c1", "b1");
+    const menu = container.querySelector(".benefit-card__actions-menu");
+    expect(menu?.className).not.toContain("benefit-card__actions-menu--open");
+  });
+
+  it("clicking 隐藏 menu item fires onToggleHidden and closes menu", () => {
+    const onToggleHidden = vi.fn();
+    const benefit = makeBenefit({ id: "b1" });
+    const card = makeCard({ id: "c1" });
+    const { container } = render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={vi.fn()}
+        onToggleHidden={onToggleHidden}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("更多操作"));
+    fireEvent.click(screen.getByLabelText("隐藏"));
+    expect(onToggleHidden).toHaveBeenCalledWith("c1", "b1");
+    const menu = container.querySelector(".benefit-card__actions-menu");
+    expect(menu?.className).not.toContain("benefit-card__actions-menu--open");
+  });
+
+  it("does not render 管理使用 item when onManageUsage prop is not supplied", () => {
+    const benefit = makeBenefit();
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onToggleHidden={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("管理使用")).not.toBeInTheDocument();
+  });
+
+  it("mousedown outside the menu closes it", () => {
+    const benefit = makeBenefit();
+    const { container } = render(
+      <BenefitCard
+        benefit={benefit}
+        card={makeCard()}
+        onToggleUsage={vi.fn()}
+        onToggleHidden={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("更多操作"));
+    const menu = container.querySelector(".benefit-card__actions-menu");
+    expect(menu?.className).toContain("benefit-card__actions-menu--open");
+    // click outside
+    fireEvent.mouseDown(document.body);
+    expect(menu?.className).not.toContain("benefit-card__actions-menu--open");
+  });
+});
