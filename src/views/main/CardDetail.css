@@ -18,8 +18,7 @@
   padding: 0;
   color: var(--text-tertiary);
   cursor: pointer;
-  font-size: inherit;
-  font-family: inherit;
+  font: inherit;
   transition: color 0.15s ease;
 }
 .card-detail__breadcrumb-link:hover {
@@ -27,7 +26,6 @@
 }
 .card-detail__breadcrumb-current {
   color: var(--text-secondary);
-  font-weight: 500;
 }
 
 /* Hero — flat, flowing on page */
@@ -355,6 +353,54 @@
   border-radius: 10px;
 }
 
+.card-detail__history-actions {
+  text-align: right;
+  white-space: nowrap;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.card-detail__history-table td.card-detail__history-actions {
+  /* override nth-child text-align inherited above */
+  text-align: right;
+}
+
+.card-detail__history-action-btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.card-detail__history-action-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.card-detail__history-action-btn--danger {
+  color: rgb(200, 30, 30);
+  border-color: rgba(200, 30, 30, 0.25);
+}
+
+.card-detail__history-action-btn--danger:hover {
+  background: rgba(200, 30, 30, 0.08);
+  border-color: rgba(200, 30, 30, 0.4);
+}
+
+@keyframes card-detail__history-row-fade {
+  0% { background-color: rgba(255, 215, 0, 0.25); }
+  100% { background-color: transparent; }
+}
+
+.card-detail__history-row--highlight > td {
+  animation: card-detail__history-row-fade 2s ease-out forwards;
+}
+
 /* Hero collapse on narrow */
 @media (max-width: 900px) {
   .card-detail__header {
@@ -372,7 +418,7 @@
 }
 
 /* Dark mode */
-@media (prefers-color-scheme: dark) {
+:root[data-theme-effective="dark"] {
   .card-detail__roi-strip,
   .card-detail__history-table {
     background: rgba(255, 255, 255, 0.04);
@@ -404,12 +450,28 @@
   .card-detail__actions-menu-item:hover {
     background: rgba(255, 255, 255, 0.06);
   }
-}
-@media (prefers-color-scheme: dark) and (max-width: 700px) {
-  .card-detail__roi-cell {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
+  .card-detail__history-action-btn {
+    border-color: rgba(255, 255, 255, 0.1);
   }
-  .card-detail__roi-cell:nth-child(2n+1) {
-    border-right-color: rgba(255, 255, 255, 0.08);
+  .card-detail__history-action-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .card-detail__history-action-btn--danger {
+    color: rgb(255, 100, 100);
+    border-color: rgba(255, 100, 100, 0.25);
+  }
+  .card-detail__history-action-btn--danger:hover {
+    background: rgba(255, 100, 100, 0.12);
+    border-color: rgba(255, 100, 100, 0.45);
+  }
+}
+@media (max-width: 700px) {
+  :root[data-theme-effective="dark"] {
+    .card-detail__roi-cell {
+      border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .card-detail__roi-cell:nth-child(2n+1) {
+      border-right-color: rgba(255, 255, 255, 0.08);
+    }
   }
 }

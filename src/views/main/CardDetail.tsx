@@ -13,8 +13,18 @@ import { BenefitCard } from "../shared/BenefitCard";
 import { BenefitFilterBar } from "../shared/BenefitFilterBar";
 import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
 import { RolloverEditDialog } from "./RolloverEditDialog";
+import { UsageRecordEditDialog } from "./UsageRecordEditDialog";
 import type { ActiveView } from "./MainWindow";
+import type { Benefit, UsageRecord } from "../../models/types";
 import "./CardDetail.css";
+
+interface EditingRecord {
+  cardId: string;
+  benefitId: string;
+  recordIndex: number;
+  record: UsageRecord;
+  benefit: Benefit;
+}
 
 interface CardDetailProps {
   cardId: string;
@@ -30,13 +40,17 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const removeCard = useCardStore((s) => s.removeCard);
   const removeBenefit = useCardStore((s) => s.removeBenefit);
   const toggleBenefitHidden = useCardStore((s) => s.toggleBenefitHidden);
+  const removeBenefitUsageRecord = useCardStore((s) => s.removeBenefitUsageRecord);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
   const [filter, setFilter] = useState<FilterMode>("available");
   const [scope, setScope] = useState<YearScope>("calendar");
   const [editRolloverBenefitId, setEditRolloverBenefitId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<EditingRecord | null>(null);
+  const [highlightBenefitId, setHighlightBenefitId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const historySectionRef = useRef<HTMLDivElement>(null);
   const today = useToday();
 
   useEffect(() => {
@@ -74,14 +88,37 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
 
   const allRecords = card.benefits
     .flatMap((b) =>
-      b.usageRecords.map((r) => ({
+      b.usageRecords.map((r, idx) => ({
         ...r,
         benefitName: b.name,
         benefitId: b.id,
         benefitFaceValue: b.faceValue,
+        originalIndex: idx,
       })),
     )
     .sort((a, b) => b.usedDate.localeCompare(a.usedDate));
+
+  const handleManageUsage = (_cardId: string, benefitId: string) => {
+    setHighlightBenefitId(benefitId);
+    // scrollIntoView may be missing in jsdom; guard for test environment.
+    const section = historySectionRef.current;
+    if (section && typeof section.scrollIntoView === "function") {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    setTimeout(() => { setHighlightBenefitId(null); }, 2000);
+  };
+
+  const handleDeleteRecord = (benefitId: string, recordIndex: number) => {
+    if (!window.confirm("确定删除这条使用记录？")) return;
+    removeBenefitUsageRecord(cardId, benefitId, recordIndex);
+  };
+
+  const openEdit = (benefitId: string, recordIndex: number) => {
+    const benefit = card.benefits.find((b) => b.id === benefitId);
+    if (!benefit) return;
+    const record = benefit.usageRecords[recordIndex];
+    setEditingRecord({ cardId, benefitId, recordIndex, record, benefit });
+  };
 
   return (
     <div className="card-detail">
@@ -246,6 +283,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                 onEditRollover={(_cardId, benefitId) => { setEditRolloverBenefitId(benefitId); }}
                 onToggleHidden={toggleBenefitHidden}
                 onDelete={removeBenefit}
+                onManageUsage={handleManageUsage}
                 periodLabel={item.periodLabel}
                 cycleStart={item.periodStart}
                 cycleEnd={item.periodEnd}
@@ -273,7 +311,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
         );
       })()}
 
-      <div className="card-detail__history-section">
+      <div className="card-detail__history-section" ref={historySectionRef}>
         <span className="card-detail__section-title">使用记录</span>
         {allRecords.length === 0 ? (
           <p className="card-detail__history-empty">暂无使用记录</p>
@@ -285,17 +323,43 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                 <th>权益</th>
                 <th>面值</th>
                 <th>实际</th>
+                <th aria-label="操作" />
               </tr>
             </thead>
             <tbody>
               {allRecords.map((r, i) => {
                 const isRollover = r.kind === "rollover";
+                const highlight = highlightBenefitId === r.benefitId;
+                const rowClass = highlight ? "card-detail__history-row--highlight" : undefined;
                 return (
-                  <tr key={`${r.benefitId}-${r.usedDate}-${String(i)}`}>
+                  <tr
+                    key={`${r.benefitId}-${r.usedDate}-${String(i)}`}
+                    className={rowClass}
+                    data-benefit-id={r.benefitId}
+                    data-testid="history-row"
+                  >
                     <td>{r.usedDate}</td>
                     <td>{isRollover ? `${r.benefitName} · 结转` : r.benefitName}</td>
                     <td>${String(isRollover ? r.benefitFaceValue : r.faceValue)}</td>
                     <td>${String(r.actualValue)}</td>
+                    <td className="card-detail__history-actions">
+                      <button
+                        type="button"
+                        className="card-detail__history-action-btn"
+                        aria-label="编辑"
+                        onClick={() => { openEdit(r.benefitId, r.originalIndex); }}
+                      >
+                        编辑
+                      </button>
+                      <button
+                        type="button"
+                        className="card-detail__history-action-btn card-detail__history-action-btn--danger"
+                        aria-label="删除"
+                        onClick={() => { handleDeleteRecord(r.benefitId, r.originalIndex); }}
+                      >
+                        删除
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -303,6 +367,17 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
           </table>
         )}
       </div>
+
+      {editingRecord && (
+        <UsageRecordEditDialog
+          cardId={editingRecord.cardId}
+          benefitId={editingRecord.benefitId}
+          recordIndex={editingRecord.recordIndex}
+          record={editingRecord.record}
+          benefit={editingRecord.benefit}
+          onClose={() => { setEditingRecord(null); }}
+        />
+      )}
     </div>
   );
 };

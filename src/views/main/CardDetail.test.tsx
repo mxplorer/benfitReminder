@@ -200,6 +200,92 @@ describe("CardDetail rollover edit dialog", () => {
   });
 });
 
+describe("CardDetail usage-record row actions", () => {
+  const seedCardWithRecords = () => {
+    useCardStore.setState({
+      cards: [
+        makeCard({
+          id: "c1",
+          benefits: [
+            makeBenefit({
+              id: "b1",
+              name: "Hotel Credit",
+              faceValue: 200,
+              resetType: "calendar",
+              resetConfig: { period: "annual" },
+              usageRecords: [
+                { usedDate: "2026-03-01", faceValue: 200, actualValue: 150, kind: "usage" },
+                { usedDate: "2026-02-10", faceValue: 200, actualValue: 175, kind: "usage" },
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  };
+
+  it("renders 编辑 and 删除 buttons per history row", () => {
+    seedCardWithRecords();
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+    const rows = screen.getAllByTestId("history-row");
+    expect(rows).toHaveLength(2);
+    expect(screen.getAllByLabelText("编辑")).toHaveLength(2);
+    expect(screen.getAllByLabelText("删除")).toHaveLength(2);
+  });
+
+  it("clicking 编辑 opens dialog prefilled with row values", () => {
+    seedCardWithRecords();
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+    // First row sorted desc by date => 2026-03-01 (faceValue 200, actualValue 150)
+    const editBtns = screen.getAllByLabelText("编辑");
+    fireEvent.click(editBtns[0]);
+
+    expect(screen.getByRole("dialog", { name: "编辑使用记录" })).toBeInTheDocument();
+    const face = screen.getByLabelText<HTMLInputElement>("本次面值");
+    const actual = screen.getByLabelText<HTMLInputElement>("实际到手");
+    const date = screen.getByLabelText<HTMLInputElement>("使用日期");
+    expect(face.value).toBe("200");
+    expect(actual.value).toBe("150");
+    expect(date.value).toBe("2026-03-01");
+  });
+
+  it("clicking 删除 after confirm removes the correct record by original index", () => {
+    seedCardWithRecords();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+
+    // First row in rendered table is sorted-desc => record with usedDate 2026-03-01
+    // which is at original index 0 in benefit.usageRecords.
+    fireEvent.click(screen.getAllByLabelText("删除")[0]);
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records).toHaveLength(1);
+    expect(records[0].usedDate).toBe("2026-02-10");
+    confirmSpy.mockRestore();
+  });
+
+  it("onManageUsage from BenefitCard highlights matching rows", () => {
+    seedCardWithRecords();
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+
+    // Switch to 全部 so the annual benefit renders as a BenefitCard regardless
+    // of whether its current annual cycle has been marked used.
+    fireEvent.click(screen.getByTestId("filter-pill-all"));
+
+    // Open BenefitCard's ⋯ menu then click 管理使用. CardDetail header also has
+    // a 更多操作 button, so scope to the benefit grid.
+    const grid = screen.getByTestId("benefits-grid");
+    const moreBtns = grid.querySelectorAll<HTMLButtonElement>('[aria-label="更多操作"]');
+    if (moreBtns.length === 0) throw new Error("no BenefitCard more-button");
+    fireEvent.click(moreBtns[0]);
+    fireEvent.click(screen.getByLabelText("管理使用"));
+
+    const rows = screen.getAllByTestId("history-row");
+    expect(rows[0].className).toMatch(/card-detail__history-row--highlight/);
+    expect(rows[0].getAttribute("data-benefit-id")).toBe("b1");
+  });
+});
+
 describe("CardDetail cycle-scoped toggle integration", () => {
   it("unchecking a past quarterly cycle in 全部 removes that cycle's record, not today's", () => {
     useCardStore.setState({
