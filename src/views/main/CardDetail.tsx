@@ -94,7 +94,6 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
         ...r,
         benefitName: b.name,
         benefitId: b.id,
-        benefitFaceValue: b.faceValue,
         originalIndex: idx,
       })),
     )
@@ -351,7 +350,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                   >
                     <td>{r.usedDate}</td>
                     <td>{isRollover ? `${r.benefitName} · 结转` : r.benefitName}</td>
-                    <td>${String(isRollover ? r.benefitFaceValue : r.faceValue)}</td>
+                    <td>${String(r.faceValue)}</td>
                     <td>${String(r.actualValue)}</td>
                     <td className="card-detail__history-actions">
                       <button

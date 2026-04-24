@@ -69,7 +69,6 @@ export const UsageRecordEditDialog = ({
           <input
             type="number"
             min={0}
-            max={benefit.faceValue}
             aria-label="本次面值"
             className="usage-record-dialog__input"
             value={consumedFace}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BenefitDisplayItem } from "../../utils/benefitDisplay";
 import { useToday } from "../../stores/useToday";
 import { formatDate, getConsumedInPeriod, getCurrentPeriodRange } from "../../utils/period";
+import { getTotalFaceWithRollover } from "../../utils/rollover";
 import { GlassContainer } from "./GlassContainer";
 import "./AggregatedBenefitCard.css";
 
@@ -113,7 +114,7 @@ export const AggregatedBenefitCard = ({
   const currentConsumed = inCurrentRange
     ? getConsumedInPeriod(benefit, today, card.cardOpenDate)
     : 0;
-  const currentFace = benefit.faceValue;
+  const currentFace = getTotalFaceWithRollover(benefit, today);
   const currentPct = currentFace > 0
     ? Math.max(0, Math.min(100, (currentConsumed / currentFace) * 100))
     : 0;

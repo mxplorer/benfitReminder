@@ -91,7 +91,7 @@ export const BenefitHistoryDialog = ({
                     >
                       <td>{record.usedDate}</td>
                       <td>
-                        ${String(isRollover ? benefit.faceValue : record.faceValue)}
+                        ${String(record.faceValue)}
                         {isRollover && (
                           <span className="benefit-history-dialog__tag">结转</span>
                         )}
