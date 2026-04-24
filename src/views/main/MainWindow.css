@@ -48,7 +48,7 @@
   );
 }
 
-@media (prefers-color-scheme: dark) {
+:root[data-theme-effective="dark"] {
   .sidebar {
     background: linear-gradient(
       to right,
@@ -106,7 +106,7 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
+:root[data-theme-effective="dark"] {
   .sidebar__nav-item:hover {
     background: rgba(255, 255, 255, 0.05);
   }
@@ -152,7 +152,7 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-@media (prefers-color-scheme: dark) {
+:root[data-theme-effective="dark"] {
   .sidebar__card-item:hover {
     background: rgba(255, 255, 255, 0.05);
   }
@@ -247,7 +247,7 @@
   color: var(--text-primary);
 }
 
-@media (prefers-color-scheme: dark) {
+:root[data-theme-effective="dark"] {
   .sidebar__add-card-icon {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.14);

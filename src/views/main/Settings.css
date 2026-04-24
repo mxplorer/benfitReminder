@@ -43,7 +43,7 @@
   outline: none;
 }
 
-@media (prefers-color-scheme: dark) {
+:root[data-theme-effective="dark"] {
   .settings__section input[type="number"] {
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.12);
@@ -70,6 +70,51 @@
 .settings__section button:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+/* Theme segmented control */
+.settings__theme {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 2px;
+  align-self: flex-start;
+}
+
+.settings__theme-option {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--font-family);
+  color: var(--text-secondary);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings__theme-option:hover {
+  color: var(--text-primary);
+}
+
+.settings__theme-option--active {
+  background: #fff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme-effective="dark"] {
+  .settings__theme {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  .settings__theme-option--active {
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .settings__danger-zone {

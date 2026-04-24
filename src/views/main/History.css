@@ -19,6 +19,15 @@
   margin-bottom: 12px;
 }
 
+.history__card-img {
+  width: 28px;
+  height: 18px;
+  border-radius: 3px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+
 .history__card-name {
   font-size: 15px;
   font-weight: 600;

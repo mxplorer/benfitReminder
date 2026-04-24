@@ -61,7 +61,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
           className={`sidebar__nav-item${isNavActive("dashboard") ? " sidebar__nav-item--active" : ""}`}
           onClick={() => { onNavigate("dashboard"); }}
         >
-          Dashboard
+          概览
         </button>
         <button
           className={`sidebar__nav-item${isNavActive("history") ? " sidebar__nav-item--active" : ""}`}

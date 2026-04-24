@@ -1,14 +1,24 @@
+import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { GlassContainer } from "../shared/GlassContainer";
 import { getMetrics } from "../../lib/transports";
 import { exportToFile, importFromFile } from "../../tauri/bridge";
+import type { ThemePreference } from "../../models/types";
+import { DataEditorDialog } from "./DataEditorDialog";
 import "./Settings.css";
+
+const THEME_OPTIONS: Array<{ value: ThemePreference; label: string }> = [
+  { value: "light", label: "浅色" },
+  { value: "dark", label: "深色" },
+  { value: "system", label: "跟随系统" },
+];
 
 export const Settings = () => {
   const settings = useCardStore((s) => s.settings);
   const updateSettings = useCardStore((s) => s.updateSettings);
   const exportData = useCardStore((s) => s.exportData);
   const importData = useCardStore((s) => s.importData);
+  const [editorOpen, setEditorOpen] = useState<boolean>(false);
 
   const handleExport = async () => {
     const json = exportData();
@@ -72,6 +82,28 @@ export const Settings = () => {
   return (
     <div className="settings" data-testid="settings">
       <GlassContainer className="settings__section">
+        <h3>外观</h3>
+        <div className="settings__theme" role="radiogroup" aria-label="主题">
+          {THEME_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={settings.theme === opt.value}
+              className={
+                "settings__theme-option" +
+                (settings.theme === opt.value ? " settings__theme-option--active" : "")
+              }
+              onClick={() => { updateSettings({ theme: opt.value }); }}
+              data-testid={`theme-${opt.value}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </GlassContainer>
+
+      <GlassContainer className="settings__section">
         <h3>提醒设置</h3>
         <label>
           <input
@@ -134,6 +166,23 @@ export const Settings = () => {
           </button>
         </label>
       </GlassContainer>
+
+      {import.meta.env.DEV && (
+        <GlassContainer className="settings__section">
+          <h3>开发者</h3>
+          <button
+            type="button"
+            onClick={() => { setEditorOpen(true); }}
+            data-testid="open-data-editor-btn"
+          >
+            打开数据编辑器
+          </button>
+        </GlassContainer>
+      )}
+
+      {editorOpen && (
+        <DataEditorDialog onClose={() => { setEditorOpen(false); }} />
+      )}
 
       <GlassContainer className="settings__section settings__danger-zone">
         <h3>危险操作</h3>

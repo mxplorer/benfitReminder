@@ -11,6 +11,7 @@ import "./History.css";
 export const History = () => {
   const cards = useCardStore((s) => s.cards);
   const getCardType = useCardTypeStore((s) => s.getCardType);
+  const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const today = useToday();
   // yearOffset per card: 0 = current membership year, -1 = previous, -2 = two years ago
   const [offsets, setOffsets] = useState<Record<string, number>>({});
@@ -29,12 +30,18 @@ export const History = () => {
         {enabledCards.map((card) => {
           const offset = offsets[card.id] ?? 0;
           const roi = calculateCardROI(card, today, offset);
+          const img = getCardImage(card.cardTypeSlug);
+          const displayName = getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name);
 
           return (
             <GlassContainer key={card.id} className="history__card-section">
               <div className="history__card-header">
-                <CardChip color={card.color} size="small" />
-                <span className="history__card-name">{getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}</span>
+                {img ? (
+                  <img src={img} alt={displayName} className="history__card-img" />
+                ) : (
+                  <CardChip color={card.color} size="small" />
+                )}
+                <span className="history__card-name">{displayName}</span>
                 <div className="history__year-selector">
                   {YEAR_OFFSETS.map((o) => {
                     // Compute the calendar year label for this offset's membership year start

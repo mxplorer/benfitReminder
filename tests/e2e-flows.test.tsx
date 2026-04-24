@@ -311,7 +311,7 @@ describe("E2E: Sidebar navigation + Dashboard", () => {
     expect(screen.getByTestId("view-settings")).toBeInTheDocument();
 
     // Back to Dashboard
-    fireEvent.click(screen.getByText("Dashboard"));
+    fireEvent.click(screen.getByText("概览"));
     expect(screen.getByTestId("view-dashboard")).toBeInTheDocument();
   });
 });
