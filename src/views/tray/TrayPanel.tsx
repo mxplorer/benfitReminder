@@ -10,7 +10,6 @@ type Tab = "by-card" | "by-urgency";
 
 export const TrayPanel = () => {
   const [activeTab, setActiveTab] = useState<Tab>("by-card");
-  const unusedCount = useCardStore((s) => s.getUnusedBenefitCount());
   const updateSettings = useCardStore((s) => s.updateSettings);
 
   useEffect(() => {
@@ -40,11 +39,13 @@ export const TrayPanel = () => {
   return (
     <div className="tray-panel">
       <header className="tray-panel__header">
-        <span className="tray-panel__count">
-          {unusedCount > 0 ? `${String(unusedCount)} 项未使用权益` : "全部权益已使用"}
-        </span>
-        <button className="tray-panel__open-link" onClick={handleOpenMain}>
-          详情窗口 ↗
+        <button
+          className="tray-panel__open-link"
+          onClick={handleOpenMain}
+          aria-label="打开主窗口"
+          title="打开主窗口"
+        >
+          ↗
         </button>
       </header>
 

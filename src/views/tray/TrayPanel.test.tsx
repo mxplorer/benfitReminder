@@ -35,15 +35,9 @@ describe("TrayPanel", () => {
     expect(byCardTab.className).not.toContain("tray-panel__tab--active");
   });
 
-  it("renders 详情窗口 link", () => {
+  it("renders open-main-window icon button", () => {
     render(<TrayPanel />);
-    expect(screen.getByText(/详情窗口/)).toBeInTheDocument();
-  });
-
-  it("shows unused count from store", () => {
-    // No cards → 0 unused
-    render(<TrayPanel />);
-    expect(screen.getByText("全部权益已使用")).toBeInTheDocument();
+    expect(screen.getByLabelText("打开主窗口")).toBeInTheDocument();
   });
 
   it("dismiss button sets dismissedDate in store", () => {

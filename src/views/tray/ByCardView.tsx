@@ -1,15 +1,9 @@
-import { useState } from "react";
 import { useCardStore } from "../../stores/useCardStore";
 import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
-import {
-  expandBenefitsForFilter,
-  type FilterMode,
-  type YearScope,
-} from "../../utils/benefitDisplay";
+import { expandBenefitsForFilter } from "../../utils/benefitDisplay";
 import { CardChip } from "../shared/CardChip";
-import { BenefitFilterBar } from "../shared/BenefitFilterBar";
 import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
 import { BenefitRow } from "../shared/BenefitRow";
 import "./TrayViews.css";
@@ -20,22 +14,14 @@ export const ByCardView = () => {
   const setBenefitCycleUsed = useCardStore((s) => s.setBenefitCycleUsed);
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
-  const [filter, setFilter] = useState<FilterMode>("available");
-  const [scope, setScope] = useState<YearScope>("calendar");
   const today = useToday();
 
   const enabledCards = cards.filter((c) => c.isEnabled);
 
   return (
     <div className="by-card-view">
-      <BenefitFilterBar
-        filter={filter}
-        onChange={setFilter}
-        scope={scope}
-        onScopeChange={setScope}
-      />
       {enabledCards.map((card) => {
-        const items = expandBenefitsForFilter(card, filter, today, scope);
+        const items = expandBenefitsForFilter(card, "available", today, "calendar");
         if (items.length === 0) return null;
 
         const unusedCount = items.filter(
@@ -57,7 +43,7 @@ export const ByCardView = () => {
               <span className="by-card-view__card-name">
                 {getCardDisplayName(card, getCardType(card.cardTypeSlug)?.name)}
               </span>
-              {filter === "available" && unusedCount > 0 && (
+              {unusedCount > 0 && (
                 <span className="by-card-view__unused-badge">{unusedCount}</span>
               )}
             </div>

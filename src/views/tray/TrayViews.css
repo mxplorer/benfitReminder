@@ -2,7 +2,7 @@
 .by-card-view {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .by-card-view__group-header {
@@ -47,14 +47,14 @@
 .by-card-view__rows {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 /* ByUrgencyView */
 .by-urgency-view {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .by-urgency-view__empty {

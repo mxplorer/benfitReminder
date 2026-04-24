@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { ByCardView } from "./ByCardView";
 import { useCardStore } from "../../stores/useCardStore";
 
@@ -43,29 +43,19 @@ describe("ByCardView filter integration", () => {
     });
   });
 
-  it("defaults to 可使用 and shows card groups with applicable benefits only", () => {
+  it("shows only available (non-hidden, non-used) benefits — no filter bar", () => {
     render(<ByCardView />);
-    const pill = screen.getByTestId("filter-pill-available");
-    expect(pill.className).toMatch(/active/);
+    // Hidden benefit never surfaces in the tray's by-card view
     expect(screen.queryByText("All Hidden")).toBeNull();
+    // The filter bar was removed; assert no filter pills present
+    expect(screen.queryByTestId("filter-pill-available")).toBeNull();
+    expect(screen.queryByTestId("filter-pill-hidden")).toBeNull();
   });
 
-  it("shows hidden benefits under 已隐藏", () => {
+  it("hides card group entirely when all of its benefits are hidden or used", () => {
     render(<ByCardView />);
-    fireEvent.click(screen.getByTestId("filter-pill-hidden"));
-    expect(screen.getByText("All Hidden")).toBeInTheDocument();
-  });
-
-  it("aggregates monthly under 已使用", () => {
-    render(<ByCardView />);
-    fireEvent.click(screen.getByTestId("filter-pill-used"));
-    expect(screen.getByText(/Uber Eats/)).toBeInTheDocument();
-    expect(screen.getByText(/1 次/)).toBeInTheDocument();
-  });
-
-  it("hides card group when its expansion is empty", () => {
-    render(<ByCardView />);
-    fireEvent.click(screen.getByTestId("filter-pill-used"));
+    // c1's Uber Eats is used this cycle → group empty; c2's only benefit is
+    // hidden → group empty. Neither card name should render.
     expect(screen.queryByText("All Hidden")).toBeNull();
   });
 });
