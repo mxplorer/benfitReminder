@@ -609,3 +609,67 @@ describe("expandBenefitsForFilter — cumulative consumption (Batch 1)", () => {
     expect(items[0].aggregate?.totalActualValue).toBe(28);
   });
 });
+
+// --- Rollover inbound: per-cycle totalFace includes prev cycle's rollover ---
+describe("expandBenefitsForFilter — rollover inbound affects per-cycle used/faceValue", () => {
+  const today = new Date(2026, 3, 14); // 2026-04-14
+
+  it("prev-cycle rollover raises current totalFace → $100 usage no longer flips used", () => {
+    // Mar rolled $100 forward. Apr has $100 usage.
+    // Under the old bug, consumed($100) >= faceValue($100) flipped Apr to used.
+    // Correct behavior: totalFace(Apr) = $100 + $100 inbound = $200, still unused.
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 100,
+      rolloverable: true,
+      rolloverMaxYears: 1,
+      usageRecords: [
+        { usedDate: "2026-03-01", faceValue: 100, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-04-05", faceValue: 100, actualValue: 100, kind: "usage" },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    const apr = items[0]?.aggregate?.months.find((m) => m.cycleStart === "2026-04-01");
+    expect(apr?.faceValue).toBe(200); // face + inbound surfaced to UI
+    expect(apr?.consumedValue).toBe(100);
+    expect(apr?.used).toBe(false);
+  });
+
+  it("current-cycle outbound rollover counts toward consumed → flips used when saturating totalFace", () => {
+    // Apr has $60 usage + rolls $40 out (= a $40 rollover record in Apr).
+    // consumed = 60 + 40 = 100, totalFace = 100, → used.
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 100,
+      rolloverable: true,
+      rolloverMaxYears: 1,
+      usageRecords: [
+        { usedDate: "2026-04-05", faceValue: 60, actualValue: 60, kind: "usage" },
+        { usedDate: "2026-04-01", faceValue: 40, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    const apr = items[0]?.aggregate?.months.find((m) => m.cycleStart === "2026-04-01");
+    expect(apr?.used).toBe(true);
+  });
+
+  it("months without prev-cycle rollover keep intrinsic faceValue", () => {
+    // Jan has no prev rollover → faceValue = benefit.faceValue, not inflated.
+    const b = makeBenefit({
+      id: "b1",
+      resetConfig: { period: "monthly" },
+      faceValue: 100,
+      rolloverable: true,
+      rolloverMaxYears: 1,
+      usageRecords: [],
+    });
+    const card = makeCard([b]);
+    const items = expandBenefitsForFilter(card, "all", today, "calendar");
+    const jan = items[0]?.aggregate?.months.find((m) => m.cycleStart === "2026-01-01");
+    expect(jan?.faceValue).toBe(100);
+  });
+});

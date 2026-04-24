@@ -74,6 +74,34 @@ const consumedForCycle = (
     .reduce((sum, r) => sum + r.faceValue, 0);
 };
 
+/** Sum of rollover.faceValue in the cycle immediately preceding `cycle` —
+ * i.e., how much face was rolled forward INTO `cycle`. Keyed off prev
+ * cycle's cycleKey (day before `cycle.start`) so it works uniformly across
+ * monthly / quarterly / annual / anniversary. */
+const cycleInbound = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  cardOpenDate: string,
+): number => {
+  const dayBefore = new Date(cycle.start + "T00:00:00");
+  dayBefore.setDate(dayBefore.getDate() - 1);
+  const prevKey = cycleKeyForDate(formatDate(dayBefore), benefit, cardOpenDate);
+  return benefit.usageRecords
+    .filter(
+      (r) =>
+        r.kind === "rollover" &&
+        cycleKeyForRecord(r, benefit, cardOpenDate) === prevKey,
+    )
+    .reduce((sum, r) => sum + r.faceValue, 0);
+};
+
+/** Per-cycle ceiling: intrinsic face + inbound rollover from prev cycle. */
+const cycleTotalFace = (
+  benefit: Benefit,
+  cycle: PeriodCycle,
+  cardOpenDate: string,
+): number => benefit.faceValue + cycleInbound(benefit, cycle, cardOpenDate);
+
 /** Sum of actualValue across all records (any kind) in the cycle. */
 const actualValueForCycle = (
   benefit: Benefit,
@@ -132,8 +160,9 @@ const isInUnusedFilter = (
 };
 
 /** Per-cycle "used" decision used when walking cycles inside a card.
- *   - faceValue > 0: consumed >= faceValue (no rollover in per-cycle math
- *     — rollover contribution is accounted for via consumedValue already)
+ *   - faceValue > 0: consumed >= per-cycle totalFace (intrinsic + inbound
+ *     rollover). consumed sums current-cycle records; outbound rollover
+ *     in the current cycle counts toward consumed.
  *   - faceValue == 0: any usage kind record in the cycle */
 const isCycleUsed = (
   benefit: Benefit,
@@ -141,7 +170,9 @@ const isCycleUsed = (
   cardOpenDate: string,
 ): boolean => {
   if (benefit.faceValue > 0) {
-    return consumedForCycle(benefit, cycle, cardOpenDate) >= benefit.faceValue;
+    const consumed = consumedForCycle(benefit, cycle, cardOpenDate);
+    const totalFace = cycleTotalFace(benefit, cycle, cardOpenDate);
+    return consumed >= totalFace;
   }
   return hasUsageRecordInCycle(benefit, cycle, cardOpenDate);
 };
@@ -156,14 +187,14 @@ const buildAggregate = (
     const record = findCycleRecord(benefit, cycle, cardOpenDate);
     const consumedValue = consumedForCycle(benefit, cycle, cardOpenDate);
     // Cumulative face-value rule:
-    //   faceValue > 0 → used when consumed >= faceValue
+    //   faceValue > 0 → used when consumed >= totalFace (face + inbound rollover)
     //   faceValue == 0 → used when cycle has any "usage" kind record
     const used = isCycleUsed(benefit, cycle, cardOpenDate);
     return {
       label: cycle.label,
       used,
       record,
-      faceValue: benefit.faceValue,
+      faceValue: cycleTotalFace(benefit, cycle, cardOpenDate),
       consumedValue,
       cycleStart: cycle.start,
       cycleEnd: cycle.end,
