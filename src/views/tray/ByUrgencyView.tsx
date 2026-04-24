@@ -1,5 +1,4 @@
 import { useCardStore } from "../../stores/useCardStore";
-import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useToday } from "../../stores/useToday";
 import "./TrayViews.css";
 import {
@@ -9,13 +8,11 @@ import {
   isInCurrentCycle,
 } from "../../utils/period";
 import { latestHasPropagate } from "../../utils/usageRecords";
-import { CardChip } from "../shared/CardChip";
-import { BenefitCard } from "../shared/BenefitCard";
+import { BenefitRow } from "../shared/BenefitRow";
 
 export const ByUrgencyView = () => {
   const cards = useCardStore((s) => s.cards);
   const toggleBenefitUsage = useCardStore((s) => s.toggleBenefitUsage);
-  const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const today = useToday();
 
   // Collect all unused, non-hidden, applicable benefits across enabled cards
@@ -62,25 +59,13 @@ export const ByUrgencyView = () => {
         if (!benefit) return null;
 
         return (
-          <div key={`${cardId}-${benefitId}`} className="by-urgency-view__item">
-            <div className="by-urgency-view__source">
-              {getCardImage(card.cardTypeSlug) ? (
-                <img
-                  src={getCardImage(card.cardTypeSlug)}
-                  alt=""
-                  className="by-urgency-view__card-img"
-                />
-              ) : (
-                <CardChip color={card.color} size="small" />
-              )}
-            </div>
-            <BenefitCard
-              benefit={benefit}
-              card={card}
-              onToggleUsage={toggleBenefitUsage}
-              compact
-            />
-          </div>
+          <BenefitRow
+            key={`${cardId}-${benefitId}`}
+            benefit={benefit}
+            card={card}
+            onToggle={toggleBenefitUsage}
+            showCardTag
+          />
         );
       })}
     </div>

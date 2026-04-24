@@ -179,32 +179,63 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Consumption progress bar — shown only for face-valued benefits that still
-   have remaining face value. Fill = consumed / totalFace. */
+/* Consumption progress bar — Dashboard tile-bar shimmer style.
+   Pill shape, shimmering gradient fill, per-status glow ring. */
 .benefit-card__progress {
+  position: relative;
   width: 100%;
-  height: 3px;
-  border-radius: 2px;
+  height: 5px;
+  border-radius: 999px;
   background: rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  --tile-color: var(--color-blue, #007aff);
+  transition: box-shadow 0.25s ease;
 }
 .benefit-card__progress-fill {
+  position: relative;
   height: 100%;
+  min-width: 6px;
   border-radius: inherit;
-  transition: width 0.2s ease;
-  background: var(--color-blue, #007aff);
+  transition: width 0.6s ease;
+  background-image: linear-gradient(
+    90deg,
+    var(--tile-color),
+    color-mix(in srgb, var(--tile-color) 55%, white) 50%,
+    var(--tile-color)
+  );
+  background-size: 220% 100%;
+  animation: benefit-card-bar-shimmer 4s ease-in-out infinite;
 }
-.benefit-card__progress--urgent .benefit-card__progress-fill {
-  background: var(--color-red);
+
+@keyframes benefit-card-bar-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
 }
-.benefit-card__progress--pending .benefit-card__progress-fill {
-  background: var(--text-tertiary);
+
+/* Per-status tile color + ambient glow */
+.benefit-card__progress--ok {
+  --tile-color: var(--color-blue, #007aff);
+  box-shadow: 0 0 10px 0 rgba(10, 132, 255, 0.28);
 }
-.benefit-card__progress--used .benefit-card__progress-fill {
-  background: var(--color-green, #34c759);
+.benefit-card__progress--urgent {
+  --tile-color: var(--color-red);
+  box-shadow: 0 0 10px 0 rgba(239, 68, 68, 0.32);
 }
+.benefit-card__progress--used {
+  --tile-color: var(--color-green, #34c759);
+  box-shadow: 0 0 10px 0 rgba(16, 185, 129, 0.28);
+}
+.benefit-card__progress--pending {
+  --tile-color: var(--text-tertiary);
+  box-shadow: 0 0 10px 0 rgba(120, 120, 128, 0.22);
+}
+
 @media (prefers-color-scheme: dark) {
   .benefit-card__progress { background: rgba(255, 255, 255, 0.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .benefit-card__progress-fill { animation: none; }
 }
 
 /* Actions row */

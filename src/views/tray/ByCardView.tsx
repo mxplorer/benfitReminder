@@ -9,9 +9,9 @@ import {
   type YearScope,
 } from "../../utils/benefitDisplay";
 import { CardChip } from "../shared/CardChip";
-import { BenefitCard } from "../shared/BenefitCard";
 import { BenefitFilterBar } from "../shared/BenefitFilterBar";
 import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
+import { BenefitRow } from "../shared/BenefitRow";
 import "./TrayViews.css";
 
 export const ByCardView = () => {
@@ -61,7 +61,7 @@ export const ByCardView = () => {
                 <span className="by-card-view__unused-badge">{unusedCount}</span>
               )}
             </div>
-            <div className="by-card-view__grid">
+            <div className="by-card-view__rows">
               {items.map((item) => {
                 if (item.variant === "aggregated") {
                   return (
@@ -74,18 +74,12 @@ export const ByCardView = () => {
                   );
                 }
                 return (
-                  <BenefitCard
+                  <BenefitRow
                     key={item.key}
                     benefit={item.benefit}
                     card={item.card}
-                    onToggleUsage={toggleBenefitUsage}
-                    onSetCycleUsed={setBenefitCycleUsed}
-                    periodLabel={item.periodLabel}
-                    cycleStart={item.periodStart}
-                    cycleEnd={item.periodEnd}
-                    cycleUsed={item.cycleUsed}
-                    cycleRecord={item.cycleRecord}
-                    compact
+                    onToggle={toggleBenefitUsage}
+                    showCardTag={false}
                   />
                 );
               })}
