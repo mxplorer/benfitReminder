@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BenefitDisplayItem } from "../../utils/benefitDisplay";
+import { useToday } from "../../stores/useToday";
+import { formatDate, getConsumedInPeriod, getCurrentPeriodRange } from "../../utils/period";
 import { GlassContainer } from "./GlassContainer";
 import "./AggregatedBenefitCard.css";
 
@@ -22,6 +24,9 @@ interface AggregatedBenefitCardProps {
     used: boolean,
     opts?: { actualValue?: number; usedDate?: string },
   ) => void;
+  onManageUsage?: (cardId: string, benefitId: string) => void;
+  onToggleHidden?: (cardId: string, benefitId: string) => void;
+  onDelete?: (cardId: string, benefitId: string) => void;
   pending?: AggregatedBenefitPending;
 }
 
@@ -60,25 +65,169 @@ export const AggregatedBenefitCard = ({
   item,
   onToggleUsage,
   onSetCycleUsed,
+  onManageUsage,
+  onToggleHidden,
+  onDelete,
   pending,
 }: AggregatedBenefitCardProps) => {
   const [expanded, setExpanded] = useState(pending?.defaultExpanded ?? false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const today = useToday();
+  const todayIso = formatDate(today);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => { document.removeEventListener("mousedown", handler); };
+  }, [menuOpen]);
+
   const agg = item.aggregate;
   if (!agg) return null;
 
   const pendingChecked = pending ? toCheckedSet(pending.checkedMonths) : null;
   const summary = pending ? buildPendingSummary(item, pending) : buildSummary(item);
 
+  const { benefit, card } = item;
+  const hasMenu = !pending && (onManageUsage || onToggleHidden || (onDelete && !benefit.templateBenefitId));
+
+  // Current-month progress (only when not in pending mode). Compute from the
+  // benefit's records directly so it stays accurate even when the current
+  // cycle doesn't appear in agg.months — 未使用 excludes cycles with any
+  // records, 已使用 excludes cycles with partial consumption, so a partially-
+  // consumed current month falls into neither bucket. The live summary must
+  // still reflect reality.
+  const currentRange = !pending ? getCurrentPeriodRange(today, {
+    resetType: benefit.resetType,
+    resetConfig: benefit.resetConfig,
+    cardOpenDate: card.cardOpenDate,
+  }) : null;
+  const inCurrentRange = currentRange
+    ? todayIso >= currentRange.start && todayIso <= currentRange.end
+    : false;
+  const currentConsumed = inCurrentRange
+    ? getConsumedInPeriod(benefit, today, card.cardOpenDate)
+    : 0;
+  const currentFace = benefit.faceValue;
+  const currentPct = currentFace > 0
+    ? Math.max(0, Math.min(100, (currentConsumed / currentFace) * 100))
+    : 0;
+  const currentStatus: "used" | "partial" | "empty" =
+    currentConsumed >= currentFace && currentFace > 0
+      ? "used"
+      : currentConsumed > 0
+        ? "partial"
+        : "empty";
+
   return (
     <GlassContainer className="agg-benefit-card">
-      <button
-        className="agg-benefit-card__summary"
-        data-testid="agg-expand"
-        onClick={() => { setExpanded((e) => !e); }}
-      >
-        <span className="agg-benefit-card__summary-text">{summary}</span>
-        <span className="agg-benefit-card__chevron">{expanded ? "▴" : "▾"}</span>
-      </button>
+      <div className="agg-benefit-card__head">
+        <button
+          className="agg-benefit-card__summary"
+          data-testid="agg-expand"
+          onClick={() => { setExpanded((e) => !e); }}
+        >
+          <span className="agg-benefit-card__summary-text">{summary}</span>
+          <span className="agg-benefit-card__chevron">{expanded ? "▴" : "▾"}</span>
+        </button>
+        {hasMenu && (
+          <div className="agg-benefit-card__menu-wrap" ref={menuRef}>
+            <button
+              type="button"
+              className="agg-benefit-card__icon-btn"
+              onClick={() => { setMenuOpen((o) => !o); }}
+              aria-label="更多操作"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              title="更多操作"
+            >
+              <span aria-hidden="true">⋯</span>
+            </button>
+            <div
+              className={`agg-benefit-card__menu${menuOpen ? " agg-benefit-card__menu--open" : ""}`}
+              role="menu"
+            >
+              {onManageUsage && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="agg-benefit-card__menu-item"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onManageUsage(card.id, benefit.id);
+                  }}
+                  aria-label="管理使用"
+                >
+                  管理使用
+                </button>
+              )}
+              {onToggleHidden && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="agg-benefit-card__menu-item"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onToggleHidden(card.id, benefit.id);
+                  }}
+                  aria-label={benefit.isHidden ? "取消隐藏" : "隐藏"}
+                >
+                  {benefit.isHidden ? "取消隐藏" : "隐藏"}
+                </button>
+              )}
+              {onDelete && !benefit.templateBenefitId && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="agg-benefit-card__menu-item agg-benefit-card__menu-item--danger"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (window.confirm(`确定删除权益 "${benefit.name}" 吗？`)) {
+                      onDelete(card.id, benefit.id);
+                    }
+                  }}
+                  aria-label="删除权益"
+                >
+                  删除权益
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!pending && currentFace > 0 && inCurrentRange && (
+        <div
+          className={`agg-benefit-card__current agg-benefit-card__current--${currentStatus}`}
+          data-testid="agg-current-month"
+        >
+          <div className="agg-benefit-card__current-row">
+            <span className="agg-benefit-card__current-label">本月</span>
+            <span className="agg-benefit-card__current-value">
+              ${String(Math.round(currentConsumed))}/${String(currentFace)}
+            </span>
+          </div>
+          <div
+            className="agg-benefit-card__current-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(currentPct)}
+            aria-label={`本月已用 $${String(Math.round(currentConsumed))} / $${String(currentFace)}`}
+          >
+            <div
+              className={`agg-benefit-card__current-bar-fill agg-benefit-card__current-bar-fill--${currentStatus}`}
+              style={{ width: `${String(currentPct)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {expanded && pending && pendingChecked && (
         <ul className="agg-benefit-card__rows">
           {agg.months.map((m) => {

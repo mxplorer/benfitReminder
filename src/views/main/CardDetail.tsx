@@ -14,6 +14,7 @@ import { BenefitFilterBar } from "../shared/BenefitFilterBar";
 import { AggregatedBenefitCard } from "../shared/AggregatedBenefitCard";
 import { RolloverEditDialog } from "./RolloverEditDialog";
 import { UsageRecordEditDialog } from "./UsageRecordEditDialog";
+import { BenefitHistoryDialog } from "./BenefitHistoryDialog";
 import type { ActiveView } from "./MainWindow";
 import type { Benefit, UsageRecord } from "../../models/types";
 import "./CardDetail.css";
@@ -49,6 +50,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<EditingRecord | null>(null);
   const [highlightBenefitId, setHighlightBenefitId] = useState<string | null>(null);
+  const [historyBenefitId, setHistoryBenefitId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const historySectionRef = useRef<HTMLDivElement>(null);
   const today = useToday();
@@ -268,6 +270,12 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                   item={item}
                   onToggleUsage={toggleBenefitUsage}
                   onSetCycleUsed={setBenefitCycleUsed}
+                  onManageUsage={(_cardId, benefitId) => { setHistoryBenefitId(benefitId); }}
+                  onToggleHidden={(cardId, benefitId) => {
+                    toggleBenefitHidden(cardId, benefitId);
+                    if (filter === "hidden") setFilter("all");
+                  }}
+                  onDelete={removeBenefit}
                 />
               );
             }
@@ -379,6 +387,14 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
           record={editingRecord.record}
           benefit={editingRecord.benefit}
           onClose={() => { setEditingRecord(null); }}
+        />
+      )}
+
+      {historyBenefitId && (
+        <BenefitHistoryDialog
+          cardId={cardId}
+          benefitId={historyBenefitId}
+          onClose={() => { setHistoryBenefitId(null); }}
         />
       )}
     </div>
