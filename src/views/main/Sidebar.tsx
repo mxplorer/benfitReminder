@@ -3,8 +3,7 @@ import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { CardChip } from "../shared/CardChip";
-import { isBenefitUsedInPeriod, isInCurrentCycle, getDeadline, getDaysRemaining } from "../../utils/period";
-import { latestHasPropagate } from "../../utils/usageRecords";
+import { isApplicableNow, isBenefitUsedInPeriod, getDeadline, getDaysRemaining } from "../../utils/period";
 import type { ActiveView } from "./MainWindow";
 
 interface SidebarProps {
@@ -26,8 +25,7 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
     let minDays: number | null = null;
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
-      if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;
-      if (!isInCurrentCycle(benefit, today)) continue;
+      if (!isApplicableNow(benefit, today)) continue;
       if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
       count++;
       const deadline = getDeadline(today, {

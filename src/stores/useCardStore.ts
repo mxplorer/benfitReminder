@@ -2,8 +2,8 @@ import { create } from "zustand";
 import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
 import {
   formatDate,
+  isApplicableNow,
   isBenefitUsedInPeriod,
-  isInCurrentCycle,
 } from "../utils/period";
 import { cycleKeyForDate, cycleKeyForRecord, currentCycleKey } from "../utils/cycleKey";
 import { formatMonthKey } from "../utils/subscription";
@@ -479,7 +479,7 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       if (!card.isEnabled) continue;
       for (const benefit of card.benefits) {
         if (benefit.isHidden) continue;
-        if (!isInCurrentCycle(benefit, today)) continue;
+        if (!isApplicableNow(benefit, today)) continue;
         if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
         count++;
       }

@@ -103,12 +103,16 @@ describe("ByUrgencyView", () => {
     expect(toggleSpy).toHaveBeenCalledWith("c1", "b1", 100, "2026-04-10");
   });
 
-  it("excludes subscription benefits whose latest record has propagateNext=true", () => {
+  it("includes subscription benefits with propagateNext when current cycle is not fully consumed", () => {
+    // New rule: propagate flag alone no longer excludes a benefit. The current
+    // cycle still shows as available whenever consumed < totalFace.
     const autoSub = makeBenefit({
       id: "b1",
       name: "Auto Sub Benefit",
       resetType: "subscription",
       usageRecords: [
+        // Record is in March; today is 2026-04-10, so April's cycle has no
+        // consumption yet and the benefit should appear in 待使用.
         { usedDate: "2026-03-10", faceValue: 50, actualValue: 50, propagateNext: true, kind: "usage" },
       ],
     });
@@ -117,7 +121,6 @@ describe("ByUrgencyView", () => {
 
     render(<ByUrgencyView />);
 
-    expect(screen.queryByText("Auto Sub Benefit")).not.toBeInTheDocument();
-    expect(screen.getByText("暂无待使用权益")).toBeInTheDocument();
+    expect(screen.getByText("Auto Sub Benefit")).toBeInTheDocument();
   });
 });

@@ -33,24 +33,28 @@ const marriottCard: CreditCard = {
   benefits: [futureDatedH2Benefit],
 };
 
-describe("unused views include future-dated one_time benefits", () => {
+describe("future-dated one_time benefit visibility", () => {
   const today = d("2026-04-16");
 
   it("expandBenefitsForFilter('unused') lists the future-dated H2 airline credit", () => {
+    // Year-scoped 未使用 Tab keeps full-year visibility: future-activating
+    // one_time benefits still belong to this year's unused list.
     const items = expandBenefitsForFilter(marriottCard, "unused", today, "calendar");
     expect(items.map((i) => i.benefit.id)).toContain(futureDatedH2Benefit.id);
   });
 
   it("expandBenefitsForFilter('available') does NOT list the future-dated H2 airline credit", () => {
-    // The 可使用 filter keeps isApplicableNow semantics: only items usable right now.
+    // 可使用 filter uses isApplicableNow semantics: only items usable right now.
     const items = expandBenefitsForFilter(marriottCard, "available", today, "calendar");
     expect(items.map((i) => i.benefit.id)).not.toContain(futureDatedH2Benefit.id);
   });
 
-  it("computeTrayStatus counts the future-dated H2 benefit as unused", () => {
+  it("computeTrayStatus does NOT count the future-dated H2 benefit as unused", () => {
+    // Tray summary mirrors "currently redeemable" semantics, so future-dated
+    // one_time benefits are excluded until their availableFromDate.
     const status = computeTrayStatus([marriottCard], today, 7);
-    expect(status.unusedCount).toBe(1);
-    expect(status.state).toBe("unused");
+    expect(status.unusedCount).toBe(0);
+    expect(status.state).toBe("clean");
   });
 
   it("does not list a one_time benefit that expired before today", () => {

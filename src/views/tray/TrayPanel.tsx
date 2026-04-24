@@ -4,11 +4,10 @@ import {
   formatDate,
   getDaysRemaining,
   getDeadline,
+  isApplicableNow,
   isBenefitUsedInPeriod,
-  isInCurrentCycle,
 } from "../../utils/period";
 import { getAvailableValue } from "../../utils/rollover";
-import { latestHasPropagate } from "../../utils/usageRecords";
 import { initPersistence } from "../../tauri/persistence";
 import { ByCardView } from "./ByCardView";
 import { ByUrgencyView } from "./ByUrgencyView";
@@ -35,9 +34,8 @@ export const TrayPanel = () => {
       if (!card.isEnabled) continue;
       for (const benefit of card.benefits) {
         if (benefit.isHidden) continue;
-        if (!isInCurrentCycle(benefit, today)) continue;
+        if (!isApplicableNow(benefit, today)) continue;
         if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
-        if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;
         count++;
         value += getAvailableValue(benefit, today);
         const deadline = getDeadline(today, {

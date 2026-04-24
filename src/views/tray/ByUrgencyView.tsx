@@ -4,10 +4,9 @@ import "./TrayViews.css";
 import {
   getDeadline,
   getDaysRemaining,
+  isApplicableNow,
   isBenefitUsedInPeriod,
-  isInCurrentCycle,
 } from "../../utils/period";
-import { latestHasPropagate } from "../../utils/usageRecords";
 import { BenefitRow } from "../shared/BenefitRow";
 
 export const ByUrgencyView = () => {
@@ -22,10 +21,8 @@ export const ByUrgencyView = () => {
     if (!card.isEnabled) continue;
     for (const benefit of card.benefits) {
       if (benefit.isHidden) continue;
-      if (!isInCurrentCycle(benefit, today)) continue;
+      if (!isApplicableNow(benefit, today)) continue;
       if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
-      // Skip auto-recur subscriptions (they're handled automatically)
-      if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;
 
       const deadline = getDeadline(today, {
         resetType: benefit.resetType,
