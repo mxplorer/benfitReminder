@@ -1,6 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCardStore } from "../../stores/useCardStore";
-import { formatDate } from "../../utils/period";
+import {
+  formatDate,
+  getDaysRemaining,
+  getDeadline,
+  isBenefitUsedInPeriod,
+  isInCurrentCycle,
+} from "../../utils/period";
+import { getAvailableValue } from "../../utils/rollover";
+import { latestHasPropagate } from "../../utils/usageRecords";
 import { initPersistence } from "../../tauri/persistence";
 import { ByCardView } from "./ByCardView";
 import { ByUrgencyView } from "./ByUrgencyView";
@@ -10,12 +18,39 @@ type Tab = "by-card" | "by-urgency";
 
 export const TrayPanel = () => {
   const [activeTab, setActiveTab] = useState<Tab>("by-card");
+  const cards = useCardStore((s) => s.cards);
+  const reminderDays = useCardStore((s) => s.settings.reminderDays);
   const updateSettings = useCardStore((s) => s.updateSettings);
 
   useEffect(() => {
-    // Hydrate tray panel store from disk so it shows real data
     void initPersistence();
   }, []);
+
+  const summary = useMemo(() => {
+    const today = new Date();
+    let count = 0;
+    let value = 0;
+    let urgent = 0;
+    for (const card of cards) {
+      if (!card.isEnabled) continue;
+      for (const benefit of card.benefits) {
+        if (benefit.isHidden) continue;
+        if (!isInCurrentCycle(benefit, today)) continue;
+        if (isBenefitUsedInPeriod(benefit, today, card.cardOpenDate)) continue;
+        if (benefit.resetType === "subscription" && latestHasPropagate(benefit)) continue;
+        count++;
+        value += getAvailableValue(benefit, today);
+        const deadline = getDeadline(today, {
+          resetType: benefit.resetType,
+          resetConfig: benefit.resetConfig,
+          cardOpenDate: card.cardOpenDate,
+        });
+        const days = deadline ? getDaysRemaining(today, deadline) : null;
+        if (days !== null && days <= reminderDays) urgent++;
+      }
+    }
+    return { count, value, urgent };
+  }, [cards, reminderDays]);
 
   const handleDismiss = () => {
     updateSettings({ dismissedDate: formatDate(new Date()) });
@@ -27,7 +62,6 @@ export const TrayPanel = () => {
       try {
         const { invoke } = await import("@tauri-apps/api/core");
         await invoke("show_main_window");
-        // Hide the dropdown panel after navigating to the main window
         const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
         await getCurrentWebviewWindow().hide();
       } catch {
@@ -39,6 +73,25 @@ export const TrayPanel = () => {
   return (
     <div className="tray-panel">
       <header className="tray-panel__header">
+        <div className="tray-panel__summary">
+          <span className="tray-panel__summary-label">待使用</span>
+          <span className="tray-panel__summary-value">
+            <span className="tray-panel__summary-currency">$</span>
+            {summary.value.toLocaleString("en-US")}
+          </span>
+          <div className="tray-panel__summary-sub">
+            {summary.urgent > 0 && (
+              <>
+                <span className="tray-panel__summary-dot" aria-hidden="true" />
+                <span className="tray-panel__summary-urgent">
+                  {String(summary.urgent)} 项即将到期
+                </span>
+                <span className="tray-panel__summary-sep">·</span>
+              </>
+            )}
+            <span>{String(summary.count)} 项未使用权益</span>
+          </div>
+        </div>
         <button
           className="tray-panel__open-link"
           onClick={handleOpenMain}
