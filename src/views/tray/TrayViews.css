@@ -2,46 +2,49 @@
 .by-card-view {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
 }
 
 .by-card-view__group-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 0 2px;
 }
 
 .by-card-view__card-img {
-  width: 28px;
-  height: 18px;
+  width: 34px;
+  height: 22px;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: 4px;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .by-card-view__card-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-primary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   flex: 1;
-  letter-spacing: 0.01em;
 }
 
 .by-card-view__unused-badge {
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-secondary);
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 10px;
+  color: #fff;
+  background: var(--color-red);
+  border-radius: 999px;
   padding: 1px 7px;
   min-width: 20px;
-  text-align: center;
-}
-
-:root[data-theme-effective="dark"] .by-card-view__unused-badge {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-secondary);
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 3px rgba(255, 59, 48, 0.35);
 }
 
 .by-card-view__rows {
@@ -61,5 +64,21 @@
   text-align: center;
   color: var(--text-secondary);
   font-size: 14px;
-  padding: 32px 0;
+  padding: 60px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.by-urgency-view__empty::before {
+  content: "✓";
+  font-size: 28px;
+  font-weight: 300;
+  width: 48px;
+  height: 48px;
+  line-height: 48px;
+  border-radius: 50%;
+  background: rgba(52, 199, 89, 0.14);
+  color: var(--color-green, #34c759);
 }
