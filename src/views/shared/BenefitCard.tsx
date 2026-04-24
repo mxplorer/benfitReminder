@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Benefit, CreditCard, ResetType, UsageRecord } from "../../models/types";
-import { formatDate, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
-import { getAvailableValue } from "../../utils/rollover";
+import { formatDate, getConsumedInPeriod, getDeadline, getDaysRemaining, isBenefitUsedInPeriod } from "../../utils/period";
+import { getAvailableValue, getTotalFaceWithRollover } from "../../utils/rollover";
 import { latestHasPropagate } from "../../utils/usageRecords";
 import { useToday } from "../../stores/useToday";
 import { useCardStore } from "../../stores/useCardStore";
@@ -360,6 +360,32 @@ export const BenefitCard = ({
           <span className="benefit-card__deadline">{deadlineBadge}</span>
         )}
       </div>
+
+      {benefit.faceValue > 0 && !isUsed && (() => {
+        const totalFace = cycleContext
+          ? benefit.faceValue
+          : getTotalFaceWithRollover(benefit, today);
+        const consumedNow = cycleContext
+          ? cycleConsumed
+          : getConsumedInPeriod(benefit, today, card.cardOpenDate);
+        if (totalFace <= 0) return null;
+        const pct = Math.max(0, Math.min(100, (consumedNow / totalFace) * 100));
+        return (
+          <div
+            className={`benefit-card__progress benefit-card__progress--${tileKind}`}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(pct)}
+            aria-label={`已用 $${String(Math.round(consumedNow))} / $${String(totalFace)}`}
+          >
+            <div
+              className="benefit-card__progress-fill"
+              style={{ width: `${String(pct)}%` }}
+            />
+          </div>
+        );
+      })()}
 
       {pendingValue === null ? (
         <div className="benefit-card__actions">
