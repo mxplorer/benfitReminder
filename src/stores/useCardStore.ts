@@ -10,7 +10,7 @@ import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
 import { materializeSubscriptionPropagation } from "../utils/propagate";
 import { syncAllCardsWithTemplates } from "../utils/templateSync";
-import { generateRolloverRecords } from "../utils/rollover";
+import { generateRolloverRecords, getAvailableValue } from "../utils/rollover";
 import { cycleStartForDate, makeRolloverRecord, makeUsageRecord } from "../utils/usageRecords";
 import { useCardTypeStore } from "./useCardTypeStore";
 
@@ -95,6 +95,13 @@ interface CardStoreActions {
   ) => void;
   replaceRolloverRecords: (cardId: string, benefitId: string, rolloverAmount: number) => void;
   clearRolloverRecords: (cardId: string, benefitId: string) => void;
+  /** Toggle a rollover record on the current cycle. If one exists, delete it
+   * (undo). If not and the benefit has remaining available value, create a
+   * rollover record in the current cycle with faceValue = current available —
+   * which marks the cycle as "done" locally and raises next cycle's totalFace
+   * by that amount. No-op if the benefit isn't rolloverable, has no calendar
+   * period, or current available is 0. */
+  toggleCurrentCycleRollover: (cardId: string, benefitId: string) => void;
   backfillBenefitUsage: (cardId: string, benefitId: string, records: UsageRecord[]) => void;
   getUnusedBenefitCount: () => number;
   updateSettings: (partial: Partial<AppSettings>) => void;
@@ -457,6 +464,44 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
           ...b,
           usageRecords: b.usageRecords.filter((r) => r.kind !== "rollover"),
+        })),
+      };
+    });
+  },
+
+  toggleCurrentCycleRollover: (cardId, benefitId) => {
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      const benefit = card.benefits.find((b) => b.id === benefitId);
+      if (!benefit || !benefit.rolloverable) return state;
+      const period = benefit.resetConfig.period;
+      if (!period) return state;
+
+      const today = state.now;
+      const currentCycleStart = cycleStartForDate(today, period);
+      const hasCurrent = benefit.usageRecords.some(
+        (r) => r.kind === "rollover" && r.usedDate === currentCycleStart,
+      );
+
+      if (hasCurrent) {
+        return {
+          cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+            ...b,
+            usageRecords: b.usageRecords.filter(
+              (r) => !(r.kind === "rollover" && r.usedDate === currentCycleStart),
+            ),
+          })),
+        };
+      }
+
+      const available = getAvailableValue(benefit, today);
+      if (available <= 0) return state;
+      const newRecord = makeRolloverRecord(currentCycleStart, available);
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          usageRecords: [...b.usageRecords, newRecord],
         })),
       };
     });

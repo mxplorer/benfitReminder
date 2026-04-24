@@ -34,7 +34,11 @@ describe("RolloverEditDialog", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-10T12:00:00"));
-    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+    useCardStore.setState({
+      cards: [],
+      settings: useCardStore.getState().settings,
+      now: new Date("2026-04-10T12:00:00"),
+    });
   });
 
   afterEach(() => {
@@ -42,191 +46,104 @@ describe("RolloverEditDialog", () => {
     vi.unstubAllEnvs();
   });
 
-  it("seeds amount input from sum of past-cycle rollover faceValues", () => {
-    const benefit = makeBenefit({
-      usageRecords: [
-        // Two fully-rolled past cycles: 300 + 300 = 600
-        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-        { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-      ],
-    });
-    const card = makeCard([benefit]);
-    useCardStore.setState({ cards: [card] });
-
-    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    expect(input.value).toBe("600");
-  });
-
-  it("seeds from sum of partial past-cycle rollover amounts", () => {
-    // Partial-amount model: one full ($300) + one partial ($50) → 350.
-    const benefit = makeBenefit({
-      usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-        { usedDate: "2024-01-01", faceValue: 50, actualValue: 0, kind: "rollover" },
-      ],
-    });
-    const card = makeCard([benefit]);
-    useCardStore.setState({ cards: [card] });
-
-    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    expect(input.value).toBe("350");
-  });
-
-  it("seeds to 0 when no past-cycle rollover records exist", () => {
+  it("shows current available and a roll button when no rollover exists", () => {
     const benefit = makeBenefit();
     const card = makeCard([benefit]);
     useCardStore.setState({ cards: [card] });
 
     render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
 
-    const input = screen.getByLabelText(/accumulated/i);
-    expect(input.value).toBe("0");
+    const btn = screen.getByTestId("rollover-toggle-btn");
+    expect(btn.textContent).toMatch(/结转.*\$300/);
+    expect(btn.hasAttribute("disabled")).toBe(false);
   });
 
-  it("ignores current-cycle rollover record when computing seed", () => {
-    const benefit = makeBenefit({
-      usageRecords: [
-        { usedDate: "2026-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-      ],
-    });
-    const card = makeCard([benefit]);
-    useCardStore.setState({ cards: [card] });
-
-    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    expect(input.value).toBe("300");
-  });
-
-  it("preview updates live as user types", () => {
-    const benefit = makeBenefit();
-    const card = makeCard([benefit]);
-    useCardStore.setState({ cards: [card] });
-
-    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    fireEvent.change(input, { target: { value: "600" } });
-
-    const preview = screen.getByTestId("rollover-edit-preview");
-    expect(preview.querySelectorAll("li")).toHaveLength(2);
-    expect(preview.textContent).toContain("2025-01-01");
-    expect(preview.textContent).toContain("2024-01-01");
-  });
-
-  it("preview caps at rolloverMaxYears * period multiplier", () => {
-    const benefit = makeBenefit({ rolloverMaxYears: 2 });
-    const card = makeCard([benefit]);
-    useCardStore.setState({ cards: [card] });
-
-    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    fireEvent.change(input, { target: { value: "1500" } });
-
-    const preview = screen.getByTestId("rollover-edit-preview");
-    expect(preview.querySelectorAll("li")).toHaveLength(2);
-  });
-
-  it("Save dispatches replaceRolloverRecords with the typed amount and closes", () => {
+  it("rolling creates a current-cycle rollover record with faceValue = current available", () => {
     const benefit = makeBenefit();
     const card = makeCard([benefit]);
     useCardStore.setState({ cards: [card] });
     const onClose = vi.fn();
 
     render(<RolloverEditDialog card={card} benefit={benefit} onClose={onClose} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    fireEvent.change(input, { target: { value: "600" } });
-    fireEvent.click(screen.getByRole("button", { name: /save/i }));
-
-    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-    // 2 past-cycle rollovers + 1 current-cycle marker (marks cycle as decided)
-    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(3);
-    expect(records.some((r) => r.usedDate === "2026-01-01")).toBe(true);
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("Cancel closes without dispatching", () => {
-    const benefit = makeBenefit({
-      usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-      ],
-    });
-    const card = makeCard([benefit]);
-    useCardStore.setState({ cards: [card] });
-    const onClose = vi.fn();
-
-    render(<RolloverEditDialog card={card} benefit={benefit} onClose={onClose} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    fireEvent.change(input, { target: { value: "900" } });
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    fireEvent.click(screen.getByTestId("rollover-toggle-btn"));
 
     const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
     expect(records).toHaveLength(1);
-    expect(records[0].usedDate).toBe("2025-01-01");
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("Clear dispatches clearRolloverRecords and closes", () => {
-    const benefit = makeBenefit({
-      usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-        { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-      ],
+    expect(records[0]).toMatchObject({
+      usedDate: "2026-01-01",
+      faceValue: 300,
+      actualValue: 0,
+      kind: "rollover",
     });
-    const card = makeCard([benefit]);
-    useCardStore.setState({ cards: [card] });
-    const onClose = vi.fn();
-
-    render(<RolloverEditDialog card={card} benefit={benefit} onClose={onClose} />);
-
-    fireEvent.click(screen.getByRole("button", { name: /clear/i }));
-
-    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(0);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("shrinks preview when user lowers amount; save silently prunes", () => {
+  it("with partial consumption, rolled amount = remaining available", () => {
+    // $75 already consumed this cycle; rolling should transfer the remaining $225.
     const benefit = makeBenefit({
-      rolloverMaxYears: 3,
       usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-        { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-        { usedDate: "2023-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-02-01", faceValue: 75, actualValue: 75, kind: "usage" },
       ],
     });
     const card = makeCard([benefit]);
     useCardStore.setState({ cards: [card] });
 
     render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
-
-    const input = screen.getByLabelText(/accumulated/i);
-    expect(input.value).toBe("900");
-
-    fireEvent.change(input, { target: { value: "300" } });
-    const preview = screen.getByTestId("rollover-edit-preview");
-    expect(preview.querySelectorAll("li")).toHaveLength(1);
-
-    // No confirm prompt rendered
-    expect(screen.queryByText(/confirm/i)).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    fireEvent.click(screen.getByTestId("rollover-toggle-btn"));
 
     const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
-    // 1 past-cycle rollover (2025-01-01) + 1 current-cycle marker (2026-01-01)
-    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(2);
-    expect(records.map((r) => r.usedDate).sort()).toEqual([
-      "2025-01-01",
-      "2026-01-01",
-    ]);
+    const rollover = records.find((r) => r.kind === "rollover");
+    expect(rollover).toMatchObject({
+      usedDate: "2026-01-01",
+      faceValue: 225,
+      kind: "rollover",
+    });
+  });
+
+  it("clicking again when rollover exists removes it (undo)", () => {
+    const benefit = makeBenefit({
+      usageRecords: [
+        { usedDate: "2026-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const card = makeCard([benefit]);
+    useCardStore.setState({ cards: [card] });
+
+    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
+    const btn = screen.getByTestId("rollover-toggle-btn");
+    expect(btn.textContent).toMatch(/撤销/);
+    fireEvent.click(btn);
+
+    const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+    expect(records.filter((r) => r.kind === "rollover")).toHaveLength(0);
+  });
+
+  it("toggle button is disabled when available is 0 and no existing rollover", () => {
+    const benefit = makeBenefit({
+      usageRecords: [
+        { usedDate: "2026-02-01", faceValue: 300, actualValue: 300, kind: "usage" },
+      ],
+    });
+    const card = makeCard([benefit]);
+    useCardStore.setState({ cards: [card] });
+
+    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
+    const btn = screen.getByTestId("rollover-toggle-btn");
+    expect(btn.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("next-cycle preview = faceValue + rolled amount", () => {
+    const benefit = makeBenefit({
+      usageRecords: [
+        { usedDate: "2026-02-01", faceValue: 100, actualValue: 100, kind: "usage" },
+      ],
+    });
+    const card = makeCard([benefit]);
+    useCardStore.setState({ cards: [card] });
+
+    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
+    // available = 300 - 100 = 200, nextCycleTotalFace = 300 + 200 = 500
+    expect(screen.getByTestId("rollover-edit-next-available").textContent).toBe("$500");
   });
 
   it("throws on mount in DEV when benefit is non-rolloverable", () => {
@@ -242,7 +159,7 @@ describe("RolloverEditDialog", () => {
     consoleError.mockRestore();
   });
 
-  it("renders null and logs warn in prod when benefit is non-rolloverable", () => {
+  it("renders null in prod when benefit is non-rolloverable", () => {
     vi.stubEnv("DEV", false);
     const benefit = makeBenefit({ rolloverable: false });
     const card = makeCard([benefit]);

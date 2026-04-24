@@ -140,7 +140,7 @@ describe("CardDetail filter integration", () => {
 });
 
 describe("CardDetail rollover edit dialog", () => {
-  it("clicking ⚙ gear opens dialog pre-filled with accumulated past-cycle amount", () => {
+  it("clicking ⚙ gear opens dialog with a toggle button reflecting current available", () => {
     useCardStore.setState({
       cards: [
         makeCard({
@@ -153,11 +153,7 @@ describe("CardDetail rollover edit dialog", () => {
               rolloverMaxYears: 3,
               resetType: "calendar",
               resetConfig: { period: "annual" },
-              usageRecords: [
-                // Two fully-rolled past cycles (record.faceValue = benefit.faceValue = 300)
-                { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-                { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
-              ],
+              usageRecords: [],
             }),
           ],
         }),
@@ -167,12 +163,12 @@ describe("CardDetail rollover edit dialog", () => {
 
     fireEvent.click(screen.getByLabelText("Rollover 设置"));
 
-    const input = screen.getByLabelText(/accumulated/i);
-    expect(input).toBeInTheDocument();
-    expect((input as HTMLInputElement).value).toBe("600");
+    const btn = screen.getByTestId("rollover-toggle-btn");
+    expect(btn).toBeInTheDocument();
+    expect(btn.textContent).toMatch(/结转.*\$300/);
   });
 
-  it("clicking Cancel in dialog closes it without touching records", () => {
+  it("clicking 关闭 closes the dialog without touching records", () => {
     useCardStore.setState({
       cards: [
         makeCard({
@@ -194,9 +190,9 @@ describe("CardDetail rollover edit dialog", () => {
     });
     render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
     fireEvent.click(screen.getByLabelText("Rollover 设置"));
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    fireEvent.click(screen.getByRole("button", { name: /关闭/ }));
 
-    expect(screen.queryByLabelText(/accumulated/i)).toBeNull();
+    expect(screen.queryByTestId("rollover-toggle-btn")).toBeNull();
     expect(useCardStore.getState().cards[0].benefits[0].usageRecords).toHaveLength(1);
   });
 });

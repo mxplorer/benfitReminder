@@ -722,6 +722,133 @@ describe("useCardStore", () => {
     });
   });
 
+  describe("toggleCurrentCycleRollover", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+      useCardStore.setState({ now: new Date("2026-04-10T12:00:00") });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const rolloverAnnual = (overrides: Partial<Benefit> = {}): Benefit =>
+      makeBenefit({
+        id: "b1",
+        faceValue: 100,
+        resetType: "calendar",
+        resetConfig: { period: "annual" },
+        rolloverable: true,
+        rolloverMaxYears: 2,
+        ...overrides,
+      });
+
+    it("creates one rollover record in the current cycle with faceValue = current available", () => {
+      const card = makeCard({ id: "c1", benefits: [rolloverAnnual()] });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().toggleCurrentCycleRollover("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records).toHaveLength(1);
+      expect(records[0]).toMatchObject({
+        usedDate: "2026-01-01",
+        faceValue: 100,
+        kind: "rollover",
+      });
+    });
+
+    it("subtracts current-cycle consumption when computing rolled amount", () => {
+      // $30 consumed → only $70 is rolled forward.
+      const card = makeCard({
+        id: "c1",
+        benefits: [
+          rolloverAnnual({
+            usageRecords: [
+              { usedDate: "2026-02-15", faceValue: 30, actualValue: 30, kind: "usage" },
+            ],
+          }),
+        ],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().toggleCurrentCycleRollover("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      const rollover = records.find((r) => r.kind === "rollover");
+      expect(rollover?.faceValue).toBe(70);
+    });
+
+    it("toggling a second time deletes the rollover record", () => {
+      const card = makeCard({ id: "c1", benefits: [rolloverAnnual()] });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().toggleCurrentCycleRollover("c1", "b1");
+      useCardStore.getState().toggleCurrentCycleRollover("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(0);
+    });
+
+    it("no-op when available is 0 and no existing rollover", () => {
+      const card = makeCard({
+        id: "c1",
+        benefits: [
+          rolloverAnnual({
+            usageRecords: [
+              { usedDate: "2026-03-01", faceValue: 100, actualValue: 100, kind: "usage" },
+            ],
+          }),
+        ],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().toggleCurrentCycleRollover("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records.filter((r) => r.kind === "rollover")).toHaveLength(0);
+    });
+
+    it("no-op for non-rolloverable benefit", () => {
+      const card = makeCard({
+        id: "c1",
+        benefits: [makeBenefit({ id: "b1", rolloverable: false })],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().toggleCurrentCycleRollover("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      expect(records).toHaveLength(0);
+    });
+
+    it("adds inbound from prev cycle's rollover when computing available", () => {
+      // Prev cycle rolled $50 forward. Current has $30 consumed.
+      // Total available = 100 + 50 - 30 = 120. Rolling forward should write $120.
+      const card = makeCard({
+        id: "c1",
+        benefits: [
+          rolloverAnnual({
+            usageRecords: [
+              { usedDate: "2025-01-01", faceValue: 50, actualValue: 0, kind: "rollover" },
+              { usedDate: "2026-02-15", faceValue: 30, actualValue: 30, kind: "usage" },
+            ],
+          }),
+        ],
+      });
+      useCardStore.setState({ cards: [card] });
+
+      useCardStore.getState().toggleCurrentCycleRollover("c1", "b1");
+
+      const records = useCardStore.getState().cards[0].benefits[0].usageRecords;
+      const currentRollover = records.find(
+        (r) => r.kind === "rollover" && r.usedDate === "2026-01-01",
+      );
+      expect(currentRollover?.faceValue).toBe(120);
+    });
+  });
+
   describe("backfillBenefitUsage", () => {
     it("appends multiple records at once", () => {
       const card = makeCard({

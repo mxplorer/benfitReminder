@@ -1,28 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Benefit, CalendarPeriod, CreditCard } from "../../models/types";
 import { createLogger } from "../../lib/logger";
+import { useToday } from "../../stores/useToday";
 import { useCardStore } from "../../stores/useCardStore";
 import { cycleStartForDate } from "../../utils/usageRecords";
-import { generateRolloverRecords, getAvailableValue } from "../../utils/rollover";
+import { getAvailableValue } from "../../utils/rollover";
 import "./RolloverEditDialog.css";
 
 const logger = createLogger("views.rollover-dialog");
-
-const PERIOD_MULTIPLIER: Record<CalendarPeriod, number> = {
-  monthly: 12,
-  quarterly: 4,
-  semi_annual: 2,
-  annual: 1,
-  every_4_years: 1,
-};
-
-const PERIOD_LABEL: Record<CalendarPeriod, string> = {
-  monthly: "months",
-  quarterly: "quarters",
-  semi_annual: "halves",
-  annual: "years",
-  every_4_years: "4-year blocks",
-};
 
 interface RolloverEditDialogProps {
   card: CreditCard;
@@ -51,141 +36,74 @@ export const RolloverEditDialog = ({ card, benefit, onClose }: RolloverEditDialo
     return null;
   }
 
-  return (
-    <RolloverEditDialogInner
-      card={card}
-      benefit={benefit}
-      period={period}
-      onClose={onClose}
-    />
-  );
+  return <Inner card={card} benefit={benefit} period={period} onClose={onClose} />;
 };
 
 interface InnerProps extends RolloverEditDialogProps {
   period: CalendarPeriod;
 }
 
-const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps) => {
-  const today = useMemo(() => new Date(), []);
+const Inner = ({ card, benefit, period, onClose }: InnerProps) => {
+  const today = useToday();
   const currentCycleStart = useMemo(() => cycleStartForDate(today, period), [today, period]);
-  // Seed the input from the total amount already rolled into prior cycles
-  // (sum of record faceValues, each capped at benefit.faceValue during write).
-  // Using the sum — not count × faceValue — correctly surfaces partial
-  // rollovers (e.g. a $23-only rollover) back to the user for editing.
-  const pastRolloverSum = useMemo(
-    () =>
-      benefit.usageRecords
-        .filter((r) => r.kind === "rollover" && r.usedDate < currentCycleStart)
-        .reduce((s, r) => s + r.faceValue, 0),
-    [benefit.usageRecords, currentCycleStart],
+  const toggleCurrentCycleRollover = useCardStore((s) => s.toggleCurrentCycleRollover);
+
+  const hasRollover = benefit.usageRecords.some(
+    (r) => r.kind === "rollover" && r.usedDate === currentCycleStart,
   );
-  const [amountInput, setAmountInput] = useState<string>(
-    String(pastRolloverSum),
-  );
-  const amount = Math.max(0, Number(amountInput) || 0);
+  const available = getAvailableValue(benefit, today);
+  // Preview: next cycle's totalFace = its own face + what this cycle rolls out.
+  // When a rollover already exists, "available" is 0 (outbound is consumed) —
+  // we reconstruct the rolled amount from the record's faceValue.
+  const rolledAmount = hasRollover
+    ? benefit.usageRecords
+        .filter((r) => r.kind === "rollover" && r.usedDate === currentCycleStart)
+        .reduce((s, r) => s + r.faceValue, 0)
+    : available;
+  const nextCycleTotalFace = benefit.faceValue + rolledAmount;
 
-  const previewRecords = useMemo(
-    () => generateRolloverRecords(benefit, amount, today),
-    [benefit, amount, today],
-  );
-
-  const currentAvailable = useMemo(
-    () => getAvailableValue(benefit, today),
-    [benefit, today],
-  );
-  // Total pool = this cycle's own face + whatever was rolled in from prior
-  // cycles (sum of record faceValues, each capped at benefit.faceValue).
-  const nextAvailable =
-    benefit.faceValue +
-    previewRecords.reduce((s, r) => s + r.faceValue, 0);
-
-  const replaceRolloverRecords = useCardStore((s) => s.replaceRolloverRecords);
-  const clearRolloverRecords = useCardStore((s) => s.clearRolloverRecords);
-
-  const maxPeriods = benefit.rolloverMaxYears * PERIOD_MULTIPLIER[period];
-
-  const handleSave = () => {
-    replaceRolloverRecords(card.id, benefit.id, amount);
-    onClose();
-  };
-
-  const handleClear = () => {
-    clearRolloverRecords(card.id, benefit.id);
+  const handleToggle = () => {
+    toggleCurrentCycleRollover(card.id, benefit.id);
     onClose();
   };
 
   return (
     <div className="rollover-dialog__overlay">
       <div className="rollover-dialog">
-        <h2 className="rollover-dialog__title">Rollover — {benefit.name}</h2>
-        <dl className="rollover-dialog__info">
+        <h2 className="rollover-dialog__title">结转 — {benefit.name}</h2>
+        <dl className="rollover-dialog__info" data-testid="rollover-edit-impact">
           <div className="rollover-dialog__info-row">
-            <dt>FaceValue</dt>
-            <dd>${String(benefit.faceValue)} / cycle</dd>
+            <dt>本期可用</dt>
+            <dd>${String(available)}</dd>
           </div>
           <div className="rollover-dialog__info-row">
-            <dt>Max rollover</dt>
-            <dd>
-              {String(benefit.rolloverMaxYears)} years ({String(maxPeriods)}{" "}
-              {PERIOD_LABEL[period]})
-            </dd>
-          </div>
-        </dl>
-        <label className="rollover-dialog__amount-label">
-          Accumulated rollover amount
-          <input
-            className="rollover-dialog__amount-input"
-            type="number"
-            min={0}
-            value={amountInput}
-            onChange={(e) => { setAmountInput(e.target.value); }}
-          />
-        </label>
-        <dl className="rollover-dialog__impact" data-testid="rollover-edit-impact">
-          <div className="rollover-dialog__info-row">
-            <dt>当前可用</dt>
-            <dd>${String(currentAvailable)}</dd>
+            <dt>已结转到本期</dt>
+            <dd>${String(rolledAmount)}</dd>
           </div>
           <div className="rollover-dialog__info-row">
-            <dt>保存后可用</dt>
-            <dd data-testid="rollover-edit-next-available">${String(nextAvailable)}</dd>
+            <dt>下期面值（结转后）</dt>
+            <dd data-testid="rollover-edit-next-available">${String(nextCycleTotalFace)}</dd>
           </div>
         </dl>
-        <div className="rollover-dialog__preview-section">
-          <span className="rollover-dialog__preview-label">
-            生成的 past-cycle rollover 记录:
-          </span>
-          <ul className="rollover-dialog__preview" data-testid="rollover-edit-preview">
-            {previewRecords.length === 0 ? (
-              <li className="rollover-dialog__preview-empty">(无)</li>
-            ) : (
-              previewRecords.map((r) => (
-                <li key={r.usedDate}>{r.usedDate} · rollover</li>
-              ))
-            )}
-          </ul>
-        </div>
+        {!hasRollover && available <= 0 && (
+          <p className="rollover-dialog__hint">本期无剩余可结转。</p>
+        )}
         <div className="rollover-dialog__actions">
-          <button
-            type="button"
-            className="rollover-dialog__btn"
-            onClick={handleClear}
-          >
-            Clear rollover
-          </button>
           <button
             type="button"
             className="rollover-dialog__btn"
             onClick={onClose}
           >
-            Cancel
+            关闭
           </button>
           <button
             type="button"
             className="rollover-dialog__btn rollover-dialog__btn--primary"
-            onClick={handleSave}
+            onClick={handleToggle}
+            disabled={!hasRollover && available <= 0}
+            data-testid="rollover-toggle-btn"
           >
-            Save
+            {hasRollover ? "撤销结转" : `结转 $${String(available)} 到下期`}
           </button>
         </div>
       </div>
