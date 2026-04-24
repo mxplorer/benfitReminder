@@ -18,6 +18,8 @@ beforeEach(() => {
     reminderDays: 3,
     dismissedDate: null,
     trayOpacity: 100,
+    theme: "system",
+    sidebarCollapsed: false,
   }});
   useCardTypeStore.setState({
     cardTypes: [

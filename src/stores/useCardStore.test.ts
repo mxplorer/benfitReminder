@@ -211,6 +211,8 @@ describe("useCardStore", () => {
         reminderDays: 5,
         dismissedDate: null,
         trayOpacity: 100,
+        theme: "system" as const,
+        sidebarCollapsed: false,
       };
       useCardStore.getState().loadData([newCard], newSettings);
 
@@ -410,6 +412,46 @@ describe("useCardStore", () => {
         actualValue: 80,
         kind: "usage",
       });
+    });
+  });
+
+  describe("sidebarCollapsed setting", () => {
+    it("defaults to false on a fresh store", () => {
+      expect(useCardStore.getState().settings.sidebarCollapsed).toBe(false);
+    });
+
+    it("updateSettings can toggle sidebarCollapsed", () => {
+      useCardStore.getState().updateSettings({ sidebarCollapsed: true });
+      expect(useCardStore.getState().settings.sidebarCollapsed).toBe(true);
+      useCardStore.getState().updateSettings({ sidebarCollapsed: false });
+      expect(useCardStore.getState().settings.sidebarCollapsed).toBe(false);
+    });
+
+    it("survives JSON export → import round-trip", () => {
+      useCardStore.getState().updateSettings({ sidebarCollapsed: true });
+      const exported = useCardStore.getState().exportData();
+      useCardStore.setState({ settings: { ...useCardStore.getState().settings, sidebarCollapsed: false } });
+      useCardStore.getState().importData(exported);
+      expect(useCardStore.getState().settings.sidebarCollapsed).toBe(true);
+    });
+
+    it("imports from legacy JSON without the field as default false", () => {
+      const legacyJson = JSON.stringify({
+        version: 1,
+        cards: [],
+        settings: {
+          logLevel: "info",
+          debugLogEnabled: false,
+          reminderEnabled: true,
+          reminderDays: 3,
+          dismissedDate: null,
+          trayOpacity: 100,
+          theme: "system",
+          // sidebarCollapsed intentionally absent
+        },
+      });
+      useCardStore.getState().importData(legacyJson);
+      expect(useCardStore.getState().settings.sidebarCollapsed).toBe(false);
     });
   });
 

@@ -120,6 +120,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   dismissedDate: null,
   trayOpacity: 100,
   theme: "system",
+  sidebarCollapsed: false,
 };
 
 const updateBenefitInCards = (

@@ -38,6 +38,8 @@ const defaultSettings: AppSettings = {
   reminderDays: 3,
   dismissedDate: null,
   trayOpacity: 80,
+  theme: "system",
+  sidebarCollapsed: false,
 };
 
 const trayState = () => {

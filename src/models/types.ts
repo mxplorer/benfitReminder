@@ -123,6 +123,8 @@ export interface AppSettings {
   trayOpacity: number;
   /** User-chosen theme. "system" follows prefers-color-scheme. */
   theme: ThemePreference;
+  /** Main-window sidebar collapsed (icon-rail) vs expanded (full). */
+  sidebarCollapsed: boolean;
 }
 
 export interface AppData {
