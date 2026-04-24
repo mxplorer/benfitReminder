@@ -1,11 +1,9 @@
-import type { FilterMode, YearScope } from "../../utils/benefitDisplay";
+import type { FilterMode } from "../../utils/benefitDisplay";
 import "./BenefitFilterBar.css";
 
 interface BenefitFilterBarProps {
   filter: FilterMode;
   onChange: (filter: FilterMode) => void;
-  scope: YearScope;
-  onScopeChange: (scope: YearScope) => void;
 }
 
 const PILLS: { key: FilterMode; label: string }[] = [
@@ -16,13 +14,9 @@ const PILLS: { key: FilterMode; label: string }[] = [
   { key: "all", label: "全部" },
 ];
 
-const SCOPES_VISIBLE: FilterMode[] = ["unused", "all"];
-
 export const BenefitFilterBar = ({
   filter,
   onChange,
-  scope,
-  onScopeChange,
 }: BenefitFilterBarProps) => {
   return (
     <div className="benefit-filter-bar" data-testid="benefit-filter-bar">
@@ -42,32 +36,6 @@ export const BenefitFilterBar = ({
           </button>
         ))}
       </div>
-      {SCOPES_VISIBLE.includes(filter) && (
-        <div className="benefit-filter-bar__scope" data-testid="year-scope-toggle">
-          <button
-            data-testid="scope-calendar"
-            className={`benefit-filter-bar__scope-btn${
-              scope === "calendar" ? " benefit-filter-bar__scope-btn--active" : ""
-            }`}
-            onClick={() => {
-              onScopeChange("calendar");
-            }}
-          >
-            年终
-          </button>
-          <button
-            data-testid="scope-anniversary"
-            className={`benefit-filter-bar__scope-btn${
-              scope === "anniversary" ? " benefit-filter-bar__scope-btn--active" : ""
-            }`}
-            onClick={() => {
-              onScopeChange("anniversary");
-            }}
-          >
-            周年
-          </button>
-        </div>
-      )}
     </div>
   );
 };

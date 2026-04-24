@@ -7,7 +7,6 @@ import { calculateCardROI, getMembershipYearRange } from "../../utils/roi";
 import {
   expandBenefitsForFilter,
   type FilterMode,
-  type YearScope,
 } from "../../utils/benefitDisplay";
 import { BenefitCard } from "../shared/BenefitCard";
 import { BenefitFilterBar } from "../shared/BenefitFilterBar";
@@ -45,12 +44,12 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
   const getCardImage = useCardTypeStore((s) => s.getCardImage);
   const getCardType = useCardTypeStore((s) => s.getCardType);
   const [filter, setFilter] = useState<FilterMode>("available");
-  const [scope, setScope] = useState<YearScope>("calendar");
   const [editRolloverBenefitId, setEditRolloverBenefitId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<EditingRecord | null>(null);
   const [highlightBenefitId, setHighlightBenefitId] = useState<string | null>(null);
   const [historyBenefitId, setHistoryBenefitId] = useState<string | null>(null);
+  const [yearMode, setYearMode] = useState<"calendar" | "membership">("calendar");
   const menuRef = useRef<HTMLDivElement>(null);
   const historySectionRef = useRef<HTMLDivElement>(null);
   const today = useToday();
@@ -81,12 +80,27 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
     return null;
   })();
 
-  const roi = calculateCardROI(card, today);
   const membershipRange = getMembershipYearRange(card.cardOpenDate, today);
-  const items = expandBenefitsForFilter(card, filter, today, scope);
+  const calendarYear = today.getFullYear();
+  const calendarRange = {
+    start: `${String(calendarYear)}-01-01`,
+    end: `${String(calendarYear)}-12-31`,
+  };
+  const activeRange = yearMode === "calendar" ? calendarRange : membershipRange;
+  const roi = calculateCardROI(card, today, 0, activeRange);
+  // Benefit tiles follow the hero toggle: calendar → 年终 scope, membership → 周年 scope.
+  const benefitScope = yearMode === "calendar" ? "calendar" : "anniversary";
+  const items = expandBenefitsForFilter(card, filter, today, benefitScope);
 
   const equivalentFee = roi.annualFee - roi.actualReturn;
-  const feeRecovered = equivalentFee < 0;
+  // Status scheme matches Dashboard card tile (classifyTile) so the hero
+  // number's color is consistent across screens for the same card.
+  const feeStatus: "recovered" | "warning" | "danger" =
+    roi.annualFee <= 0 || roi.actualReturn >= roi.annualFee
+      ? "recovered"
+      : roi.actualReturn >= 0.8 * roi.annualFee
+        ? "warning"
+        : "danger";
 
   const allRecords = card.benefits
     .flatMap((b) =>
@@ -166,14 +180,29 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
         <div className="card-detail__hero-fee" data-testid="hero-fee">
           <span className="card-detail__hero-fee-label">当前等效年费</span>
           <span
-            className={`card-detail__hero-fee-value${feeRecovered ? " card-detail__hero-fee-value--recovered" : ""}`}
+            className="card-detail__hero-fee-value"
+            data-status={feeStatus}
             data-testid="hero-fee-value"
           >
-            {feeRecovered ? "−" : ""}${String(Math.abs(equivalentFee))}
+            {equivalentFee < 0 ? "−" : ""}${String(Math.abs(equivalentFee))}
           </span>
           <span className="card-detail__hero-fee-sub">${String(roi.actualReturn)} 已兑现</span>
         </div>
         <div className="card-detail__actions" ref={menuRef}>
+          <button
+            type="button"
+            className="card-detail__year-toggle"
+            data-testid="year-mode-toggle"
+            data-mode={yearMode}
+            onClick={() => {
+              setYearMode((m) => (m === "calendar" ? "membership" : "calendar"));
+            }}
+            aria-label={yearMode === "calendar" ? "切换为会员年" : "切换为日历年"}
+            title={yearMode === "calendar" ? "点击切换为会员年" : "点击切换为日历年"}
+          >
+            <span>{yearMode === "calendar" ? "日历年" : "会员年"}</span>
+            <span className="card-detail__year-toggle-icon" aria-hidden="true">⇄</span>
+          </button>
           <button
             type="button"
             className="card-detail__actions-trigger"
@@ -219,7 +248,9 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
       </div>
 
       <span className="card-detail__scope-caption" data-testid="roi-scope-caption">
-        会员年 {membershipRange.start} ~ {membershipRange.end}
+        {yearMode === "calendar"
+          ? `日历年 ${String(calendarYear)} · ${calendarRange.start} ~ ${calendarRange.end}`
+          : `会员年 ${membershipRange.start} ~ ${membershipRange.end}`}
       </span>
 
       <div className="card-detail__roi-strip" data-testid="roi-strip">
@@ -255,8 +286,6 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
           <BenefitFilterBar
             filter={filter}
             onChange={setFilter}
-            scope={scope}
-            onScopeChange={setScope}
           />
         </div>
 

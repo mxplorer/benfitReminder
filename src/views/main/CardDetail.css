@@ -112,6 +112,59 @@
   font-weight: 600;
   letter-spacing: 0.08em;
 }
+.card-detail__year-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.card-detail__year-toggle:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+.card-detail__year-toggle[data-mode="membership"] {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: rgba(0, 122, 255, 0.25);
+  color: rgb(0, 100, 200);
+}
+.card-detail__year-toggle[data-mode="membership"]:hover {
+  background: rgba(0, 122, 255, 0.14);
+  border-color: rgba(0, 122, 255, 0.4);
+}
+.card-detail__year-toggle-icon {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+:root[data-theme-effective="dark"] .card-detail__year-toggle {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+:root[data-theme-effective="dark"] .card-detail__year-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+:root[data-theme-effective="dark"] .card-detail__year-toggle[data-mode="membership"] {
+  background: rgba(10, 132, 255, 0.14);
+  border-color: rgba(10, 132, 255, 0.35);
+  color: rgb(120, 180, 255);
+}
+:root[data-theme-effective="dark"] .card-detail__year-toggle[data-mode="membership"]:hover {
+  background: rgba(10, 132, 255, 0.2);
+  border-color: rgba(10, 132, 255, 0.5);
+}
 .card-detail__hero-fee-value {
   font-size: 44px;
   font-weight: 800;
@@ -119,18 +172,44 @@
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
 }
-.card-detail__hero-fee-value--recovered { color: var(--color-green); }
+/* Gradient tri-state matches Dashboard tile's .dashboard__tile-net so the
+ * same card shows the same color in both places. */
+.card-detail__hero-fee-value[data-status="recovered"],
+.card-detail__hero-fee-value[data-status="warning"],
+.card-detail__hero-fee-value[data-status="danger"] {
+  color: transparent;
+  animation: card-detail-fee-gradient 6s ease-in-out infinite;
+}
+.card-detail__hero-fee-value[data-status="recovered"] {
+  background-image: linear-gradient(90deg, #059669, #10b981, #34d399, #10b981, #059669);
+}
+.card-detail__hero-fee-value[data-status="warning"] {
+  background-image: linear-gradient(90deg, #b45309, #f59e0b, #fbbf24, #f59e0b, #b45309);
+}
+.card-detail__hero-fee-value[data-status="danger"] {
+  background-image: linear-gradient(90deg, #b91c1c, #ef4444, #f97316, #ef4444, #b91c1c);
+}
+@keyframes card-detail-fee-gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
 .card-detail__hero-fee-sub {
   font-size: 12px;
   color: var(--text-tertiary);
 }
 
-/* Actions — kebab dropdown (top-right) */
+/* Actions — year toggle + kebab dropdown (top-right) */
 .card-detail__actions {
   position: absolute;
   top: 0;
   right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .card-detail__actions-trigger {
   background: none;

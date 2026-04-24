@@ -77,8 +77,9 @@ export const calculateCardROI = (
   card: CreditCard,
   today: Date,
   yearOffset = 0,
+  rangeOverride?: DateRange,
 ): CardROI => {
-  const range = getMembershipYearRange(card.cardOpenDate, today, yearOffset);
+  const range = rangeOverride ?? getMembershipYearRange(card.cardOpenDate, today, yearOffset);
   const { faceValueReturn, actualReturn } = sumRecordsInRange(card, range);
 
   const roiPercent = card.annualFee > 0 ? Math.round((actualReturn / card.annualFee) * 100) : 0;

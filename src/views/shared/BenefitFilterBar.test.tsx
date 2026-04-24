@@ -6,8 +6,6 @@ describe("BenefitFilterBar", () => {
   const defaultProps = {
     filter: "available" as const,
     onChange: vi.fn(),
-    scope: "calendar" as const,
-    onScopeChange: vi.fn(),
   };
 
   it("renders 5 pills in declared order", () => {
@@ -29,37 +27,8 @@ describe("BenefitFilterBar", () => {
     expect(onChange).toHaveBeenCalledWith("used");
   });
 
-  it("hides year-scope toggle for 可使用", () => {
-    render(<BenefitFilterBar {...defaultProps} filter="available" />);
-    expect(screen.queryByTestId("year-scope-toggle")).toBeNull();
-  });
-
-  it("hides year-scope toggle for 已使用", () => {
-    render(<BenefitFilterBar {...defaultProps} filter="used" />);
-    expect(screen.queryByTestId("year-scope-toggle")).toBeNull();
-  });
-
-  it("hides year-scope toggle for 已隐藏", () => {
-    render(<BenefitFilterBar {...defaultProps} filter="hidden" />);
-    expect(screen.queryByTestId("year-scope-toggle")).toBeNull();
-  });
-
-  it("shows year-scope toggle for 未使用", () => {
+  it("does not render any year-scope toggle (owned by CardDetail's hero toggle now)", () => {
     render(<BenefitFilterBar {...defaultProps} filter="unused" />);
-    expect(screen.getByTestId("year-scope-toggle")).toBeInTheDocument();
-  });
-
-  it("shows year-scope toggle for 全部", () => {
-    render(<BenefitFilterBar {...defaultProps} filter="all" />);
-    expect(screen.getByTestId("year-scope-toggle")).toBeInTheDocument();
-  });
-
-  it("calls onScopeChange when scope toggled", () => {
-    const onScopeChange = vi.fn();
-    render(
-      <BenefitFilterBar {...defaultProps} filter="unused" onScopeChange={onScopeChange} />,
-    );
-    fireEvent.click(screen.getByTestId("scope-anniversary"));
-    expect(onScopeChange).toHaveBeenCalledWith("anniversary");
+    expect(screen.queryByTestId("year-scope-toggle")).toBeNull();
   });
 });

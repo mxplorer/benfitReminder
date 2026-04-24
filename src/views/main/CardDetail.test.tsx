@@ -129,13 +129,14 @@ describe("CardDetail filter integration", () => {
     expect(screen.getByText("Hidden One")).toBeInTheDocument();
   });
 
-  it("shows year-scope toggle only on 未使用 and 全部", () => {
+  it("year-mode toggle switches between 日历年 and 会员年 (drives ROI scope + benefit tiles)", () => {
     render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
-    fireEvent.click(screen.getByTestId("filter-pill-unused"));
-    expect(screen.getByTestId("year-scope-toggle")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("filter-pill-used"));
-    expect(screen.queryByTestId("year-scope-toggle")).toBeNull();
+    const toggle = screen.getByTestId("year-mode-toggle");
+    expect(toggle.getAttribute("data-mode")).toBe("calendar");
+    expect(toggle).toHaveTextContent("日历年");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("data-mode")).toBe("membership");
+    expect(toggle).toHaveTextContent("会员年");
   });
 });
 

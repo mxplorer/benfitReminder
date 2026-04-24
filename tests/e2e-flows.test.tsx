@@ -567,10 +567,12 @@ describe("E2E: benefit filter switching", () => {
     expect(screen.getAllByText(/Hidden Y/).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByTestId("filter-pill-all"));
-    expect(screen.getByTestId("year-scope-toggle")).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId("scope-anniversary"));
+    // Year scope now driven by CardDetail's hero year-mode toggle, not a
+    // per-filter-pill control in BenefitFilterBar.
+    expect(screen.getByTestId("year-mode-toggle")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("year-mode-toggle"));
 
     fireEvent.click(screen.getByTestId("filter-pill-unused"));
-    expect(screen.getByTestId("year-scope-toggle")).toBeInTheDocument();
+    expect(screen.getByTestId("year-mode-toggle")).toBeInTheDocument();
   });
 });
