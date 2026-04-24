@@ -313,7 +313,7 @@ export const Dashboard = ({ onNavigate }: DashboardProps) => {
             className={`dashboard__hero-cell${urgentCount > 0 ? " dashboard__hero-cell--urgent" : ""}`}
             data-testid="hero-pending"
           >
-            <div className="dashboard__kicker">待拿</div>
+            <div className="dashboard__kicker">待使用</div>
             <div
               className="dashboard__hero-big dashboard__hero-big--gradient"
               data-testid="left-on-table"

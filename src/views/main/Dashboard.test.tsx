@@ -42,7 +42,7 @@ describe("Dashboard", () => {
     expect(bar).toHaveTextContent("H1");
   });
 
-  it("hides 待拿 cell when selected year is not current year", () => {
+  it("hides 待使用 cell when selected year is not current year", () => {
     render(<Dashboard />);
     expect(screen.getByTestId("hero-pending")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Previous year"));
@@ -296,7 +296,7 @@ describe("Dashboard", () => {
     expect(tile).toHaveTextContent("$895");
   });
 
-  it("uses remaining face (not raw faceValue) for 待拿 under cumulative consumption", () => {
+  it("uses remaining face (not raw faceValue) for 待使用 under cumulative consumption", () => {
     // Benefit with faceValue $200, already $60 consumed this cycle.
     // Cumulative model: not fully used → should be counted as unused, but
     // only $140 is still on the table, not $200.
