@@ -75,7 +75,10 @@ const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps)
       ).length,
     [benefit.usageRecords, currentCycleStart],
   );
-  const [amount, setAmount] = useState<number>(pastRolloverCount * benefit.faceValue);
+  const [amountInput, setAmountInput] = useState<string>(
+    String(pastRolloverCount * benefit.faceValue),
+  );
+  const amount = Math.max(0, Number(amountInput) || 0);
 
   const previewRecords = useMemo(
     () => generateRolloverRecords(benefit, amount, today),
@@ -128,8 +131,8 @@ const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps)
             className="rollover-dialog__amount-input"
             type="number"
             min={0}
-            value={amount}
-            onChange={(e) => { setAmount(Math.max(0, Number(e.target.value) || 0)); }}
+            value={amountInput}
+            onChange={(e) => { setAmountInput(e.target.value); }}
           />
         </label>
         <dl className="rollover-dialog__impact" data-testid="rollover-edit-impact">
