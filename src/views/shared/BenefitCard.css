@@ -82,10 +82,10 @@
   .benefit-card::after { animation: none; }
 }
 
-/* Head row */
+/* Head row — name on the left, ⋯ action menu on the right */
 .benefit-card__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
@@ -103,11 +103,13 @@
   text-decoration: line-through;
   color: var(--text-secondary);
 }
-.benefit-card__value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
+
+/* Consumption breakdown under the progress bar: "$consumed/$total" */
+.benefit-card__usage-line {
+  font-size: 11px;
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
+  margin-top: -2px;
 }
 
 /* Description (small, single line) */

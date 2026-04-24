@@ -325,73 +325,9 @@ export const BenefitCard = ({
         <span className={`benefit-card__name ${isUsed ? "benefit-card__name--used" : ""}`}>
           {benefit.name}
         </span>
-        <span className="benefit-card__value">{valueText}</span>
-      </div>
-
-      {!compact && benefit.description && (
-        <span className="benefit-card__description">{benefit.description}</span>
-      )}
-
-      <div className="benefit-card__meta">
-        <span
-          className="benefit-card__period"
-          title={
-            benefit.resetType === "subscription" && latestHasPropagate(benefit)
-              ? "自动填充上月金额，可修改或取消"
-              : undefined
-          }
-        >
-          {periodLabel ?? getResetLabel(benefit)}
-        </span>
-        {benefit.rolloverable && (
-          <span className="benefit-card__rollover-badge">可Roll</span>
-        )}
-      </div>
-
-      <div className="benefit-card__status-row">
-        <span className="benefit-card__status">
-          <span
-            className={`benefit-card__status-dot benefit-card__status-dot--${tileKind}`}
-            aria-hidden="true"
-          />
-          {statusLabel}
-        </span>
-        {deadlineBadge && (
-          <span className="benefit-card__deadline">{deadlineBadge}</span>
-        )}
-      </div>
-
-      {benefit.faceValue > 0 && (() => {
-        const totalFace = cycleContext
-          ? benefit.faceValue
-          : getTotalFaceWithRollover(benefit, today);
-        const consumedNow = cycleContext
-          ? cycleConsumed
-          : getConsumedInPeriod(benefit, today, card.cardOpenDate);
-        if (totalFace <= 0) return null;
-        const pct = Math.max(0, Math.min(100, (consumedNow / totalFace) * 100));
-        return (
-          <div
-            className={`benefit-card__progress benefit-card__progress--${tileKind}`}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(pct)}
-            aria-label={`已用 $${String(Math.round(consumedNow))} / $${String(totalFace)}`}
-          >
-            <div
-              className="benefit-card__progress-fill"
-              style={{ width: `${String(pct)}%` }}
-            />
-          </div>
-        );
-      })()}
-
-      {pendingValue === null ? (
-        <div className="benefit-card__actions">
-          {(onManageUsage ||
-            onToggleHidden ||
-            (onDelete && !benefit.templateBenefitId)) && (
+        {(onManageUsage ||
+          onToggleHidden ||
+          (onDelete && !benefit.templateBenefitId)) && (
           <div className="benefit-card__actions-menu-wrap" ref={menuRef}>
             <button
               type="button"
@@ -454,7 +390,80 @@ export const BenefitCard = ({
               )}
             </div>
           </div>
-          )}
+        )}
+      </div>
+
+      {!compact && benefit.description && (
+        <span className="benefit-card__description">{benefit.description}</span>
+      )}
+
+      <div className="benefit-card__meta">
+        <span
+          className="benefit-card__period"
+          title={
+            benefit.resetType === "subscription" && latestHasPropagate(benefit)
+              ? "自动填充上月金额，可修改或取消"
+              : undefined
+          }
+        >
+          {periodLabel ?? getResetLabel(benefit)}
+        </span>
+        {benefit.rolloverable && (
+          <span className="benefit-card__rollover-badge">可Roll</span>
+        )}
+      </div>
+
+      <div className="benefit-card__status-row">
+        <span className="benefit-card__status">
+          <span
+            className={`benefit-card__status-dot benefit-card__status-dot--${tileKind}`}
+            aria-hidden="true"
+          />
+          {statusLabel}
+        </span>
+        {deadlineBadge && (
+          <span className="benefit-card__deadline">{deadlineBadge}</span>
+        )}
+      </div>
+
+      {(() => {
+        const totalFace = cycleContext
+          ? benefit.faceValue
+          : getTotalFaceWithRollover(benefit, today);
+        const consumedNow = cycleContext
+          ? cycleConsumed
+          : getConsumedInPeriod(benefit, today, card.cardOpenDate);
+        if (benefit.faceValue <= 0 || totalFace <= 0) {
+          // Non-face-valued benefit: just surface the available value text.
+          return (
+            <div className="benefit-card__usage-line">{valueText}</div>
+          );
+        }
+        const pct = Math.max(0, Math.min(100, (consumedNow / totalFace) * 100));
+        return (
+          <>
+            <div
+              className={`benefit-card__progress benefit-card__progress--${tileKind}`}
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(pct)}
+              aria-label={`已用 $${String(Math.round(consumedNow))} / $${String(totalFace)}`}
+            >
+              <div
+                className="benefit-card__progress-fill"
+                style={{ width: `${String(pct)}%` }}
+              />
+            </div>
+            <div className="benefit-card__usage-line">
+              ${String(Math.round(consumedNow))}/${String(totalFace)}
+            </div>
+          </>
+        );
+      })()}
+
+      {pendingValue === null ? (
+        <div className="benefit-card__actions">
           {onEditRollover && benefit.rolloverable && (
             <button
               type="button"

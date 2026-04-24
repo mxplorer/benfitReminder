@@ -47,7 +47,8 @@ describe("BenefitCard", () => {
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
 
     expect(screen.getByText("Hotel Credit")).toBeInTheDocument();
-    expect(screen.getByText("$300")).toBeInTheDocument();
+    // Usage line now renders as "$consumed/$total" ("$0/$300" when untouched)
+    expect(screen.getByText("$0/$300")).toBeInTheDocument();
     expect(screen.getByText("A test benefit description")).toBeInTheDocument();
   });
 
@@ -246,7 +247,8 @@ describe("BenefitCard", () => {
       ],
     });
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);
-    expect(screen.getByText("$600")).toBeInTheDocument();
+    // Usage line now renders "$0/$600" (consumed=0, totalFace=own 300 + rolled-in 300)
+    expect(screen.getByText("$0/$600")).toBeInTheDocument();
   });
 
   it("hides delete button for benefits with templateBenefitId", () => {
