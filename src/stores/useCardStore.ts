@@ -428,11 +428,15 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
       // Saving the dialog also decides the current cycle: write a rollover
       // marker so the benefit shows as used in this cycle. Skip when a usage
       // record already exists in the current cycle — the user explicitly
-      // marked it consumed, don't overwrite.
+      // marked it consumed, don't overwrite. The marker uses the full
+      // benefit faceValue (legacy "fully rolled" semantic) because the user
+      // has explicitly opted into this cycle being handled.
       const hasCurrentUsage = preserved.some(
         (r) => r.usedDate >= currentCycleStart && r.kind === "usage",
       );
-      const currentMarker = hasCurrentUsage ? [] : [makeRolloverRecord(currentCycleStart)];
+      const currentMarker = hasCurrentUsage
+        ? []
+        : [makeRolloverRecord(currentCycleStart, benefit.faceValue)];
 
       return {
         cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({

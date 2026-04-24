@@ -154,8 +154,9 @@ describe("CardDetail rollover edit dialog", () => {
               resetType: "calendar",
               resetConfig: { period: "annual" },
               usageRecords: [
-                { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
-                { usedDate: "2024-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+                // Two fully-rolled past cycles (record.faceValue = benefit.faceValue = 300)
+                { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+                { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
               ],
             }),
           ],
@@ -184,7 +185,7 @@ describe("CardDetail rollover edit dialog", () => {
               resetType: "calendar",
               resetConfig: { period: "annual" },
               usageRecords: [
-                { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+                { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
               ],
             }),
           ],

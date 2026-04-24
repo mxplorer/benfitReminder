@@ -111,9 +111,13 @@ const migrateRolloverKind = (benefit: Benefit): Benefit => {
         continue;
       }
       seen.add(cycleStart);
+      // Legacy rollover records predate partial-amount tracking and
+      // represented a fully-rolled cycle. Seed faceValue with benefit.faceValue
+      // so the new math (sum record.faceValue per cycle) produces the same
+      // total the old "1 record = benefit.faceValue" math produced.
       mapped.push({
         usedDate: cycleStart,
-        faceValue: 0,
+        faceValue: benefit.faceValue,
         actualValue: 0,
         kind: "rollover",
       });
@@ -126,6 +130,34 @@ const migrateRolloverKind = (benefit: Benefit): Benefit => {
   }
 
   return { ...benefit, usageRecords: mapped };
+};
+
+/**
+ * Seeds faceValue on legacy rollover records (faceValue=0) to benefit.faceValue
+ * so they behave as "fully rolled" under the new per-cycle amount model. Only
+ * touches records with kind="rollover" AND faceValue===0; leaves records that
+ * already carry an amount (from the new write path) untouched. Idempotent.
+ *
+ * This exists because two write paths historically produced faceValue=0:
+ *   1. the original factory (before partial-amount support)
+ *   2. the legacy isRollover→kind migration (now seeds benefit.faceValue on
+ *      the first pass, but pre-existing post-migration data on disk still
+ *      has zeros)
+ * Running this step after both migrations ensures every live record has a
+ * meaningful amount regardless of how/when it was written.
+ */
+const backfillRolloverFaceValue = (benefit: Benefit): Benefit => {
+  if (benefit.faceValue <= 0) return benefit;
+  const needsBackfill = benefit.usageRecords.some(
+    (r) => r.kind === "rollover" && r.faceValue === 0,
+  );
+  if (!needsBackfill) return benefit;
+  const records = benefit.usageRecords.map((r) =>
+    r.kind === "rollover" && r.faceValue === 0
+      ? { ...r, faceValue: benefit.faceValue }
+      : r,
+  );
+  return { ...benefit, usageRecords: records };
 };
 
 /**
@@ -157,8 +189,11 @@ export const migrateCards = (cards: CreditCard[]): CreditCard[] => {
       // autoRecur + cancelledMonths → per-record propagateNext
       next = migrateAutoRecur(next);
 
-      // isRollover → kind
+      // isRollover → kind (seeds faceValue=benefit.faceValue for legacy)
       next = migrateRolloverKind(next);
+
+      // Any remaining kind="rollover" w/ faceValue=0 → seed benefit.faceValue
+      next = backfillRolloverFaceValue(next);
 
       return next;
     }),

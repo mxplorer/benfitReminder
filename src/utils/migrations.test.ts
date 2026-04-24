@@ -151,10 +151,11 @@ describe("migrateCards - isRollover → kind", () => {
     kind?: string;
   };
 
-  it("converts legacy isRollover: true to kind: 'rollover' and snaps usedDate to cycle start", () => {
+  it("converts legacy isRollover: true to kind: 'rollover', snaps usedDate to cycle start, and seeds faceValue=benefit.faceValue", () => {
     const benefit = makeBenefit({
       resetType: "calendar",
       resetConfig: { period: "quarterly" },
+      faceValue: 150,
       rolloverable: true,
       rolloverMaxYears: 2,
       usageRecords: [
@@ -165,6 +166,9 @@ describe("migrateCards - isRollover → kind", () => {
     const record = card.benefits[0].usageRecords[0];
     expect(record.kind).toBe("rollover");
     expect(record.usedDate).toBe("2025-01-01");
+    // Legacy records had no amount; seed to benefit.faceValue so the new
+    // sum-based math treats them as fully rolled (matches old semantics).
+    expect(record.faceValue).toBe(150);
     expect("isRollover" in record).toBe(false);
   });
 
@@ -187,6 +191,7 @@ describe("migrateCards - isRollover → kind", () => {
     const benefit = makeBenefit({
       resetType: "calendar",
       resetConfig: { period: "semi_annual" },
+      faceValue: 200,
       rolloverable: true,
       rolloverMaxYears: 2,
       usageRecords: [
@@ -198,6 +203,7 @@ describe("migrateCards - isRollover → kind", () => {
     const rollovers = card.benefits[0].usageRecords.filter((r) => r.kind === "rollover");
     expect(rollovers).toHaveLength(1);
     expect(rollovers[0].usedDate).toBe("2025-01-01");
+    expect(rollovers[0].faceValue).toBe(200);
   });
 
   it("leaves already-tagged kind records untouched (idempotent)", () => {
@@ -218,6 +224,7 @@ describe("migrateCards - isRollover → kind", () => {
     const benefit = makeBenefit({
       resetType: "calendar",
       resetConfig: { period: "quarterly" },
+      faceValue: 100,
       rolloverable: true,
       rolloverMaxYears: 2,
       usageRecords: [
@@ -228,5 +235,88 @@ describe("migrateCards - isRollover → kind", () => {
     const once = migrateCards([makeCard([benefit])]);
     const twice = migrateCards(once);
     expect(twice).toEqual(once);
+  });
+});
+
+describe("migrateCards - backfillRolloverFaceValue", () => {
+  it("seeds kind='rollover' records with faceValue=0 to benefit.faceValue", () => {
+    // Post-kind-migration data on disk may still have faceValue=0 from before
+    // the partial-amount model landed. This step ensures consumption math sees
+    // a meaningful amount.
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "semi_annual" },
+      faceValue: 300,
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2025-07-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    expect(card.benefits[0].usageRecords[0].faceValue).toBe(300);
+    expect(card.benefits[0].usageRecords[0].kind).toBe("rollover");
+  });
+
+  it("leaves already-nonzero rollover records untouched (new partial writes)", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "semi_annual" },
+      faceValue: 300,
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2025-07-01", faceValue: 50, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    expect(card.benefits[0].usageRecords[0].faceValue).toBe(50);
+  });
+
+  it("does not touch kind='usage' records even if faceValue=0", () => {
+    // Non-face benefits have usage records with faceValue=0 by design.
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "monthly" },
+      faceValue: 0,
+      usageRecords: [
+        { usedDate: "2026-01-05", faceValue: 0, actualValue: 0, kind: "usage" },
+      ],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    expect(card.benefits[0].usageRecords[0].faceValue).toBe(0);
+    expect(card.benefits[0].usageRecords[0].kind).toBe("usage");
+  });
+
+  it("skips backfill when benefit.faceValue is 0 (no meaningful amount to seed)", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "monthly" },
+      faceValue: 0,
+      rolloverable: true,
+      rolloverMaxYears: 1,
+      usageRecords: [
+        { usedDate: "2025-12-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const [card] = migrateCards([makeCard([benefit])]);
+    expect(card.benefits[0].usageRecords[0].faceValue).toBe(0);
+  });
+
+  it("is idempotent — re-running produces identical output", () => {
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "semi_annual" },
+      faceValue: 300,
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2025-07-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const once = migrateCards([makeCard([benefit])]);
+    const twice = migrateCards(once);
+    expect(twice).toEqual(once);
+    expect(once[0].benefits[0].usageRecords[0].faceValue).toBe(300);
   });
 });

@@ -64,6 +64,15 @@ export const getPastPeriods = (
   return results;
 };
 
+/** Distributes `rolloverAmount` across prior cycles, most-recent-first.
+ * Each generated record stores the actual amount rolled from that cycle,
+ * capped at `benefit.faceValue`. Example (faceValue=300, maxYears=2 annual):
+ *   - $23   → 1 record in prior cycle, faceValue=23
+ *   - $450  → 2 records: prev=300, prev-1=150
+ *   - $2000 → capped at maxYears*multiplier; excess drops off.
+ *
+ * Does NOT write a current-cycle marker — callers (e.g. the dialog's save
+ * handler) decide whether to add that separately. */
 export const generateRolloverRecords = (
   benefit: Benefit,
   rolloverAmount: number,
@@ -74,17 +83,18 @@ export const generateRolloverRecords = (
   if (!period) return [];
 
   const maxPeriods = benefit.rolloverMaxYears * PERIOD_MULTIPLIER[period];
-  let periodsNeeded = Math.floor(rolloverAmount / benefit.faceValue);
-  periodsNeeded = Math.min(periodsNeeded, maxPeriods);
 
   const records: UsageRecord[] = [];
   const currentRange = getPeriodRangeAt(today, period);
   let cursor = new Date(currentRange.start + "T00:00:00");
+  let remaining = rolloverAmount;
 
-  for (let i = 0; i < periodsNeeded; i++) {
+  for (let i = 0; i < maxPeriods && remaining > 0; i++) {
     cursor = getPreviousPeriodStart(cursor, period);
     const prevRange = getPeriodRangeAt(cursor, period);
-    records.push(makeRolloverRecord(prevRange.start));
+    const thisAmount = Math.min(remaining, benefit.faceValue);
+    records.push(makeRolloverRecord(prevRange.start, thisAmount));
+    remaining -= thisAmount;
   }
 
   return records;
@@ -117,7 +127,7 @@ export const getTotalFaceWithRollover = (
     );
     if (!recordInPeriod) break;
     if (recordInPeriod.kind !== "rollover") break;
-    accumulated += benefit.faceValue;
+    accumulated += recordInPeriod.faceValue;
     periodsChecked++;
   }
 

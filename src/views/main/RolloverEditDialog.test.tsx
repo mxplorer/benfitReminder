@@ -42,11 +42,12 @@ describe("RolloverEditDialog", () => {
     vi.unstubAllEnvs();
   });
 
-  it("seeds amount input from (past-cycle rollover count × faceValue)", () => {
+  it("seeds amount input from sum of past-cycle rollover faceValues", () => {
     const benefit = makeBenefit({
       usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
-        { usedDate: "2024-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        // Two fully-rolled past cycles: 300 + 300 = 600
+        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+        { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
       ],
     });
     const card = makeCard([benefit]);
@@ -56,6 +57,23 @@ describe("RolloverEditDialog", () => {
 
     const input = screen.getByLabelText(/accumulated/i);
     expect(input.value).toBe("600");
+  });
+
+  it("seeds from sum of partial past-cycle rollover amounts", () => {
+    // Partial-amount model: one full ($300) + one partial ($50) → 350.
+    const benefit = makeBenefit({
+      usageRecords: [
+        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+        { usedDate: "2024-01-01", faceValue: 50, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    const card = makeCard([benefit]);
+    useCardStore.setState({ cards: [card] });
+
+    render(<RolloverEditDialog card={card} benefit={benefit} onClose={() => {}} />);
+
+    const input = screen.getByLabelText(/accumulated/i);
+    expect(input.value).toBe("350");
   });
 
   it("seeds to 0 when no past-cycle rollover records exist", () => {
@@ -72,8 +90,8 @@ describe("RolloverEditDialog", () => {
   it("ignores current-cycle rollover record when computing seed", () => {
     const benefit = makeBenefit({
       usageRecords: [
-        { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
-        { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
       ],
     });
     const card = makeCard([benefit]);
@@ -137,7 +155,7 @@ describe("RolloverEditDialog", () => {
   it("Cancel closes without dispatching", () => {
     const benefit = makeBenefit({
       usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
       ],
     });
     const card = makeCard([benefit]);
@@ -159,8 +177,8 @@ describe("RolloverEditDialog", () => {
   it("Clear dispatches clearRolloverRecords and closes", () => {
     const benefit = makeBenefit({
       usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
-        { usedDate: "2024-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+        { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
       ],
     });
     const card = makeCard([benefit]);
@@ -180,9 +198,9 @@ describe("RolloverEditDialog", () => {
     const benefit = makeBenefit({
       rolloverMaxYears: 3,
       usageRecords: [
-        { usedDate: "2025-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
-        { usedDate: "2024-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
-        { usedDate: "2023-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2025-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+        { usedDate: "2024-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
+        { usedDate: "2023-01-01", faceValue: 300, actualValue: 0, kind: "rollover" },
       ],
     });
     const card = makeCard([benefit]);

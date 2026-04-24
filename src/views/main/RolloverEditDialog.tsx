@@ -68,15 +68,19 @@ interface InnerProps extends RolloverEditDialogProps {
 const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps) => {
   const today = useMemo(() => new Date(), []);
   const currentCycleStart = useMemo(() => cycleStartForDate(today, period), [today, period]);
-  const pastRolloverCount = useMemo(
+  // Seed the input from the total amount already rolled into prior cycles
+  // (sum of record faceValues, each capped at benefit.faceValue during write).
+  // Using the sum — not count × faceValue — correctly surfaces partial
+  // rollovers (e.g. a $23-only rollover) back to the user for editing.
+  const pastRolloverSum = useMemo(
     () =>
-      benefit.usageRecords.filter(
-        (r) => r.kind === "rollover" && r.usedDate < currentCycleStart,
-      ).length,
+      benefit.usageRecords
+        .filter((r) => r.kind === "rollover" && r.usedDate < currentCycleStart)
+        .reduce((s, r) => s + r.faceValue, 0),
     [benefit.usageRecords, currentCycleStart],
   );
   const [amountInput, setAmountInput] = useState<string>(
-    String(pastRolloverCount * benefit.faceValue),
+    String(pastRolloverSum),
   );
   const amount = Math.max(0, Number(amountInput) || 0);
 
@@ -89,9 +93,11 @@ const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps)
     () => getAvailableValue(benefit, today),
     [benefit, today],
   );
-  const nextAvailable = benefit.faceValue + previewRecords.length * benefit.faceValue;
-  const snappedAmount = previewRecords.length * benefit.faceValue;
-  const hasRemainder = amount > 0 && amount !== snappedAmount;
+  // Total pool = this cycle's own face + whatever was rolled in from prior
+  // cycles (sum of record faceValues, each capped at benefit.faceValue).
+  const nextAvailable =
+    benefit.faceValue +
+    previewRecords.reduce((s, r) => s + r.faceValue, 0);
 
   const replaceRolloverRecords = useCardStore((s) => s.replaceRolloverRecords);
   const clearRolloverRecords = useCardStore((s) => s.clearRolloverRecords);
@@ -145,12 +151,6 @@ const RolloverEditDialogInner = ({ card, benefit, period, onClose }: InnerProps)
             <dd data-testid="rollover-edit-next-available">${String(nextAvailable)}</dd>
           </div>
         </dl>
-        {hasRemainder && (
-          <p className="rollover-dialog__hint" data-testid="rollover-edit-hint">
-            金额会按 faceValue 向下取整:${String(amount)} → ${String(snappedAmount)}
-            ({String(previewRecords.length)} × ${String(benefit.faceValue)})
-          </p>
-        )}
         <div className="rollover-dialog__preview-section">
           <span className="rollover-dialog__preview-label">
             生成的 past-cycle rollover 记录:

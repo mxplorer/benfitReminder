@@ -29,12 +29,21 @@ export const makeUsageRecord = (input: MakeUsageRecordInput): UsageRecord => ({
   ...(input.propagateNext !== undefined ? { propagateNext: input.propagateNext } : {}),
 });
 
-/** Factory for "rollover" records. Enforces the two invariants (face/actual
- * zero, usedDate = cycle start) at the only write site so readers can trust
- * them without re-validating. */
-export const makeRolloverRecord = (cycleStart: string): UsageRecord => ({
+/** Factory for "rollover" records. `faceValue` = amount rolled forward from
+ * that cycle, capped at `benefit.faceValue` (enforced by callers — the
+ * factory does not know the benefit's face). `actualValue` is always 0:
+ * rollover carries face forward but no money was received. `usedDate` is
+ * pinned to the cycle start so readers can key records by cycle.
+ *
+ * A `faceValue: 0` rollover record is legacy-only (pre-amount-tracking) and
+ * should be migrated to `benefit.faceValue` (fully rolled) before any
+ * consumption math sees it. */
+export const makeRolloverRecord = (
+  cycleStart: string,
+  faceValue: number,
+): UsageRecord => ({
   usedDate: cycleStart,
-  faceValue: 0,
+  faceValue,
   actualValue: 0,
   kind: "rollover",
 });

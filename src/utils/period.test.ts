@@ -339,30 +339,51 @@ describe("isBenefitUsedInPeriod", () => {
     expect(isBenefitUsedInPeriod(benefit, d("2026-04-10"))).toBe(false);
   });
 
-  it("rollover marker alone (faceValue=0 contribution) does not mark cycle as used under cumulative rule", () => {
-    // Under the new cumulative face-value semantic, rollover records have
-    // faceValue = 0 and therefore do not consume any of the cycle's face
-    // value. A lone rollover marker leaves the cycle available, not used.
+  it("fully-rolled rollover record in current cycle marks cycle as used", () => {
+    // Under the partial-amount model, a rollover record's faceValue is the
+    // amount rolled forward (capped at benefit.faceValue). A record with
+    // faceValue=benefit.faceValue represents a fully-rolled cycle — consumed
+    // == totalFace, so the cycle reads as used. This is also the semantic
+    // migrated legacy data inherits.
     const benefit = makeBenefit({
       resetType: "calendar",
       resetConfig: { period: "quarterly" },
+      faceValue: 100,
       rolloverable: true,
       rolloverMaxYears: 2,
       usageRecords: [
-        { usedDate: "2026-04-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-04-01", faceValue: 100, actualValue: 0, kind: "rollover" },
+      ],
+    });
+    expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(true);
+  });
+
+  it("partial rollover record in current cycle does NOT mark cycle as used", () => {
+    // faceValue=50 rolled on a $100 benefit → consumed=50, totalFace=100 → not used.
+    const benefit = makeBenefit({
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      faceValue: 100,
+      rolloverable: true,
+      rolloverMaxYears: 2,
+      usageRecords: [
+        { usedDate: "2026-04-01", faceValue: 50, actualValue: 0, kind: "rollover" },
       ],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(false);
   });
 
-  it("ignores past-cycle rollover markers when checking the current cycle", () => {
+  it("ignores past-cycle rollover records when checking the current cycle", () => {
+    // A past-cycle fully-rolled record pushes totalFace up (100 + 100) but
+    // consumed in current cycle is 0 → not used.
     const benefit = makeBenefit({
       resetType: "calendar",
       resetConfig: { period: "quarterly" },
+      faceValue: 100,
       rolloverable: true,
       rolloverMaxYears: 2,
       usageRecords: [
-        { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-01-01", faceValue: 100, actualValue: 0, kind: "rollover" },
       ],
     });
     expect(isBenefitUsedInPeriod(benefit, d("2026-05-10"))).toBe(false);
@@ -737,8 +758,8 @@ describe("cumulative face-value used-ness", () => {
         resetType: "calendar",
         resetConfig: { period: "semi_annual" },
         usageRecords: [
-          // H1 rolled over
-          { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+          // H1 fully rolled over (record.faceValue = benefit.faceValue)
+          { usedDate: "2026-01-01", faceValue: 200, actualValue: 0, kind: "rollover" },
           // H2 so far: 200 consumed
           { usedDate: "2026-07-15", faceValue: 200, actualValue: 200, kind: "usage" },
         ],
@@ -755,7 +776,7 @@ describe("cumulative face-value used-ness", () => {
         resetType: "calendar",
         resetConfig: { period: "semi_annual" },
         usageRecords: [
-          { usedDate: "2026-01-01", faceValue: 0, actualValue: 0, kind: "rollover" },
+          { usedDate: "2026-01-01", faceValue: 200, actualValue: 0, kind: "rollover" },
           { usedDate: "2026-07-15", faceValue: 200, actualValue: 200, kind: "usage" },
           { usedDate: "2026-08-10", faceValue: 200, actualValue: 200, kind: "usage" },
         ],

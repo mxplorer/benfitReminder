@@ -234,14 +234,15 @@ describe("BenefitCard", () => {
   });
 
   it("shows accumulated value when rollover records exist", () => {
-    // Today is 2026-04-25 → Q2. Q1 was rolled → available = 300 + 300 = 600
+    // Today is 2026-04-25 → Q2. Q1 fully rolled (record.faceValue=benefit.faceValue=300)
+    // → available = 300 + 300 = 600
     const benefit = makeBenefit({
       faceValue: 300,
       rolloverable: true,
       rolloverMaxYears: 2,
       resetConfig: { period: "quarterly" },
       usageRecords: [
-        { usedDate: "2026-01-15", faceValue: 0, actualValue: 0, kind: "rollover" },
+        { usedDate: "2026-01-15", faceValue: 300, actualValue: 0, kind: "rollover" },
       ],
     });
     render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={vi.fn()} />);

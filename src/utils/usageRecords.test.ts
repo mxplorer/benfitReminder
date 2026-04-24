@@ -124,14 +124,27 @@ describe("makeUsageRecord", () => {
 });
 
 describe("makeRolloverRecord", () => {
-  it("zeroes face/actual value and uses the supplied cycle start as usedDate", () => {
-    const r = makeRolloverRecord("2026-01-01");
+  it("stores the supplied faceValue, zero actualValue, and cycleStart usedDate", () => {
+    const r = makeRolloverRecord("2026-01-01", 300);
     expect(r).toEqual({
       usedDate: "2026-01-01",
-      faceValue: 0,
+      faceValue: 300,
       actualValue: 0,
       kind: "rollover",
     });
+  });
+
+  it("accepts a partial amount (< benefit faceValue) — factory does not clamp", () => {
+    // Callers (generateRolloverRecords, store write paths) are responsible
+    // for capping. The factory just records what it's told.
+    const r = makeRolloverRecord("2026-01-01", 23);
+    expect(r.faceValue).toBe(23);
+    expect(r.kind).toBe("rollover");
+  });
+
+  it("accepts faceValue=0 (legacy shape — callers migrate before reading)", () => {
+    const r = makeRolloverRecord("2026-01-01", 0);
+    expect(r.faceValue).toBe(0);
   });
 });
 
