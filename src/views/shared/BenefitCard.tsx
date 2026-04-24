@@ -361,7 +361,7 @@ export const BenefitCard = ({
         )}
       </div>
 
-      {benefit.faceValue > 0 && !isUsed && (() => {
+      {benefit.faceValue > 0 && (() => {
         const totalFace = cycleContext
           ? benefit.faceValue
           : getTotalFaceWithRollover(benefit, today);

@@ -198,6 +198,9 @@
 .benefit-card__progress--pending .benefit-card__progress-fill {
   background: var(--text-tertiary);
 }
+.benefit-card__progress--used .benefit-card__progress-fill {
+  background: var(--color-green, #34c759);
+}
 @media (prefers-color-scheme: dark) {
   .benefit-card__progress { background: rgba(255, 255, 255, 0.08); }
 }
