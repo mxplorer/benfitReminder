@@ -1,3 +1,4 @@
+/* Segmented control — matches tray tabs' design language. */
 .benefit-filter-bar {
   display: flex;
   align-items: center;
@@ -5,47 +6,78 @@
   gap: 12px;
   flex-wrap: wrap;
 }
+
 .benefit-filter-bar__pills {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
 }
+
 .benefit-filter-bar__pill {
-  padding: 4px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  background: none;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 13px;
-  transition: all 0.15s ease;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
-.benefit-filter-bar__pill:hover {
-  background: var(--bg-hover);
+
+.benefit-filter-bar__pill:hover:not(.benefit-filter-bar__pill--active) {
   color: var(--text-primary);
 }
+
 .benefit-filter-bar__pill--active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  background: #fff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
+
+@media (prefers-color-scheme: dark) {
+  .benefit-filter-bar__pills { background: rgba(255, 255, 255, 0.06); }
+  .benefit-filter-bar__pill--active {
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Year-scope sub-toggle (reused segmented look at smaller size) */
 .benefit-filter-bar__scope {
-  display: flex;
-  gap: 4px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  display: inline-flex;
   padding: 2px;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
 }
+
 .benefit-filter-bar__scope-btn {
-  padding: 3px 10px;
+  padding: 4px 10px;
   border: none;
   border-radius: 6px;
-  background: none;
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
+
 .benefit-filter-bar__scope-btn--active {
-  background: var(--accent);
-  color: #fff;
+  background: #fff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .benefit-filter-bar__scope { background: rgba(255, 255, 255, 0.06); }
+  .benefit-filter-bar__scope-btn--active {
+    background: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
 }
