@@ -82,45 +82,92 @@ describe("AggregatedBenefitCard", () => {
   });
 });
 
-describe("AggregatedBenefitCard — partial-row 继续使用 (reuses BenefitUsagePrompt)", () => {
+describe("AggregatedBenefitCard — pill-summary 本月 action (reuses BenefitUsagePrompt)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const partialBenefit: Benefit = {
+    ...benefit,
+    faceValue: 15,
+    usageRecords: [
+      // April: $6 consumed → partial
+      { usedDate: "2026-04-05", faceValue: 6, actualValue: 6, kind: "usage" },
+    ],
+  };
+  const partialCard: CreditCard = { ...card, benefits: [partialBenefit] };
   const partialItem: BenefitDisplayItem = {
-    benefit, card, key: "agg-all", variant: "aggregated",
+    benefit: partialBenefit, card: partialCard, key: "agg-all", variant: "aggregated",
     aggregate: {
       kind: "all",
       months: [
-        // 4月 has $6 of $15 consumed → partial
         { label: "4月", used: false, faceValue: 15, consumedValue: 6, cycleStart: "2026-04-01", cycleEnd: "2026-04-30" },
       ],
-      usedCount: 0, unusedCount: 1, totalActualValue: 0, totalFaceValue: 15,
+      usedCount: 0, unusedCount: 1, totalActualValue: 6, totalFaceValue: 15,
     },
   };
 
-  it("partial row shows '+ 再用一次' button (replacing the ✓ that would mark fully used)", () => {
+  it("partial current month surfaces '+ 再用一次' on the collapsed pill summary (no expand needed)", () => {
     render(<AggregatedBenefitCard item={partialItem} onAddCycleUsage={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("agg-expand"));
-    expect(screen.getByTestId("agg-month-continue-4月")).toBeInTheDocument();
-    // The legacy ✓ check should NOT be there for a partial row
-    expect(screen.queryByTestId("agg-month-check-4月")).toBeNull();
+    const action = screen.getByTestId("agg-current-action");
+    expect(action).toHaveTextContent("+ 再用一次 ($9 剩)");
   });
 
-  it("clicking '+ 再用一次' opens the inline BenefitUsagePrompt prefilled with remaining", () => {
-    render(<AggregatedBenefitCard item={partialItem} onAddCycleUsage={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("agg-expand"));
-    fireEvent.click(screen.getByTestId("agg-month-continue-4月"));
-    // BenefitUsagePrompt mounts inline — its 本次面值 input is prefilled
-    // with the remaining ($15 - $6 = $9).
-    const consumedInput = screen.getByLabelText<HTMLInputElement>("本次面值");
-    expect(consumedInput.value).toBe("9");
-    const actualInput = screen.getByLabelText<HTMLInputElement>("实际到手");
-    expect(actualInput.value).toBe("9");
+  it("empty current month surfaces '+ 使用 $face'", () => {
+    const emptyBenefit: Benefit = { ...benefit, faceValue: 15, usageRecords: [] };
+    const emptyCard: CreditCard = { ...card, benefits: [emptyBenefit] };
+    const emptyItem: BenefitDisplayItem = {
+      benefit: emptyBenefit, card: emptyCard, key: "agg-all", variant: "aggregated",
+      aggregate: {
+        kind: "all",
+        months: [
+          { label: "4月", used: false, faceValue: 15, consumedValue: 0, cycleStart: "2026-04-01", cycleEnd: "2026-04-30" },
+        ],
+        usedCount: 0, unusedCount: 1, totalActualValue: 0, totalFaceValue: 15,
+      },
+    };
+    render(<AggregatedBenefitCard item={emptyItem} onAddCycleUsage={vi.fn()} />);
+    const action = screen.getByTestId("agg-current-action");
+    expect(action).toHaveTextContent("+ 使用 $15");
   });
 
-  it("submitting the prompt calls onAddCycleUsage with cycle range and consumed amount", () => {
+  it("fully-used current month surfaces '✓ 已用完' with uncheck behavior", () => {
+    const usedBenefit: Benefit = {
+      ...benefit, faceValue: 15,
+      usageRecords: [{ usedDate: "2026-04-05", faceValue: 15, actualValue: 15, kind: "usage" }],
+    };
+    const usedCard: CreditCard = { ...card, benefits: [usedBenefit] };
+    const usedItem: BenefitDisplayItem = {
+      benefit: usedBenefit, card: usedCard, key: "agg-all", variant: "aggregated",
+      aggregate: {
+        kind: "all",
+        months: [
+          { label: "4月", used: true, faceValue: 15, consumedValue: 15,
+            record: { usedDate: "2026-04-05", faceValue: 15, actualValue: 15, kind: "usage" },
+            cycleStart: "2026-04-01", cycleEnd: "2026-04-30" },
+        ],
+        usedCount: 1, unusedCount: 0, totalActualValue: 15, totalFaceValue: 15,
+      },
+    };
+    const onSetCycleUsed = vi.fn();
+    render(<AggregatedBenefitCard item={usedItem} onSetCycleUsed={onSetCycleUsed} />);
+    const action = screen.getByTestId("agg-current-action");
+    expect(action).toHaveTextContent("已用完");
+    fireEvent.click(action);
+    expect(onSetCycleUsed).toHaveBeenCalledWith("c1", "b1", "2026-04-01", "2026-04-30", false);
+  });
+
+  it("clicking the pill action opens BenefitUsagePrompt prefilled with remaining; submit appends a record", () => {
     const onAddCycleUsage = vi.fn();
     render(<AggregatedBenefitCard item={partialItem} onAddCycleUsage={onAddCycleUsage} />);
-    fireEvent.click(screen.getByTestId("agg-expand"));
-    fireEvent.click(screen.getByTestId("agg-month-continue-4月"));
-    fireEvent.change(screen.getByLabelText("本次面值"), { target: { value: "5" } });
+    fireEvent.click(screen.getByTestId("agg-current-action"));
+    const consumedInput = screen.getByLabelText<HTMLInputElement>("本次面值");
+    expect(consumedInput.value).toBe("9");
+    fireEvent.change(consumedInput, { target: { value: "5" } });
     fireEvent.click(screen.getByLabelText("确认"));
     expect(onAddCycleUsage).toHaveBeenCalledWith(
       "c1", "b1", "2026-04-01", "2026-04-30",
@@ -130,10 +177,9 @@ describe("AggregatedBenefitCard — partial-row 继续使用 (reuses BenefitUsag
     expect(screen.queryByLabelText("本次面值")).toBeNull();
   });
 
-  it("'+ 再用一次' affordance is hidden when onAddCycleUsage is not provided (graceful fallback)", () => {
+  it("hides the action button when neither onAddCycleUsage nor onSetCycleUsed is provided", () => {
     render(<AggregatedBenefitCard item={partialItem} />);
-    fireEvent.click(screen.getByTestId("agg-expand"));
-    expect(screen.queryByTestId("agg-month-continue-4月")).toBeNull();
+    expect(screen.queryByTestId("agg-current-action")).toBeNull();
   });
 });
 

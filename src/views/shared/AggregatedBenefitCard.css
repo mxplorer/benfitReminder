@@ -135,6 +135,57 @@
 .agg-benefit-card__current-bar-fill--partial {
   background: rgb(255, 149, 0);
 }
+.agg-benefit-card__current-action {
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  align-self: flex-start;
+}
+.agg-benefit-card__current-action--active {
+  background: #1c1c1e;
+  color: #fff;
+  border-color: #1c1c1e;
+}
+.agg-benefit-card__current-action--active:hover {
+  background: #2c2c2e;
+}
+.agg-benefit-card__current-action--used {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.agg-benefit-card__current-action--used:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+:root[data-theme-effective="dark"] .agg-benefit-card__current-action--active {
+  background: #f2f2f7;
+  color: #1c1c1e;
+  border-color: #f2f2f7;
+}
+:root[data-theme-effective="dark"] .agg-benefit-card__current-action--active:hover {
+  background: #e5e5ea;
+}
+:root[data-theme-effective="dark"] .agg-benefit-card__current-action--used {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+:root[data-theme-effective="dark"] .agg-benefit-card__current-action--used:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+/* When the prompt is open inline within the 本月 block */
+.agg-benefit-card__current .benefit-card__prompt {
+  margin-top: 6px;
+}
 
 /* Dark mode */
 :root[data-theme-effective="dark"] .agg-benefit-card__icon-btn {
@@ -221,42 +272,6 @@
   background: var(--danger);
   color: #fff;
   border-color: var(--danger);
-}
-.agg-benefit-card__row-continue {
-  padding: 2px 8px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  background: rgba(0, 122, 255, 0.06);
-  color: rgb(0, 100, 200);
-  cursor: pointer;
-  font-size: 11px;
-  font-family: inherit;
-  white-space: nowrap;
-  grid-column: 3 / span 2;
-  justify-self: end;
-}
-.agg-benefit-card__row-continue:hover {
-  background: rgba(0, 122, 255, 0.14);
-  border-color: rgba(0, 122, 255, 0.4);
-}
-:root[data-theme-effective="dark"] .agg-benefit-card__row-continue {
-  background: rgba(10, 132, 255, 0.14);
-  color: rgb(120, 180, 255);
-  border-color: rgba(255, 255, 255, 0.14);
-}
-:root[data-theme-effective="dark"] .agg-benefit-card__row-continue:hover {
-  background: rgba(10, 132, 255, 0.22);
-  border-color: rgba(10, 132, 255, 0.45);
-}
-
-/* When a row is in prompt mode, the BenefitUsagePrompt spans below the
- * label/value so the inline form has room for its inputs. */
-.agg-benefit-card__row--prompting {
-  grid-template-columns: 60px 1fr;
-  row-gap: 6px;
-}
-.agg-benefit-card__row--prompting .benefit-card__prompt {
-  grid-column: 1 / -1;
 }
 .agg-benefit-card__pending-label {
   display: flex;

@@ -220,7 +220,7 @@ export const AggregatedBenefitCard = ({
         )}
       </div>
 
-      {!pending && currentFace > 0 && inCurrentRange && (
+      {!pending && currentFace > 0 && inCurrentRange && currentRange && (
         <div
           className={`agg-benefit-card__current agg-benefit-card__current--${currentStatus}`}
           data-testid="agg-current-month"
@@ -244,6 +244,52 @@ export const AggregatedBenefitCard = ({
               style={{ width: `${String(currentPct)}%` }}
             />
           </div>
+          {promptingCycleStart === currentRange.start ? (
+            <BenefitUsagePrompt
+              cardId={card.id}
+              benefitId={benefit.id}
+              mode="add"
+              cycleStart={currentRange.start}
+              cycleEnd={currentRange.end}
+              initial={{
+                consumedFace: Math.max(0, currentFace - currentConsumed),
+                actualValue: Math.max(0, currentFace - currentConsumed),
+                usedDate: todayIso,
+                propagateNext: latestHasPropagate(benefit),
+              }}
+              monthlyLike={true}
+              dateRequired={false}
+              todayIso={todayIso}
+              onAddCycleUsage={onAddCycleUsage}
+              onSetCycleUsed={onSetCycleUsed}
+              onToggleUsage={onToggleUsage}
+              onClose={() => { setPromptingCycleStart(null); }}
+            />
+          ) : currentStatus === "used" && onSetCycleUsed ? (
+            <button
+              type="button"
+              className="agg-benefit-card__current-action agg-benefit-card__current-action--used"
+              data-testid="agg-current-action"
+              onClick={() => {
+                onSetCycleUsed(card.id, benefit.id, currentRange.start, currentRange.end, false);
+              }}
+              aria-label="取消使用"
+            >
+              <span aria-hidden="true">✓</span> 已用完
+            </button>
+          ) : currentStatus !== "used" && onAddCycleUsage ? (
+            <button
+              type="button"
+              className="agg-benefit-card__current-action agg-benefit-card__current-action--active"
+              data-testid="agg-current-action"
+              onClick={() => { setPromptingCycleStart(currentRange.start); }}
+              aria-label={currentStatus === "partial" ? "再用一次" : "标记使用"}
+            >
+              {currentStatus === "partial"
+                ? `+ 再用一次 ($${String(Math.max(0, currentFace - currentConsumed))} 剩)`
+                : `+ 使用 $${String(currentFace)}`}
+            </button>
+          ) : null}
         </div>
       )}
 
@@ -294,8 +340,6 @@ export const AggregatedBenefitCard = ({
             // cumulative consumption this cycle. Surface it so users can see
             // they've used part of the credit already.
             const isPartial = !m.used && consumed > 0 && consumed < m.faceValue;
-            const remaining = Math.max(0, m.faceValue - consumed);
-            const isPrompting = promptingCycleStart === m.cycleStart;
             const valueText = m.used && m.record
               ? `$${String(m.record.actualValue)}`
               : isPartial
@@ -305,11 +349,11 @@ export const AggregatedBenefitCard = ({
               <li
                 key={m.label}
                 data-testid={`agg-month-row-${m.label}`}
-                className={`agg-benefit-card__row${m.used ? " agg-benefit-card__row--used" : ""}${isPartial ? " agg-benefit-card__row--partial" : ""}${isPrompting ? " agg-benefit-card__row--prompting" : ""}`}
+                className={`agg-benefit-card__row${m.used ? " agg-benefit-card__row--used" : ""}${isPartial ? " agg-benefit-card__row--partial" : ""}`}
               >
                 <span className="agg-benefit-card__row-label">{m.label}</span>
                 <span className="agg-benefit-card__row-value">{valueText}</span>
-                {!isPrompting && m.used && (
+                {m.used ? (
                   <>
                     <span className="agg-benefit-card__row-date">{m.record?.usedDate ?? ""}</span>
                     {onSetCycleUsed && (
@@ -331,38 +375,26 @@ export const AggregatedBenefitCard = ({
                       </button>
                     )}
                   </>
-                )}
-                {!isPrompting && !m.used && isPartial && onAddCycleUsage && (
+                ) : onSetCycleUsed ? (
                   <button
-                    data-testid={`agg-month-continue-${m.label}`}
-                    className="agg-benefit-card__row-continue"
-                    onClick={() => { setPromptingCycleStart(m.cycleStart); }}
-                    aria-label="再用一次"
-                    title="再用一次"
+                    data-testid={`agg-month-check-${m.label}`}
+                    className="agg-benefit-card__row-check"
+                    onClick={() => {
+                      onSetCycleUsed(
+                        item.card.id,
+                        item.benefit.id,
+                        m.cycleStart,
+                        m.cycleEnd,
+                        true,
+                        { actualValue: m.faceValue },
+                      );
+                    }}
+                    aria-label="标记使用"
                   >
-                    + 再用一次 (${String(remaining)} 剩)
+                    ✓
                   </button>
-                )}
-                {!isPrompting && !m.used && !isPartial && (
-                  onSetCycleUsed ? (
-                    <button
-                      data-testid={`agg-month-check-${m.label}`}
-                      className="agg-benefit-card__row-check"
-                      onClick={() => {
-                        onSetCycleUsed(
-                          item.card.id,
-                          item.benefit.id,
-                          m.cycleStart,
-                          m.cycleEnd,
-                          true,
-                          { actualValue: m.faceValue },
-                        );
-                      }}
-                      aria-label="标记使用"
-                    >
-                      ✓
-                    </button>
-                  ) : onToggleUsage ? (
+                ) : (
+                  onToggleUsage && (
                     <button
                       data-testid={`agg-month-check-${m.label}`}
                       className="agg-benefit-card__row-check"
@@ -378,32 +410,7 @@ export const AggregatedBenefitCard = ({
                     >
                       ✓
                     </button>
-                  ) : null
-                )}
-                {isPrompting && (
-                  <BenefitUsagePrompt
-                    cardId={item.card.id}
-                    benefitId={item.benefit.id}
-                    mode="add"
-                    cycleStart={m.cycleStart}
-                    cycleEnd={m.cycleEnd}
-                    initial={{
-                      consumedFace: remaining,
-                      actualValue: remaining,
-                      usedDate:
-                        todayIso >= m.cycleStart && todayIso <= m.cycleEnd
-                          ? todayIso
-                          : m.cycleStart,
-                      propagateNext: latestHasPropagate(item.benefit),
-                    }}
-                    monthlyLike={true}
-                    dateRequired={false}
-                    todayIso={todayIso}
-                    onAddCycleUsage={onAddCycleUsage}
-                    onSetCycleUsed={onSetCycleUsed}
-                    onToggleUsage={onToggleUsage}
-                    onClose={() => { setPromptingCycleStart(null); }}
-                  />
+                  )
                 )}
               </li>
             );
