@@ -265,10 +265,8 @@ const expandUnused = (
       });
     } else {
       for (const cycle of cycles) {
-        // Anniversary benefits allocate one credit per cycle. Once the cycle
-        // ends, that year's credit is forfeit and the cycle is no longer
-        // actionable — hide past cycles from "未使用".
-        if (b.resetType === "anniversary" && cycle.end < todayIso) continue;
+        // Past empty cycles stay in 未使用 — rendered as "已过期" by
+        // BenefitCard so users can see which periods they let lapse.
         if (isInUnusedFilter(b, cycle, todayIso, card.cardOpenDate)) {
           items.push(perCycleItem(b, card, cycle, undefined));
         }

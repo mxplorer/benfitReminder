@@ -170,6 +170,7 @@
 .benefit-card__status-dot--ok { background: var(--color-blue, #007aff); }
 .benefit-card__status-dot--used { background: var(--text-tertiary); }
 .benefit-card__status-dot--pending { background: var(--text-tertiary); }
+.benefit-card__status-dot--expired { background: var(--text-tertiary); }
 
 .benefit-card--urgent .benefit-card__status { color: var(--color-red); font-weight: 600; }
 
@@ -363,6 +364,11 @@
   background: rgba(0, 0, 0, 0.04);
   color: var(--text-primary);
 }
+.benefit-card__use-btn--expired {
+  background: transparent;
+  color: var(--text-tertiary);
+  border-color: rgba(0, 0, 0, 0.08);
+}
 .benefit-card__use-btn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -490,6 +496,9 @@
   }
   .benefit-card__use-btn--used:hover {
     background: rgba(255, 255, 255, 0.06);
+  }
+  .benefit-card__use-btn--expired {
+    border-color: rgba(255, 255, 255, 0.08);
   }
   .benefit-card__use-btn:disabled {
     border-color: rgba(255, 255, 255, 0.08);

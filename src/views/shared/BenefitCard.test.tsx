@@ -987,3 +987,89 @@ describe("BenefitCard — Batch 4 ⋯ action menu", () => {
     expect(menu?.className).not.toContain("benefit-card__actions-menu--open");
   });
 });
+
+describe("BenefitCard — expired & pending states", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders 已过期 disabled button for past empty cycle (e.g. Q1 from 全部)", () => {
+    const benefit = makeBenefit({
+      id: "b1",
+      faceValue: 10,
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+    });
+    const card = makeCard({ benefits: [benefit] });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        cycleStart="2026-01-01"
+        cycleEnd="2026-03-31"
+        cycleUsed={false}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={vi.fn()}
+      />,
+    );
+    const btn = screen.getByLabelText<HTMLButtonElement>("已过期");
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveTextContent("已过期");
+    expect(btn.title).toMatch(/已于 2026-03-31 过期/);
+    // tile body still says 未使用
+    expect(screen.getByText("未使用")).toBeInTheDocument();
+  });
+
+  it("renders 未激活 disabled button for one_time benefit with future availableFromDate", () => {
+    const benefit = makeBenefit({
+      id: "b2",
+      faceValue: 50,
+      resetType: "one_time",
+      resetConfig: { availableFromDate: "2026-07-01", expiresDate: "2026-12-31" },
+    });
+    const card = makeCard({ benefits: [benefit] });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        onToggleUsage={vi.fn()}
+      />,
+    );
+    const btn = screen.getByLabelText<HTMLButtonElement>("未激活");
+    expect(btn).toBeDisabled();
+    expect(btn).toHaveTextContent("未激活");
+    expect(btn.title).toMatch(/将于 2026-07-01 激活/);
+  });
+
+  it("past + used cycle keeps the existing 已用完 (uncheck) button — not expired", () => {
+    const benefit = makeBenefit({
+      id: "b3",
+      faceValue: 10,
+      resetType: "calendar",
+      resetConfig: { period: "quarterly" },
+      usageRecords: [
+        { usedDate: "2026-02-15", faceValue: 10, actualValue: 10, kind: "usage" },
+      ],
+    });
+    const card = makeCard({ benefits: [benefit] });
+    render(
+      <BenefitCard
+        benefit={benefit}
+        card={card}
+        cycleStart="2026-01-01"
+        cycleEnd="2026-03-31"
+        cycleUsed={true}
+        cycleRecord={benefit.usageRecords[0]}
+        onToggleUsage={vi.fn()}
+        onSetCycleUsed={vi.fn()}
+      />,
+    );
+    const btn = screen.getByLabelText<HTMLButtonElement>("取消使用");
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveTextContent("已用完");
+  });
+});

@@ -86,16 +86,18 @@ const formatDeadlineShort = (days: number): string => {
   return `剩余 ${String(Math.round(days / 30))} 月`;
 };
 
-type TileKind = "urgent" | "ok" | "used" | "pending";
+type TileKind = "urgent" | "ok" | "used" | "pending" | "expired";
 
 const resolveTileKind = (opts: {
   isUsed: boolean;
   notYetActive: boolean;
+  expired: boolean;
   daysRemaining: number | null;
   reminderDays: number;
 }): TileKind => {
   if (opts.isUsed) return "used";
   if (opts.notYetActive) return "pending";
+  if (opts.expired) return "expired";
   if (opts.daysRemaining !== null && opts.daysRemaining <= opts.reminderDays) return "urgent";
   return "ok";
 };
@@ -103,6 +105,9 @@ const resolveTileKind = (opts: {
 const statusText = (kind: TileKind, daysRemaining: number | null): string => {
   if (kind === "used") return "已使用";
   if (kind === "pending") return "未激活";
+  // expired: tile body still says 未使用 (the period ended without use). The
+  // disabled "已过期" button conveys that the credit can no longer be claimed.
+  if (kind === "expired") return "未使用";
   if (kind === "urgent") return "即将到期";
   if (daysRemaining !== null && daysRemaining > 60) return "充裕";
   return "可使用";
@@ -190,11 +195,28 @@ export const BenefitCard = ({
     cardOpenDate: card.cardOpenDate,
   });
   const daysRemaining = deadline ? getDaysRemaining(today, deadline) : null;
-  const notYetActive = cycleStart !== undefined && todayIso < cycleStart;
+  // one_time benefits don't carry a cycleStart through standardItem, so they
+  // need their own gate: an availableFromDate in the future means the
+  // benefit hasn't activated yet.
+  const oneTimeActivationDate =
+    benefit.resetType === "one_time" ? benefit.resetConfig.availableFromDate : undefined;
+  const notYetActive =
+    (cycleStart !== undefined && todayIso < cycleStart) ||
+    (oneTimeActivationDate !== undefined && todayIso < oneTimeActivationDate);
+  const activationDate = cycleStart ?? oneTimeActivationDate;
+  // Expired = the period (cycle end or one_time expires) is in the past and
+  // the benefit was never (fully) used. We keep the tile visible so users
+  // see what lapsed, but disable the use button.
+  const oneTimeExpiresDate =
+    benefit.resetType === "one_time" ? benefit.resetConfig.expiresDate : undefined;
+  const expired = !isUsed && (
+    (cycleEnd !== undefined && todayIso > cycleEnd) ||
+    (oneTimeExpiresDate !== undefined && todayIso > oneTimeExpiresDate)
+  );
 
-  const tileKind = resolveTileKind({ isUsed, notYetActive, daysRemaining, reminderDays });
+  const tileKind = resolveTileKind({ isUsed, notYetActive, expired, daysRemaining, reminderDays });
   const statusLabel = statusText(tileKind, daysRemaining);
-  const deadlineBadge = !isUsed && !notYetActive && daysRemaining !== null
+  const deadlineBadge = (tileKind === "ok" || tileKind === "urgent") && daysRemaining !== null
     ? formatDeadlineShort(daysRemaining)
     : null;
 
@@ -478,11 +500,27 @@ export const BenefitCard = ({
           )}
           <button
             type="button"
-            className={`benefit-card__use-btn benefit-card__use-btn--${isUsed ? "used" : "active"}`}
+            className={`benefit-card__use-btn benefit-card__use-btn--${
+              isUsed ? "used" : tileKind === "expired" ? "expired" : "active"
+            }`}
             onClick={handleClick}
-            disabled={tileKind === "pending"}
-            aria-label={isUsed ? "取消使用" : tileKind === "pending" ? "未激活" : "标记使用"}
-            title={tileKind === "pending" && cycleStart ? `将于 ${cycleStart} 激活` : undefined}
+            disabled={tileKind === "pending" || tileKind === "expired"}
+            aria-label={
+              isUsed
+                ? "取消使用"
+                : tileKind === "pending"
+                  ? "未激活"
+                  : tileKind === "expired"
+                    ? "已过期"
+                    : "标记使用"
+            }
+            title={
+              tileKind === "pending" && activationDate
+                ? `将于 ${activationDate} 激活`
+                : tileKind === "expired" && (cycleEnd ?? oneTimeExpiresDate)
+                  ? `已于 ${String(cycleEnd ?? oneTimeExpiresDate)} 过期`
+                  : undefined
+            }
           >
             {isUsed ? (
               <>
@@ -490,6 +528,8 @@ export const BenefitCard = ({
               </>
             ) : tileKind === "pending" ? (
               <>未激活</>
+            ) : tileKind === "expired" ? (
+              <>已过期</>
             ) : hasAnyRecordInCycle ? (
               <>+ 再用一次 (${String(remainingForBtn)} 剩)</>
             ) : (

@@ -323,12 +323,13 @@ describe("expandBenefitsForFilter — 未使用", () => {
     expect(items[0].aggregate?.unusedCount).toBe(11);
   });
 
-  it("excludes already-ended anniversary cycles (prior year's credit is forfeit)", () => {
-    // Regression: CSP-style hotel credit. Anniversary reset, card opened Feb 3.
-    // Today is April 16, 2026 — past the Feb 3 anniversary renewal, so the
-    // Feb 2025 – Feb 2 2026 cycle has ended. In calendar-2026 scope the old
-    // cycle still *overlaps* Jan 1 – Feb 2 2026, but its credit is no longer
-    // redeemable, so it must not appear in "未使用".
+  it("keeps past empty anniversary cycle visible (rendered as 已过期 by BenefitCard)", () => {
+    // CSP-style hotel credit. Anniversary reset, card opened Feb 3.
+    // Today is Apr 16 2026 — past the Feb 3 renewal, so the Feb 3 2025 –
+    // Feb 2 2026 cycle has ended. Calendar-2026 scope includes both cycles:
+    // the prior 2025年度 cycle ended empty (forfeit, but still listed so
+    // BenefitCard can show "已过期"); the 2026年度 cycle has a record (used)
+    // so it drops out of the unused filter.
     const apr16 = new Date(2026, 3, 16);
     const b = makeBenefit({
       id: "b1",
@@ -339,13 +340,16 @@ describe("expandBenefitsForFilter — 未使用", () => {
     });
     const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2015-02-03" };
     const items = expandBenefitsForFilter(card, "unused", apr16, "calendar");
-    // Neither 2025年度 (ended) nor 2026年度 (used) should appear as unused
-    expect(items).toHaveLength(0);
+    expect(items.map((i) => i.periodLabel)).toEqual(["2025年度"]);
+    expect(items[0].periodEnd).toBeDefined();
+    // BenefitCard receives this past-end cycle and renders the disabled
+    // "已过期" button; the test here only asserts emission.
   });
 
-  it("still shows current anniversary cycle as unused when no record", () => {
-    // Complement to the previous test: once the anniversary has renewed, the
-    // current cycle (no record yet) must appear as unused.
+  it("lists both past-empty and current empty anniversary cycles as unused", () => {
+    // Once Feb 3 has renewed, both the prior cycle (empty, expired) and
+    // the current cycle (empty, active) belong in 未使用 so users can see
+    // what they've already let lapse plus what they still have time on.
     const apr16 = new Date(2026, 3, 16);
     const b = makeBenefit({
       id: "b1",
@@ -356,7 +360,7 @@ describe("expandBenefitsForFilter — 未使用", () => {
     });
     const card: CreditCard = { ...makeCard([b]), cardOpenDate: "2015-02-03" };
     const items = expandBenefitsForFilter(card, "unused", apr16, "calendar");
-    expect(items.map((i) => i.periodLabel)).toEqual(["2026年度"]);
+    expect(items.map((i) => i.periodLabel)).toEqual(["2025年度", "2026年度"]);
   });
 });
 
