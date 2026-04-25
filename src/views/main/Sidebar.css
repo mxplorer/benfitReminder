@@ -589,16 +589,17 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 0;
   width: 16px;
   filter: blur(2px);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
+/* Collapsed: shadow lives on the LEFT of the boundary (inside the rail) */
 .sidebar[data-state="collapsed"] .sidebar__edge-band {
+  right: 0;
   background: linear-gradient(
-    to right,
+    to left,
     rgba(170, 120, 255, 0.28) 0%,
     rgba(140, 150, 255, 0.16) 40%,
     rgba(100, 170, 255, 0.04) 75%,
@@ -606,9 +607,11 @@
   );
 }
 
+/* Expanded: shadow lives on the RIGHT of the boundary (in the content area) */
 .sidebar[data-state="expanded"] .sidebar__edge-band {
+  right: -16px;
   background: linear-gradient(
-    to left,
+    to right,
     rgba(170, 120, 255, 0.28) 0%,
     rgba(140, 150, 255, 0.16) 40%,
     rgba(100, 170, 255, 0.04) 75%,
@@ -631,66 +634,6 @@
   }
 }
 
-.sidebar__edge-chevron {
-  position: absolute;
-  top: 50%;
-  right: 2px;
-  width: 14px;
-  height: 18px;
-  opacity: 0;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.sidebar[data-state="collapsed"] .sidebar__edge-chevron {
-  transform: translateY(-50%) translateX(-2px);
-}
-
-.sidebar[data-state="expanded"] .sidebar__edge-chevron {
-  transform: translateY(-50%) translateX(2px) scaleX(-1);
-}
-
-.sidebar__edge:hover .sidebar__edge-chevron {
-  opacity: 1;
-}
-
-.sidebar[data-state="collapsed"] .sidebar__edge:hover .sidebar__edge-chevron {
-  transform: translateY(-50%) translateX(0);
-}
-
-.sidebar[data-state="expanded"] .sidebar__edge:hover .sidebar__edge-chevron {
-  transform: translateY(-50%) translateX(0) scaleX(-1);
-}
-
-.sidebar__edge-chevron svg {
-  overflow: visible;
-  width: 14px;
-  height: 18px;
-}
-
-.sidebar__edge-chevron path {
-  fill: none;
-  stroke: url(#sb-edge-gradient);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0 3px rgba(170, 120, 255, 0.5));
-  opacity: 0.55;
-}
-
-.sidebar__edge:hover .sidebar__edge-chevron path {
-  animation: sb-edge-chevron-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes sb-edge-chevron-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 0.75;
-  }
-}
-
 .sidebar__edge-halo {
   position: absolute;
   top: 0;
@@ -702,25 +645,27 @@
   transition: opacity 0.35s ease;
 }
 
+/* Collapsed: halo extends LEFT from the boundary (into the rail) */
 .sidebar[data-state="collapsed"] .sidebar__edge-halo {
-  right: -20px;
+  right: 0;
   background: linear-gradient(
-    to right,
-    rgba(170, 120, 255, 0),
-    rgba(170, 120, 255, 0.14) 30%,
-    rgba(100, 170, 255, 0.10) 70%,
-    rgba(100, 170, 255, 0)
+    to left,
+    rgba(170, 120, 255, 0.18) 0%,
+    rgba(130, 140, 255, 0.12) 40%,
+    rgba(100, 170, 255, 0.04) 75%,
+    rgba(100, 170, 255, 0) 100%
   );
 }
 
+/* Expanded: halo extends RIGHT past the boundary (into the content area) */
 .sidebar[data-state="expanded"] .sidebar__edge-halo {
-  right: -2px;
+  right: -40px;
   background: linear-gradient(
-    to left,
-    rgba(170, 120, 255, 0),
-    rgba(170, 120, 255, 0.14) 30%,
-    rgba(100, 170, 255, 0.10) 70%,
-    rgba(100, 170, 255, 0)
+    to right,
+    rgba(170, 120, 255, 0.18) 0%,
+    rgba(130, 140, 255, 0.12) 40%,
+    rgba(100, 170, 255, 0.04) 75%,
+    rgba(100, 170, 255, 0) 100%
   );
 }
 
@@ -774,8 +719,7 @@
     animation: none;
     opacity: 0.55;
   }
-  .sidebar__edge:hover .sidebar__edge-band,
-  .sidebar__edge:hover .sidebar__edge-chevron path {
+  .sidebar__edge:hover .sidebar__edge-band {
     animation: none;
   }
   .sidebar__rail-icon:hover .sidebar__icon {

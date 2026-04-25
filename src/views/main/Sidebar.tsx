@@ -22,10 +22,6 @@ interface SidebarProps {
 const SidebarIconDefs = () => (
   <svg className="sidebar__svg-defs" aria-hidden="true">
     <defs>
-      <linearGradient id="sb-edge-gradient" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#a878ff" />
-        <stop offset="100%" stopColor="#5b9cff" />
-      </linearGradient>
       <symbol id="sb-i-dashboard" viewBox="0 0 24 24">
         <rect x="3" y="3" width="7.5" height="7.5" rx="1.6" />
         <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6" />
@@ -102,11 +98,6 @@ const EdgeTrigger = ({ collapsed, onToggle }: EdgeTriggerProps) => (
     <span className="sidebar__edge-bar" />
     <span className="sidebar__edge-band" />
     <span className="sidebar__edge-halo" />
-    <span className="sidebar__edge-chevron">
-      <svg viewBox="0 0 14 18" aria-hidden="true">
-        <path d="M4 4 L10 9 L4 14" />
-      </svg>
-    </span>
   </button>
 );
 
