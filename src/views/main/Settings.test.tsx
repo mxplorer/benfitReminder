@@ -24,7 +24,7 @@ describe("Settings", () => {
     render(<Settings />);
     const toggle = screen.getByTestId("reminder-toggle");
 
-    expect((toggle as HTMLInputElement).checked).toBe(true);
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(toggle);
 
     expect(useCardStore.getState().settings.reminderEnabled).toBe(false);
