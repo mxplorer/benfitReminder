@@ -15,6 +15,46 @@ Built with Tauri v2 + React + TypeScript + Zustand.
 
 ---
 
+## Screenshots
+
+### Dashboard — annual overview + per-card ROI
+
+![Dashboard](screenshots/dashboard.png)
+
+Top hero card summarizes the membership year: equivalent annual fee
+(redeemed value − total fees), how much is still pending, and how many
+cards are profitable vs. close to breaking even. The lower grid shows
+each card's recovery progress with a pill bar (用了多少 / 还差多少).
+
+Use the year picker (top-right) to step through past membership years.
+Sort the card grid by 等效年费 / 待使用 / 即将到期 from the segmented
+control on the right.
+
+### Sidebar — expand or collapse to a 52px rail
+
+![Dashboard with collapsed rail sidebar](screenshots/dashboard-rail.png)
+
+The sidebar collapses to an icon-only rail with `⌘B` or by clicking the
+edge trigger. Card icons get a notification badge when they have unused
+benefits — the number on the cards icon shows the global unused total.
+Hover any rail icon for its label.
+
+### Card detail — benefits, ROI, history
+
+![Card detail view](screenshots/card-detail.png)
+
+Per-card hero shows the card art, opening date, total benefits, and
+**当前等效年费** (this year's net cost so far). The metric strip below
+breaks out 年费 / 面值回报 / 实际回报 / 回本率.
+
+Toggle 日历年 ↔ 会员年 in the top-right pill. Filter benefits by
+可使用 / 未使用 / 已使用 / 已隐藏 / 全部. Click a benefit's "+ 使用"
+button to record usage; the card's ROI numbers update immediately.
+Subscription benefits auto-replicate each cycle; one-time benefits stay
+in 未使用 until consumed or hidden.
+
+---
+
 ## Install (macOS)
 
 ### Option A — Prebuilt DMG (recommended for users)
