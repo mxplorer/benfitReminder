@@ -595,11 +595,12 @@
   transition: opacity 0.3s ease;
 }
 
-/* Collapsed: shadow lives on the LEFT of the boundary (inside the rail) */
+/* Visual guidance: shadow points the direction the boundary will move on click.
+   Collapsed → shadow on the RIGHT of the boundary (it will expand rightward). */
 .sidebar[data-state="collapsed"] .sidebar__edge-band {
-  right: 0;
+  right: -16px;
   background: linear-gradient(
-    to left,
+    to right,
     rgba(170, 120, 255, 0.28) 0%,
     rgba(140, 150, 255, 0.16) 40%,
     rgba(100, 170, 255, 0.04) 75%,
@@ -607,11 +608,11 @@
   );
 }
 
-/* Expanded: shadow lives on the RIGHT of the boundary (in the content area) */
+/* Expanded → shadow on the LEFT of the boundary (it will collapse leftward). */
 .sidebar[data-state="expanded"] .sidebar__edge-band {
-  right: -16px;
+  right: 0;
   background: linear-gradient(
-    to right,
+    to left,
     rgba(170, 120, 255, 0.28) 0%,
     rgba(140, 150, 255, 0.16) 40%,
     rgba(100, 170, 255, 0.04) 75%,
@@ -645,11 +646,11 @@
   transition: opacity 0.35s ease;
 }
 
-/* Collapsed: halo extends LEFT from the boundary (into the rail) */
+/* Collapsed: halo extends RIGHT from boundary into the content area */
 .sidebar[data-state="collapsed"] .sidebar__edge-halo {
-  right: 0;
+  right: -40px;
   background: linear-gradient(
-    to left,
+    to right,
     rgba(170, 120, 255, 0.18) 0%,
     rgba(130, 140, 255, 0.12) 40%,
     rgba(100, 170, 255, 0.04) 75%,
@@ -657,11 +658,11 @@
   );
 }
 
-/* Expanded: halo extends RIGHT past the boundary (into the content area) */
+/* Expanded: halo extends LEFT from boundary into the sidebar interior */
 .sidebar[data-state="expanded"] .sidebar__edge-halo {
-  right: -40px;
+  right: 0;
   background: linear-gradient(
-    to right,
+    to left,
     rgba(170, 120, 255, 0.18) 0%,
     rgba(130, 140, 255, 0.12) 40%,
     rgba(100, 170, 255, 0.04) 75%,
