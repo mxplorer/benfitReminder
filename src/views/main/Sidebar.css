@@ -1,0 +1,346 @@
+/* ===== Sidebar — glass + aurora ===== */
+
+.sidebar {
+  position: relative;
+  width: 240px;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    rgba(252, 250, 255, 0.78),
+    rgba(236, 240, 252, 0.66)
+  );
+  backdrop-filter: blur(26px);
+  -webkit-backdrop-filter: blur(26px);
+  border-right: 1px solid rgba(140, 130, 180, 0.12);
+}
+
+.sidebar__aurora {
+  position: absolute;
+  pointer-events: none;
+  filter: blur(26px);
+  z-index: 0;
+}
+
+.sidebar__aurora--top {
+  width: 220px;
+  height: 180px;
+  top: -30px;
+  left: -60px;
+  background: radial-gradient(
+    closest-side,
+    rgba(170, 120, 255, 0.30),
+    transparent 75%
+  );
+}
+
+.sidebar__aurora--bottom {
+  width: 180px;
+  height: 150px;
+  bottom: -40px;
+  right: -40px;
+  background: radial-gradient(
+    closest-side,
+    rgba(100, 170, 255, 0.22),
+    transparent 75%
+  );
+}
+
+.sidebar__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.sidebar__svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.sidebar__icon {
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex: none;
+  display: block;
+}
+
+/* ===== Nav group ===== */
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+}
+
+.sidebar__nav-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: rgba(60, 66, 82, 0.85);
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar__nav-item .sidebar__icon {
+  justify-self: center;
+}
+
+.sidebar__nav-item:hover {
+  background: rgba(150, 110, 255, 0.08);
+  color: #3e3770;
+}
+
+.sidebar__nav-item--active {
+  background: rgba(150, 110, 255, 0.16);
+  color: #5038b8;
+  font-weight: 600;
+}
+
+.sidebar__nav-item--active .sidebar__icon {
+  color: #5038b8;
+}
+
+/* ===== Section title + divider ===== */
+
+.sidebar__divider {
+  height: 1px;
+  margin: 4px 12px 10px;
+  background: rgba(100, 100, 160, 0.10);
+}
+
+.sidebar__section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(70, 78, 100, 0.78);
+  padding: 0 14px 8px;
+}
+
+/* ===== Cards list ===== */
+
+.sidebar__cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sidebar__card-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.50);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  color: rgba(28, 31, 38, 0.92);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sidebar__card-item:hover {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.sidebar__card-item--active {
+  background: rgba(255, 255, 255, 0.90);
+  border-color: rgba(150, 110, 255, 0.30);
+  box-shadow: 0 4px 14px rgba(110, 110, 220, 0.12);
+}
+
+.sidebar__card-img {
+  width: 28px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
+  justify-self: center;
+}
+
+.sidebar__card-chip-slot {
+  width: 28px;
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar__card-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__card-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar__card-badge--warning {
+  background: linear-gradient(135deg, #f5a524, #ed8a00);
+}
+
+.sidebar__card-badge--danger {
+  background: linear-gradient(135deg, #ff5f5f, #e43b3b);
+}
+
+/* ===== Add card button ===== */
+
+.sidebar__add-card-btn {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  margin-top: 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(150, 110, 255, 0.20);
+  background: rgba(150, 110, 255, 0.08);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #5038b8;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar__add-card-btn .sidebar__icon {
+  justify-self: center;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar__add-card-btn:hover {
+  background: rgba(150, 110, 255, 0.14);
+  border-color: rgba(150, 110, 255, 0.30);
+}
+
+.sidebar__add-card-btn:hover .sidebar__icon {
+  transform: rotate(90deg);
+}
+
+/* ===== Dark theme ===== */
+
+:root[data-theme-effective="dark"] .sidebar {
+  background: linear-gradient(
+    180deg,
+    rgba(28, 26, 38, 0.78),
+    rgba(20, 22, 32, 0.66)
+  );
+  border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme-effective="dark"] .sidebar__aurora--top {
+  background: radial-gradient(
+    closest-side,
+    rgba(170, 120, 255, 0.40),
+    transparent 75%
+  );
+}
+
+:root[data-theme-effective="dark"] .sidebar__aurora--bottom {
+  background: radial-gradient(
+    closest-side,
+    rgba(100, 170, 255, 0.30),
+    transparent 75%
+  );
+}
+
+:root[data-theme-effective="dark"] .sidebar__nav-item {
+  color: rgba(232, 232, 240, 0.78);
+}
+
+:root[data-theme-effective="dark"] .sidebar__nav-item:hover {
+  background: rgba(170, 130, 255, 0.14);
+  color: rgba(245, 240, 255, 0.95);
+}
+
+:root[data-theme-effective="dark"] .sidebar__nav-item--active {
+  background: rgba(170, 130, 255, 0.22);
+  color: #c8b3ff;
+}
+
+:root[data-theme-effective="dark"] .sidebar__nav-item--active .sidebar__icon {
+  color: #c8b3ff;
+}
+
+:root[data-theme-effective="dark"] .sidebar__divider {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme-effective="dark"] .sidebar__section-title {
+  color: rgba(220, 220, 235, 0.55);
+}
+
+:root[data-theme-effective="dark"] .sidebar__card-item {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(232, 232, 240, 0.92);
+}
+
+:root[data-theme-effective="dark"] .sidebar__card-item:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+:root[data-theme-effective="dark"] .sidebar__card-item--active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(170, 130, 255, 0.45);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme-effective="dark"] .sidebar__add-card-btn {
+  background: rgba(170, 130, 255, 0.12);
+  border-color: rgba(170, 130, 255, 0.25);
+  color: #c8b3ff;
+}
+
+:root[data-theme-effective="dark"] .sidebar__add-card-btn:hover {
+  background: rgba(170, 130, 255, 0.20);
+  border-color: rgba(170, 130, 255, 0.40);
+}
+
+/* ===== Reduced motion ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar__nav-item,
+  .sidebar__card-item,
+  .sidebar__add-card-btn,
+  .sidebar__add-card-btn .sidebar__icon {
+    transition: none;
+  }
+}
