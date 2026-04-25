@@ -10,6 +10,9 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  /* Above content so rail tooltips and edge halo (which overflow into the
+     content area) don't get covered by the dashboard hero. */
+  z-index: 10;
 }
 
 .main-window__content {

@@ -6,7 +6,6 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   background: linear-gradient(
     180deg,
     rgba(252, 250, 255, 0.78),
@@ -16,6 +15,17 @@
   -webkit-backdrop-filter: blur(26px);
   border-right: 1px solid rgba(140, 130, 180, 0.12);
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  /* No overflow: hidden — so rail tooltips and edge halo can escape the
+     sidebar bounds. Aurora glows are clipped by their own wrapper instead. */
+}
+
+.sidebar__aurora-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
 }
 
 .sidebar[data-state="collapsed"] {
@@ -65,6 +75,19 @@
   padding: 14px 10px;
   overflow-y: auto;
   flex: 1;
+  /* Container itself doesn't catch clicks — empty space falls through to the
+     edge trigger so the user can toggle from anywhere on the right strip.
+     Interactive children below set pointer-events: auto. */
+  pointer-events: none;
+}
+
+.sidebar__inner > * {
+  pointer-events: auto;
+}
+
+.sidebar__inner > .sidebar__divider,
+.sidebar__inner > .sidebar__section-title {
+  pointer-events: none;
 }
 
 .sidebar__svg-defs {
@@ -352,6 +375,14 @@
   align-items: center;
   padding: 12px 0 14px;
   flex: 1;
+  /* Container itself doesn't catch clicks — empty rail space falls through to
+     the edge trigger so the user can toggle from anywhere on the right strip.
+     Rail icons below set pointer-events: auto so their clicks still work. */
+  pointer-events: none;
+}
+
+.sidebar__rail > * {
+  pointer-events: auto;
 }
 
 .sidebar__rail-icon {

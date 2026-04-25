@@ -202,11 +202,10 @@ export const Sidebar = ({ activeView, onNavigate }: SidebarProps) => {
       data-state={collapsed ? "collapsed" : "expanded"}
     >
       <SidebarIconDefs />
-      <div className="sidebar__aurora sidebar__aurora--top" aria-hidden="true" />
-      <div
-        className="sidebar__aurora sidebar__aurora--bottom"
-        aria-hidden="true"
-      />
+      <div className="sidebar__aurora-wrap" aria-hidden="true">
+        <div className="sidebar__aurora sidebar__aurora--top" />
+        <div className="sidebar__aurora sidebar__aurora--bottom" />
+      </div>
 
       {collapsed ? (
         <div className="sidebar__rail">
