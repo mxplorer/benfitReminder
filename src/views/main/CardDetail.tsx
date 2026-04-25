@@ -298,6 +298,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                   item={item}
                   onToggleUsage={toggleBenefitUsage}
                   onSetCycleUsed={setBenefitCycleUsed}
+                  onAddCycleUsage={addCycleUsage}
                   onManageUsage={(_cardId, benefitId) => { setHistoryBenefitId(benefitId); }}
                   onToggleHidden={(cardId, benefitId) => {
                     toggleBenefitHidden(cardId, benefitId);

@@ -5,6 +5,7 @@ import { getAvailableValue, getTotalFaceWithRollover } from "../../utils/rollove
 import { latestHasPropagate } from "../../utils/usageRecords";
 import { useToday } from "../../stores/useToday";
 import { useCardStore } from "../../stores/useCardStore";
+import { BenefitUsagePrompt } from "./BenefitUsagePrompt";
 import "./BenefitCard.css";
 
 /** Reset types where the refresh date depends on when the benefit was used. */
@@ -167,12 +168,10 @@ export const BenefitCard = ({
       ? todayIso
       : cycleContext.start
     : todayIso;
-  const [pendingValue, setPendingValue] = useState<string | null>(null);
-  const [pendingConsumedFace, setPendingConsumedFace] = useState<string>("0");
-  const [actualManuallyEdited, setActualManuallyEdited] = useState<boolean>(false);
-  const [pendingDate, setPendingDate] = useState<string>(defaultPendingDate);
-  const [pendingPropagate, setPendingPropagate] = useState<boolean>(false);
-  const [editMode, setEditMode] = useState<"add" | "edit">("add");
+  const [promptState, setPromptState] = useState<{
+    mode: "add" | "edit";
+    initial: { consumedFace: number; actualValue: number; usedDate: string; propagateNext: boolean };
+  } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);
@@ -235,15 +234,16 @@ export const BenefitCard = ({
     if (isUsed) {
       if (monthlyLike && cycleContext && onSetCycleUsed && cycleRecord) {
         // Edit mode (monthly subscription single-record upsert). Defaults
-        // come from the existing record. TODO: wire consumedFace edit —
-        // currently 本次面值 is shown but routes through the legacy
-        // onSetCycleUsed upsert which does not carry consumedFace (Batch 5).
-        setPendingValue(String(cycleRecord.actualValue));
-        setPendingConsumedFace(String(cycleRecord.faceValue));
-        setActualManuallyEdited(true); // don't auto-sync in edit mode
-        setPendingDate(cycleRecord.usedDate);
-        setPendingPropagate(cycleRecord.propagateNext === true);
-        setEditMode("edit");
+        // come from the existing record.
+        setPromptState({
+          mode: "edit",
+          initial: {
+            consumedFace: cycleRecord.faceValue,
+            actualValue: cycleRecord.actualValue,
+            usedDate: cycleRecord.usedDate,
+            propagateNext: cycleRecord.propagateNext === true,
+          },
+        });
         return;
       }
       if (cycleContext && onSetCycleUsed) {
@@ -256,81 +256,15 @@ export const BenefitCard = ({
     // Add mode — default consumedFace to remaining in this cycle
     // (getAvailableValue for standard; faceValue - cycleConsumed for per-cycle).
     const defaultRemaining = cycleContext ? cycleRemaining : availableValue;
-    setPendingConsumedFace(String(defaultRemaining));
-    setPendingValue(String(defaultRemaining));
-    setActualManuallyEdited(false);
-    setPendingDate(defaultPendingDate);
-    setPendingPropagate(latestHasPropagate(benefit));
-    setEditMode("add");
-  };
-
-  const handleConsumedFaceChange = (next: string) => {
-    setPendingConsumedFace(next);
-    // Auto-sync 实际到手 to the same number as long as the user hasn't
-    // manually edited 实际到手 yet.
-    if (!actualManuallyEdited) {
-      setPendingValue(next);
-    }
-  };
-
-  const handleActualValueChange = (next: string) => {
-    setPendingValue(next);
-    setActualManuallyEdited(true);
-  };
-
-  const handleConfirm = () => {
-    if (pendingValue === null) return;
-    const value = Number(pendingValue);
-    if (isNaN(value) || value < 0) return;
-    const consumedFace = Number(pendingConsumedFace);
-    if (isNaN(consumedFace) || consumedFace < 0) return;
-    if (dateRequired && !pendingDate) return;
-    const propagateOpt = monthlyLike ? { propagateNext: pendingPropagate } : {};
-
-    // New-append path (Batch 3): prefer record-level callbacks.
-    if (editMode === "add" && cycleContext && onAddCycleUsage) {
-      onAddCycleUsage(card.id, benefit.id, cycleContext.start, cycleContext.end, {
-        consumedFace,
-        actualValue: value,
-        usedDate: pendingDate || undefined,
-        ...propagateOpt,
-      });
-      setPendingValue(null);
-      return;
-    }
-    if (editMode === "add" && !cycleContext && onAddUsage) {
-      onAddUsage(card.id, benefit.id, {
-        consumedFace,
-        actualValue: value,
-        usedDate: pendingDate || todayIso,
-        ...propagateOpt,
-      });
-      setPendingValue(null);
-      return;
-    }
-
-    // Fall-back / edit path: legacy callbacks (do not carry consumedFace).
-    if (cycleContext && onSetCycleUsed) {
-      onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, true, {
-        actualValue: value,
-        usedDate: pendingDate || undefined,
-        ...propagateOpt,
-      });
-    } else {
-      onToggleUsage(card.id, benefit.id, value, pendingDate || undefined);
-    }
-    setPendingValue(null);
-  };
-
-  const handleDelete = () => {
-    if (cycleContext && onSetCycleUsed) {
-      onSetCycleUsed(card.id, benefit.id, cycleContext.start, cycleContext.end, false);
-    }
-    setPendingValue(null);
-  };
-
-  const handleCancel = () => {
-    setPendingValue(null);
+    setPromptState({
+      mode: "add",
+      initial: {
+        consumedFace: defaultRemaining,
+        actualValue: defaultRemaining,
+        usedDate: defaultPendingDate,
+        propagateNext: latestHasPropagate(benefit),
+      },
+    });
   };
 
   const valueText = displayValue > 0 ? `$${String(displayValue)}` : "—";
@@ -484,7 +418,7 @@ export const BenefitCard = ({
         );
       })()}
 
-      {pendingValue === null ? (
+      {promptState === null ? (
         <div className="benefit-card__actions">
           {onEditRollover && benefit.rolloverable && (
             <button
@@ -538,98 +472,22 @@ export const BenefitCard = ({
           </button>
         </div>
       ) : (
-        <div className="benefit-card__prompt" role="group">
-          <div className="benefit-card__prompt-fields">
-            <label className="benefit-card__prompt-label">
-              本次面值
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={pendingConsumedFace}
-                onChange={(e) => { handleConsumedFaceChange(e.target.value); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirm();
-                  if (e.key === "Escape") handleCancel();
-                }}
-                aria-label="本次面值"
-                autoFocus
-                className="benefit-card__prompt-input"
-              />
-            </label>
-            <label className="benefit-card__prompt-label">
-              实际到手
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={pendingValue}
-                onChange={(e) => { handleActualValueChange(e.target.value); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirm();
-                  if (e.key === "Escape") handleCancel();
-                }}
-                aria-label="实际到手"
-                className="benefit-card__prompt-input"
-              />
-            </label>
-            <label className="benefit-card__prompt-label">
-              {dateRequired ? "使用日期*" : "使用日期"}
-              <input
-                type="date"
-                value={pendingDate}
-                onChange={(e) => { setPendingDate(e.target.value); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirm();
-                  if (e.key === "Escape") handleCancel();
-                }}
-                aria-label="使用日期"
-                required={dateRequired}
-                className="benefit-card__prompt-input benefit-card__prompt-input--date"
-              />
-            </label>
-            {monthlyLike && (
-              <label className="benefit-card__prompt-label benefit-card__prompt-label--checkbox">
-                <input
-                  type="checkbox"
-                  checked={pendingPropagate}
-                  onChange={(e) => { setPendingPropagate(e.target.checked); }}
-                  aria-label="自动续期下月"
-                />
-                自动续期下月
-              </label>
-            )}
-          </div>
-          {editMode === "edit" && cycleContext && onSetCycleUsed && (
-            <button
-              type="button"
-              className="benefit-card__action-btn benefit-card__action-btn--danger"
-              onClick={handleDelete}
-              aria-label="删除记录"
-              title="删除记录"
-            >
-              ✕
-            </button>
-          )}
-          <button
-            type="button"
-            className="benefit-card__action-btn benefit-card__action-btn--confirm"
-            onClick={handleConfirm}
-            aria-label="确认"
-            title="确认"
-          >
-            ✓
-          </button>
-          <button
-            type="button"
-            className="benefit-card__action-btn"
-            onClick={handleCancel}
-            aria-label="取消"
-            title="取消"
-          >
-            ✕
-          </button>
-        </div>
+        <BenefitUsagePrompt
+          cardId={card.id}
+          benefitId={benefit.id}
+          mode={promptState.mode}
+          cycleStart={cycleStart}
+          cycleEnd={cycleEnd}
+          initial={promptState.initial}
+          monthlyLike={monthlyLike}
+          dateRequired={dateRequired}
+          todayIso={todayIso}
+          onAddUsage={onAddUsage}
+          onAddCycleUsage={onAddCycleUsage}
+          onSetCycleUsed={onSetCycleUsed}
+          onToggleUsage={onToggleUsage}
+          onClose={() => { setPromptState(null); }}
+        />
       )}
     </div>
   );

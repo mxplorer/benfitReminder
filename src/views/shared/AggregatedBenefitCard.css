@@ -222,6 +222,42 @@
   color: #fff;
   border-color: var(--danger);
 }
+.agg-benefit-card__row-continue {
+  padding: 2px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: rgba(0, 122, 255, 0.06);
+  color: rgb(0, 100, 200);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+  white-space: nowrap;
+  grid-column: 3 / span 2;
+  justify-self: end;
+}
+.agg-benefit-card__row-continue:hover {
+  background: rgba(0, 122, 255, 0.14);
+  border-color: rgba(0, 122, 255, 0.4);
+}
+:root[data-theme-effective="dark"] .agg-benefit-card__row-continue {
+  background: rgba(10, 132, 255, 0.14);
+  color: rgb(120, 180, 255);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+:root[data-theme-effective="dark"] .agg-benefit-card__row-continue:hover {
+  background: rgba(10, 132, 255, 0.22);
+  border-color: rgba(10, 132, 255, 0.45);
+}
+
+/* When a row is in prompt mode, the BenefitUsagePrompt spans below the
+ * label/value so the inline form has room for its inputs. */
+.agg-benefit-card__row--prompting {
+  grid-template-columns: 60px 1fr;
+  row-gap: 6px;
+}
+.agg-benefit-card__row--prompting .benefit-card__prompt {
+  grid-column: 1 / -1;
+}
 .agg-benefit-card__pending-label {
   display: flex;
   align-items: center;

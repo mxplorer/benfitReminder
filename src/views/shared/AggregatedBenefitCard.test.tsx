@@ -82,6 +82,61 @@ describe("AggregatedBenefitCard", () => {
   });
 });
 
+describe("AggregatedBenefitCard — partial-row 继续使用 (reuses BenefitUsagePrompt)", () => {
+  const partialItem: BenefitDisplayItem = {
+    benefit, card, key: "agg-all", variant: "aggregated",
+    aggregate: {
+      kind: "all",
+      months: [
+        // 4月 has $6 of $15 consumed → partial
+        { label: "4月", used: false, faceValue: 15, consumedValue: 6, cycleStart: "2026-04-01", cycleEnd: "2026-04-30" },
+      ],
+      usedCount: 0, unusedCount: 1, totalActualValue: 0, totalFaceValue: 15,
+    },
+  };
+
+  it("partial row shows '+ 再用一次' button (replacing the ✓ that would mark fully used)", () => {
+    render(<AggregatedBenefitCard item={partialItem} onAddCycleUsage={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    expect(screen.getByTestId("agg-month-continue-4月")).toBeInTheDocument();
+    // The legacy ✓ check should NOT be there for a partial row
+    expect(screen.queryByTestId("agg-month-check-4月")).toBeNull();
+  });
+
+  it("clicking '+ 再用一次' opens the inline BenefitUsagePrompt prefilled with remaining", () => {
+    render(<AggregatedBenefitCard item={partialItem} onAddCycleUsage={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    fireEvent.click(screen.getByTestId("agg-month-continue-4月"));
+    // BenefitUsagePrompt mounts inline — its 本次面值 input is prefilled
+    // with the remaining ($15 - $6 = $9).
+    const consumedInput = screen.getByLabelText<HTMLInputElement>("本次面值");
+    expect(consumedInput.value).toBe("9");
+    const actualInput = screen.getByLabelText<HTMLInputElement>("实际到手");
+    expect(actualInput.value).toBe("9");
+  });
+
+  it("submitting the prompt calls onAddCycleUsage with cycle range and consumed amount", () => {
+    const onAddCycleUsage = vi.fn();
+    render(<AggregatedBenefitCard item={partialItem} onAddCycleUsage={onAddCycleUsage} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    fireEvent.click(screen.getByTestId("agg-month-continue-4月"));
+    fireEvent.change(screen.getByLabelText("本次面值"), { target: { value: "5" } });
+    fireEvent.click(screen.getByLabelText("确认"));
+    expect(onAddCycleUsage).toHaveBeenCalledWith(
+      "c1", "b1", "2026-04-01", "2026-04-30",
+      expect.objectContaining({ consumedFace: 5, actualValue: 5 }),
+    );
+    // Prompt closes after confirm
+    expect(screen.queryByLabelText("本次面值")).toBeNull();
+  });
+
+  it("'+ 再用一次' affordance is hidden when onAddCycleUsage is not provided (graceful fallback)", () => {
+    render(<AggregatedBenefitCard item={partialItem} />);
+    fireEvent.click(screen.getByTestId("agg-expand"));
+    expect(screen.queryByTestId("agg-month-continue-4月")).toBeNull();
+  });
+});
+
 describe("AggregatedBenefitCard — partial consumption display", () => {
   it("shows 'used $X / $F' for months with partial consumption (consumed > 0 but < faceValue)", () => {
     const item: BenefitDisplayItem = {
