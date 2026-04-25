@@ -27,32 +27,11 @@ export const MainWindow = () => {
   const [activeView, setActiveView] = useState<ActiveView>("dashboard");
   const [backfillCardId, setBackfillCardId] = useState<string | null>(null);
   const cards = useCardStore((s) => s.cards);
-  const theme = useCardStore((s) => s.settings.theme);
 
   useEffect(() => {
     // Initialize file persistence (hydrate from disk + start auto-save)
     void initPersistence();
   }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => {
-      const effective = theme === "system"
-        ? (mq.matches ? "dark" : "light")
-        : theme;
-      root.setAttribute("data-theme-effective", effective);
-      if (theme === "system") {
-        root.removeAttribute("data-theme");
-      } else {
-        root.setAttribute("data-theme", theme);
-      }
-    };
-    apply();
-    const onChange = () => { if (theme === "system") apply(); };
-    mq.addEventListener("change", onChange);
-    return () => { mq.removeEventListener("change", onChange); };
-  }, [theme]);
 
   useEffect(() => {
     // Keep tray icon + tooltip in sync with benefit status, and send reminders.

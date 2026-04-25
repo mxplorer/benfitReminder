@@ -138,10 +138,8 @@
   color: var(--text-primary);
 }
 
-@media (prefers-color-scheme: dark) {
-  .tray-panel__open-link { background: rgba(255, 255, 255, 0.06); }
-  .tray-panel__open-link:hover { background: rgba(255, 255, 255, 0.12); }
-}
+:root[data-theme-effective="dark"] .tray-panel__open-link { background: rgba(255, 255, 255, 0.06); }
+:root[data-theme-effective="dark"] .tray-panel__open-link:hover { background: rgba(255, 255, 255, 0.12); }
 
 /* Segmented tab control */
 .tray-panel__tabs {
@@ -178,12 +176,14 @@
   color: var(--text-primary);
 }
 
-@media (prefers-color-scheme: dark) {
-  .tray-panel__tabs { background: rgba(255, 255, 255, 0.06); }
-  .tray-panel__tab--active {
-    background: rgba(255, 255, 255, 0.14);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
+:root[data-theme-effective="dark"] .tray-panel__tabs { background: rgba(255, 255, 255, 0.06); }
+:root[data-theme-effective="dark"] .tray-panel__tab--active {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+:root[data-theme-effective="dark"] .tray-panel__tab:hover:not(.tray-panel__tab--active) {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .tray-panel__content {
@@ -234,15 +234,13 @@
   color: var(--text-primary);
 }
 
-@media (prefers-color-scheme: dark) {
-  .tray-panel__dismiss-btn { background: rgba(255, 255, 255, 0.05); }
-  .tray-panel__dismiss-btn:hover { background: rgba(255, 255, 255, 0.1); }
-  .tray-panel__content::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
-    background-clip: padding-box;
-  }
-  .tray-panel__content::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
-    background-clip: padding-box;
-  }
+:root[data-theme-effective="dark"] .tray-panel__dismiss-btn { background: rgba(255, 255, 255, 0.05); }
+:root[data-theme-effective="dark"] .tray-panel__dismiss-btn:hover { background: rgba(255, 255, 255, 0.1); }
+:root[data-theme-effective="dark"] .tray-panel__content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  background-clip: padding-box;
+}
+:root[data-theme-effective="dark"] .tray-panel__content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+  background-clip: padding-box;
 }

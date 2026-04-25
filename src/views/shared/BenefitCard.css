@@ -230,9 +230,7 @@
   box-shadow: 0 0 10px 0 rgba(120, 120, 128, 0.22);
 }
 
-@media (prefers-color-scheme: dark) {
-  .benefit-card__progress { background: rgba(255, 255, 255, 0.08); }
-}
+:root[data-theme-effective="dark"] .benefit-card__progress { background: rgba(255, 255, 255, 0.08); }
 
 @media (prefers-reduced-motion: reduce) {
   .benefit-card__progress-fill { animation: none; }
