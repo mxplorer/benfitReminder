@@ -4,7 +4,7 @@
   "issuer": "Amex",
   "defaultAnnualFee": 895,
   "color": "#8E9EAF",
-  "version": 1,
+  "version": 2,
   "defaultBenefits": [
     {
       "templateBenefitId": "amex_platinum.hotel_fhr",
@@ -41,8 +41,8 @@
       "description": "Annual CLEAR Plus membership credit",
       "faceValue": 209,
       "category": "travel",
-      "resetType": "subscription",
-      "resetConfig": {}
+      "resetType": "calendar",
+      "resetConfig": { "period": "annual" }
     },
     {
       "templateBenefitId": "amex_platinum.global_entry",

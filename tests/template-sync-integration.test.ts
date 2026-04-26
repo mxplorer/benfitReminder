@@ -45,7 +45,7 @@ describe("syncAllCardsWithTemplates — integration against real built-in templa
     const synced = result.cards[0];
 
     expect(synced).toBeDefined();
-    expect(synced.templateVersion).toBe(1);
+    expect(synced.templateVersion).toBe(2);
 
     // Legacy benefit kept as custom (no templateBenefitId assigned)
     const oldBenefit = synced.benefits.find((b) => b.id === "old-b");
@@ -88,7 +88,7 @@ describe("syncAllCardsWithTemplates — integration against real built-in templa
       color: template.color,
       isEnabled: true,
       benefits: syncedBenefits,
-      templateVersion: 1,
+      templateVersion: 2,
     };
 
     const result = syncAllCardsWithTemplates([syncedCard], [template], "2026-04-16");
