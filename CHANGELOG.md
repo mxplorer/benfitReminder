@@ -4,6 +4,119 @@ All notable changes to Credit Card Benefits Tracker are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] — 2026-04-26
+
+Cumulative-consumption model rewrite, sidebar / tray / dashboard / settings
+redesign, and a deeper CardDetail with shared form components.
+
+### Added
+
+**Multi-record consumption model**
+- A benefit cycle can now hold multiple usage records (instead of a single
+  upsert). "Used" flips when cumulative `record.faceValue` ≥ benefit
+  `faceValue`, so you can log partial spends ("$8 of the $25 monthly
+  credit") and the remaining $17 stays available.
+- Subscription `propagateNext` chains are materialised on data hydrate so
+  carry-forward records appear automatically without a manual re-tick.
+- `BenefitHistoryDialog` — per-benefit modal listing every usage record
+  with edit / delete (sorted by date desc).
+
+**CardDetail**
+- Year-mode toggle (`日历年` ↔ `会员年`) sits left of the ⋯ action; flips
+  the hero ROI, 已兑现, ROI strip, and the benefit grid's cycle scope
+  together so the page stays internally consistent.
+- Hero 等效年费 number uses the same tri-state animated gradient as the
+  Dashboard tile (recovered / warning / danger) so the same card shows
+  the same color in both places.
+- ⋯ menu on benefit cards: 管理使用 (opens BenefitHistoryDialog), 隐藏 /
+  取消隐藏, 删除权益 (template benefits stay protected).
+- Per-record edit + delete on the bottom history table.
+
+**AggregatedBenefitCard (monthly + subscription view)**
+- ⋯ menu (管理使用 / 隐藏 / 删除) so monthly subscription pills aren't
+  read-only.
+- 本月 progress bar showing current-cycle consumed / face, colored by
+  state (green / amber / grey).
+- 本月 action button on the collapsed pill — `+ 使用 $X`,
+  `+ 再用一次 ($remaining 剩)`, or `✓ 已用完` (uncheck) — so the use
+  affordance is one click, no expand needed.
+- `BenefitUsagePrompt` extracted from BenefitCard and reused by the
+  pill: same form (本次面值 / 实际到手 / 使用日期 / 自动续期下月) and
+  same auto-sync between the two amount fields, in one place.
+
+**Sidebar**
+- Collapsible 52px rail with glass + aurora backdrop.
+- Edge-trigger reveal + `⌘B` keyboard shortcut.
+- Pill badges aligned to baseline.
+
+**Tray**
+- Frosted glass + aurora accent.
+- Segmented filter tabs (matches the new BenefitFilterBar style).
+- Single-row BenefitRow layout with Dashboard-style consumption bar.
+- Status-aware summary header (value / unused count / urgent).
+
+**Dashboard**
+- Hero typography scaled ~20% with tighter spacing for hierarchy.
+- Hero label `待拿` renamed `待使用` (matches the rest of the vocabulary).
+- 本月 chip stays inline with the 等效年费 number (no awkward wrap).
+
+**Settings**
+- Row-layout redesign with a polished `Switch` component for booleans.
+
+**Theme**
+- `data-theme-effective` is driven by App, so the tray webview follows
+  the user's theme preference instead of always reading the system.
+
+### Changed
+
+**Templates**
+- Amex Platinum + Hilton Aspire CLEAR+ benefit switched from
+  `subscription` (12 monthly cycles) to `calendar / annual`. Both
+  templates bumped to `version: 2` so existing user cards re-sync on
+  next load.
+
+**Filter semantics**
+- The `年终 / 周年` scope toggle moves out of `BenefitFilterBar` — the
+  CardDetail year-mode toggle is now the single source of truth for
+  cycle scope.
+- `未使用` now keeps **past empty cycles** (anniversary / quarterly /
+  semi-annual / annual / every_4_years) visible, rendered as a disabled
+  grey `已过期` button. Tile body still says `未使用`. Previously these
+  were silently dropped, so users couldn't see what they'd let lapse.
+
+**Rollover**
+- Records store the *real* rolled amount (partial rollover supported)
+  instead of always the full face value.
+- Per-cycle `totalFace` includes inbound rollover from the prior cycle.
+- Per-cycle rollover toggle moved to a small dedicated dialog; the
+  per-record edit/delete affordance moved to the new history dialog.
+
+**BenefitCard**
+- One_time benefits with a future `availableFromDate` are now correctly
+  treated as `notYetActive` (button reads `未激活`, title shows
+  activation date). Previously they were usable from the day the
+  benefit was added.
+- Past empty cycles render as `已过期` with a disabled grey button
+  (status text stays `未使用`).
+- Consumption progress bar persists at 100% green when fully used.
+- ⋯ action menu in the top-right.
+
+### Fixed
+
+- ⋯ dropdown was clipped under adjacent tile (stacking context).
+- `已隐藏` filter — action menu stayed invisible after `取消隐藏`.
+- `RolloverEditDialog` amount input no longer traps a leading `0`.
+
+### Engineering
+
+- 695 unit + integration + E2E tests across 46 files (up from 496 / 40).
+- `BenefitUsagePrompt` extraction collapsed BenefitCard from ~200 lines
+  of inline form state to a single component invocation; same component
+  powers the AggregatedBenefitCard's pill action.
+- `calculateCardROI` now accepts an optional `rangeOverride` so the same
+  function serves both calendar-year and membership-year scopes without
+  duplication.
+
 ## [0.1.0] — 2026-04-16
 
 First public release. A macOS menu-bar app for tracking credit card benefit
@@ -90,4 +203,5 @@ ship with pre-filled benefit lists.
 - ESLint v9 flat config with type-aware rules; `@typescript-eslint/no-explicit-any` as error.
 - Rust side clean under `cargo clippy -- -D warnings`.
 
-[0.1.0]: https://github.com/<you>/ccb/releases/tag/v0.1.0
+[0.1.0]: https://github.com/mxplorer/benfitReminder/releases/tag/v0.1.0
+[0.1.1]: https://github.com/mxplorer/benfitReminder/releases/tag/v0.1.1
