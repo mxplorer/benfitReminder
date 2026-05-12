@@ -75,3 +75,91 @@ export const currentCycleKey = (
   if (resetType === "anniversary" && !cardOpenDate) return null;
   return cycleKeyForDate(formatDate(today), benefit, cardOpenDate ?? "");
 };
+
+export const cycleKeyLabel = (key: CycleKey): string => {
+  const colonIdx = key.indexOf(":");
+  if (colonIdx < 0) return key;
+  const tag = key.slice(0, colonIdx);
+  const rest = key.slice(colonIdx + 1);
+
+  switch (tag) {
+    case "M": {
+      const m = /^(\d{4})-(\d{2})$/.exec(rest);
+      if (!m) return key;
+      const year = m[1];
+      const month = String(parseInt(m[2], 10));
+      return `${year} 年 ${month} 月`;
+    }
+    case "Q": {
+      const m = /^(\d{4})-Q([1-4])$/.exec(rest);
+      if (!m) return key;
+      return `${m[1]} Q${m[2]}`;
+    }
+    case "H": {
+      const m = /^(\d{4})-H([12])$/.exec(rest);
+      if (!m) return key;
+      return `${m[1]} ${m[2] === "1" ? "上半年" : "下半年"}`;
+    }
+    case "Y": {
+      if (!/^\d{4}$/.test(rest)) return key;
+      return `${rest} 年`;
+    }
+    case "E4": {
+      if (!/^\d{4}$/.test(rest)) return key;
+      const startYear = parseInt(rest, 10);
+      return `${String(startYear)}–${String(startYear + 3)}`;
+    }
+    case "A": {
+      if (!/^\d{4}$/.test(rest)) return key;
+      return `${rest} 会员年`;
+    }
+    case "OT":
+      return "全期";
+    case "SLU":
+      return `${rest} 起`;
+    default:
+      return key;
+  }
+};
+
+export const cycleKeySortValue = (key: CycleKey): number => {
+  const colonIdx = key.indexOf(":");
+  if (colonIdx < 0) return 0;
+  const tag = key.slice(0, colonIdx);
+  const rest = key.slice(colonIdx + 1);
+
+  switch (tag) {
+    case "M": {
+      const m = /^(\d{4})-(\d{2})$/.exec(rest);
+      if (!m) return 0;
+      return parseInt(m[1], 10) * 10000 + parseInt(m[2], 10) * 100;
+    }
+    case "Q": {
+      const m = /^(\d{4})-Q([1-4])$/.exec(rest);
+      if (!m) return 0;
+      return parseInt(m[1], 10) * 10000 + parseInt(m[2], 10) * 300;
+    }
+    case "H": {
+      const m = /^(\d{4})-H([12])$/.exec(rest);
+      if (!m) return 0;
+      return parseInt(m[1], 10) * 10000 + parseInt(m[2], 10) * 600;
+    }
+    case "Y":
+    case "E4":
+    case "A": {
+      if (!/^\d{4}$/.test(rest)) return 0;
+      return parseInt(rest, 10) * 10000;
+    }
+    case "SLU": {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rest);
+      if (!m) return 0;
+      return (
+        parseInt(m[1], 10) * 10000 +
+        parseInt(m[2], 10) * 100 +
+        parseInt(m[3], 10)
+      );
+    }
+    default:
+      return 0;
+  }
+};
