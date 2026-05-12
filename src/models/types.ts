@@ -94,7 +94,13 @@ export interface Benefit {
   usageRecords: UsageRecord[];
   expired?: boolean;
   expiredAt?: string;
+  /** Long-lived note tied to this benefit. Persists across cycle rotations. */
+  note?: string;
+  /** Per-cycle notes keyed by CycleKey. Past cycle keys are retained as history. */
+  cycleNotes?: Record<string, string>;
 }
+
+export const NOTE_MAX_LENGTH = 500;
 
 export interface CreditCard {
   id: string;
