@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AppData, AppSettings, Benefit, CreditCard, UsageRecord } from "../models/types";
+import { NOTE_MAX_LENGTH } from "../models/types";
 import {
   formatDate,
   isApplicableNow,
@@ -51,6 +52,7 @@ interface CardStoreActions {
   addBenefit: (cardId: string, benefit: Benefit) => void;
   removeBenefit: (cardId: string, benefitId: string) => void;
   toggleBenefitHidden: (cardId: string, benefitId: string) => void;
+  setBenefitNote: (cardId: string, benefitId: string, note: string) => void;
   /**
    * Primary record-level actions. Prefer these for new UI code.
    */
@@ -185,6 +187,22 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
         isHidden: !b.isHidden,
       })),
     }));
+  },
+
+  setBenefitNote: (cardId, benefitId, note) => {
+    const trimmed = note.trim();
+    const value = trimmed === "" ? undefined : trimmed.slice(0, NOTE_MAX_LENGTH);
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      if (!card.benefits.some((b) => b.id === benefitId)) return state;
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => ({
+          ...b,
+          note: value,
+        })),
+      };
+    });
   },
 
   addBenefitUsage: (cardId, benefitId, opts) => {

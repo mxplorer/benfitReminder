@@ -97,6 +97,42 @@ describe("useCardStore", () => {
 
   });
 
+  describe("setBenefitNote", () => {
+    beforeEach(() => {
+      useCardStore.getState().addCard(makeCard());
+      useCardStore.getState().addBenefit("card-1", makeBenefit());
+    });
+
+    it("writes a note to the benefit", () => {
+      useCardStore.getState().setBenefitNote("card-1", "b1", "  book online  ");
+      expect(useCardStore.getState().cards[0].benefits[0].note).toBe("book online");
+    });
+
+    it("clears the note when value is empty after trim", () => {
+      useCardStore.getState().setBenefitNote("card-1", "b1", "x");
+      useCardStore.getState().setBenefitNote("card-1", "b1", "   ");
+      expect(useCardStore.getState().cards[0].benefits[0].note).toBeUndefined();
+    });
+
+    it("truncates input longer than 500 chars", () => {
+      const long = "a".repeat(700);
+      useCardStore.getState().setBenefitNote("card-1", "b1", long);
+      expect(useCardStore.getState().cards[0].benefits[0].note?.length).toBe(500);
+    });
+
+    it("is a no-op when card id is unknown", () => {
+      const before = useCardStore.getState().cards;
+      useCardStore.getState().setBenefitNote("nope", "b1", "x");
+      expect(useCardStore.getState().cards).toBe(before);
+    });
+
+    it("is a no-op when benefit id is unknown", () => {
+      const before = useCardStore.getState().cards;
+      useCardStore.getState().setBenefitNote("card-1", "nope", "x");
+      expect(useCardStore.getState().cards).toBe(before);
+    });
+  });
+
   describe("toggleBenefitUsage", () => {
     beforeEach(() => {
       vi.useFakeTimers();
