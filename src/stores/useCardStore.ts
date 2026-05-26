@@ -53,6 +53,12 @@ interface CardStoreActions {
   removeBenefit: (cardId: string, benefitId: string) => void;
   toggleBenefitHidden: (cardId: string, benefitId: string) => void;
   setBenefitNote: (cardId: string, benefitId: string, note: string) => void;
+  setBenefitCycleNote: (
+    cardId: string,
+    benefitId: string,
+    cycleKey: string,
+    note: string,
+  ) => void;
   /**
    * Primary record-level actions. Prefer these for new UI code.
    */
@@ -201,6 +207,31 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
           ...b,
           note: value,
         })),
+      };
+    });
+  },
+
+  setBenefitCycleNote: (cardId, benefitId, cycleKey, note) => {
+    const trimmed = note.trim();
+    const value = trimmed === "" ? undefined : trimmed.slice(0, NOTE_MAX_LENGTH);
+    set((state) => {
+      const card = state.cards.find((c) => c.id === cardId);
+      if (!card) return state;
+      if (!card.benefits.some((b) => b.id === benefitId)) return state;
+      return {
+        cards: updateBenefitInCards(state.cards, cardId, benefitId, (b) => {
+          const existing = b.cycleNotes ?? {};
+          let nextMap: Record<string, string> | undefined;
+          if (value === undefined) {
+            if (!(cycleKey in existing)) return b;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { [cycleKey]: _omit, ...rest } = existing;
+            nextMap = Object.keys(rest).length === 0 ? undefined : rest;
+          } else {
+            nextMap = { ...existing, [cycleKey]: value };
+          }
+          return { ...b, cycleNotes: nextMap };
+        }),
       };
     });
   },

@@ -133,6 +133,57 @@ describe("useCardStore", () => {
     });
   });
 
+  describe("setBenefitCycleNote", () => {
+    beforeEach(() => {
+      useCardStore.getState().addCard(makeCard());
+      useCardStore.getState().addBenefit("card-1", makeBenefit());
+    });
+
+    it("writes a per-cycle note keyed by cycleKey", () => {
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", "  plan A  ");
+      expect(useCardStore.getState().cards[0].benefits[0].cycleNotes).toEqual({
+        "M:2026-05": "plan A",
+      });
+    });
+
+    it("leaves other cycleKeys intact", () => {
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", "may");
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-06", "jun");
+      expect(useCardStore.getState().cards[0].benefits[0].cycleNotes).toEqual({
+        "M:2026-05": "may",
+        "M:2026-06": "jun",
+      });
+    });
+
+    it("removes the cycleKey when value is empty after trim", () => {
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", "may");
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-06", "jun");
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", "  ");
+      expect(useCardStore.getState().cards[0].benefits[0].cycleNotes).toEqual({
+        "M:2026-06": "jun",
+      });
+    });
+
+    it("removes the cycleNotes map when it becomes empty", () => {
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", "may");
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", "");
+      expect(useCardStore.getState().cards[0].benefits[0].cycleNotes).toBeUndefined();
+    });
+
+    it("truncates input longer than 500 chars", () => {
+      const long = "a".repeat(700);
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", long);
+      expect(useCardStore.getState().cards[0].benefits[0].cycleNotes?.["M:2026-05"].length).toBe(500);
+    });
+
+    it("is a no-op when card or benefit id is unknown", () => {
+      const before = useCardStore.getState().cards;
+      useCardStore.getState().setBenefitCycleNote("nope", "b1", "M:2026-05", "x");
+      useCardStore.getState().setBenefitCycleNote("card-1", "nope", "M:2026-05", "x");
+      expect(useCardStore.getState().cards).toBe(before);
+    });
+  });
+
   describe("toggleBenefitUsage", () => {
     beforeEach(() => {
       vi.useFakeTimers();
