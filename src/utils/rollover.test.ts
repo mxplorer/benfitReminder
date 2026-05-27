@@ -316,6 +316,18 @@ describe("generateRolloverRecords", () => {
 
 // --- Batch 1: remaining = totalFace − consumed ---
 describe("getAvailableValue — cumulative consumption semantics", () => {
+  it("returns clean cents, not float artifacts (digital entertainment $9.99 − $2.69 = 7.3)", () => {
+    const b = makeBenefit({
+      faceValue: 9.99,
+      rolloverable: false,
+      resetConfig: { period: "monthly" },
+      usageRecords: [
+        { usedDate: "2026-05-10", faceValue: 2.69, actualValue: 2.69, kind: "usage" },
+      ],
+    });
+    expect(getAvailableValue(b, d("2026-05-28"))).toBe(7.3);
+  });
+
   it("face=100, prior rollover=50 worth of credit, consumed=30 in current cycle → 120", () => {
     // Using face=100, semi_annual. Prior rollover record at H1 rolls 100 in.
     // Current H2 consumed so far: 80. Remaining = 200 - 80 = 120.

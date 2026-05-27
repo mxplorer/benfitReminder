@@ -3,6 +3,7 @@ import type { DateRange } from "./period";
 import { getCalendarPeriodRange } from "./period";
 import { cycleKeyForRecord, currentCycleKey } from "./cycleKey";
 import { makeRolloverRecord } from "./usageRecords";
+import { roundMoney } from "./money";
 
 export const getPeriodRangeAt = (
   date: Date,
@@ -151,5 +152,5 @@ const consumedInCurrentCycle = (benefit: Benefit, today: Date): number => {
 export const getAvailableValue = (benefit: Benefit, today: Date): number => {
   const totalFace = getTotalFaceWithRollover(benefit, today);
   const consumed = consumedInCurrentCycle(benefit, today);
-  return Math.max(0, totalFace - consumed);
+  return Math.max(0, roundMoney(totalFace - consumed));
 };
