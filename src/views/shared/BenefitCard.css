@@ -507,3 +507,35 @@
     background: transparent;
   }
 }
+
+.benefit-card__note-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.55;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.benefit-card__note-btn:hover {
+  opacity: 0.85;
+}
+
+.benefit-card__note-btn--has-content {
+  opacity: 1;
+  color: var(--accent, #4f46e5);
+}
+
+.benefit-card__note-btn--has-cycle::after {
+  content: "";
+  position: absolute;
+  top: 0.05rem;
+  right: 0.05rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  background: var(--accent, #4f46e5);
+  border-radius: 50%;
+}

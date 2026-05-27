@@ -290,6 +290,43 @@ describe("BenefitCard", () => {
     expect(handler).toHaveBeenCalledWith("c7", "b7");
     expect(screen.queryByLabelText("实际到手")).not.toBeInTheDocument();
   });
+
+  describe("note icon", () => {
+    beforeEach(() => {
+      vi.setSystemTime(new Date("2026-05-12T12:00:00"));
+      useCardStore.getState().recalculate();
+    });
+
+    it("renders an outlined icon when no note exists", () => {
+      const benefit = makeBenefit();
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      const btn = screen.getByRole("button", { name: "备注" });
+      expect(btn).toBeInTheDocument();
+      expect(btn).toHaveClass("benefit-card__note-btn");
+      expect(btn).not.toHaveClass("benefit-card__note-btn--has-content");
+    });
+
+    it("renders the icon as filled when a generic note exists", () => {
+      const benefit = makeBenefit({ note: "book online" });
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      const btn = screen.getByRole("button", { name: "备注（已有内容）" });
+      expect(btn).toHaveClass("benefit-card__note-btn--has-content");
+    });
+
+    it("renders the icon with cycle dot when current-cycle note exists", () => {
+      const benefit = makeBenefit({ cycleNotes: { "M:2026-05": "plan A" } });
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      const btn = screen.getByRole("button", { name: "备注（本周期已有内容）" });
+      expect(btn).toHaveClass("benefit-card__note-btn--has-cycle");
+    });
+
+    it("clicking the icon opens the note editor", () => {
+      const benefit = makeBenefit();
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      fireEvent.click(screen.getByRole("button", { name: "备注" }));
+      expect(screen.getByText(/通用备注/)).toBeInTheDocument();
+    });
+  });
 });
 
 describe("BenefitCard — subscription reset label", () => {

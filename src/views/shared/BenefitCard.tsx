@@ -6,6 +6,8 @@ import { latestHasPropagate } from "../../utils/usageRecords";
 import { useToday } from "../../stores/useToday";
 import { useCardStore } from "../../stores/useCardStore";
 import { BenefitUsagePrompt } from "./BenefitUsagePrompt";
+import { NoteEditor } from "./NoteEditor";
+import { currentCycleKey } from "../../utils/cycleKey";
 import "./BenefitCard.css";
 
 /** Reset types where the refresh date depends on when the benefit was used. */
@@ -173,6 +175,11 @@ export const BenefitCard = ({
     initial: { consumedFace: number; actualValue: number; usedDate: string; propagateNext: boolean };
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const hasGenericNote = !!benefit.note;
+  const noteCycleKey = currentCycleKey(today, benefit, card.cardOpenDate);
+  const hasCycleNote =
+    noteCycleKey !== null && !!benefit.cycleNotes?.[noteCycleKey];
   const menuRef = useRef<HTMLDivElement>(null);
   const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);
   const monthlyLike = isMonthlyLikeBenefit(benefit);
@@ -281,6 +288,25 @@ export const BenefitCard = ({
         <span className={`benefit-card__name ${isUsed ? "benefit-card__name--used" : ""}`}>
           {benefit.name}
         </span>
+        <button
+          type="button"
+          className={[
+            "benefit-card__note-btn",
+            hasGenericNote || hasCycleNote ? "benefit-card__note-btn--has-content" : "",
+            hasCycleNote ? "benefit-card__note-btn--has-cycle" : "",
+          ].filter(Boolean).join(" ")}
+          onClick={() => { setNoteOpen(true); }}
+          aria-label={
+            hasCycleNote
+              ? "备注（本周期已有内容）"
+              : hasGenericNote
+                ? "备注（已有内容）"
+                : "备注"
+          }
+          title="备注"
+        >
+          <span aria-hidden="true">📝</span>
+        </button>
         {(onManageUsage ||
           onToggleHidden ||
           (onDelete && !benefit.templateBenefitId)) && (
@@ -418,7 +444,13 @@ export const BenefitCard = ({
         );
       })()}
 
-      {promptState === null ? (
+      {noteOpen ? (
+        <NoteEditor
+          benefit={benefit}
+          card={card}
+          onClose={() => { setNoteOpen(false); }}
+        />
+      ) : promptState === null ? (
         <div className="benefit-card__actions">
           {onEditRollover && benefit.rolloverable && (
             <button
