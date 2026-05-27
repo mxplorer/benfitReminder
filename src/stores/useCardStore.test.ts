@@ -500,6 +500,22 @@ describe("useCardStore", () => {
         kind: "usage",
       });
     });
+
+    it("preserves note and cycleNotes through JSON round-trip", () => {
+      useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+      useCardStore.getState().addCard(makeCard());
+      useCardStore.getState().addBenefit("card-1", makeBenefit());
+      useCardStore.getState().setBenefitNote("card-1", "b1", "book online");
+      useCardStore.getState().setBenefitCycleNote("card-1", "b1", "M:2026-05", "may plan");
+
+      const exported = useCardStore.getState().exportData();
+      useCardStore.setState({ cards: [] });
+      useCardStore.getState().importData(exported);
+
+      const benefit = useCardStore.getState().cards[0].benefits[0];
+      expect(benefit.note).toBe("book online");
+      expect(benefit.cycleNotes).toEqual({ "M:2026-05": "may plan" });
+    });
   });
 
   describe("sidebarCollapsed setting", () => {
