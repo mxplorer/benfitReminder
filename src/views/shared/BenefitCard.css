@@ -508,34 +508,82 @@
   }
 }
 
+/* 📝 trigger in the card header. Two states:
+   - empty   → muted; opens the editor
+   - filled  → accent-tinted, opens the editor (preview row below carries the content) */
 .benefit-card__note-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0 0.25rem;
-  font-size: 1rem;
+  padding: 2px 4px;
+  margin: -2px 0;
+  font-size: 13px;
   line-height: 1;
-  opacity: 0.55;
+  opacity: 0.4;
   color: var(--text-secondary);
-  position: relative;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.12s ease, background 0.12s ease;
 }
 
 .benefit-card__note-btn:hover {
   opacity: 0.85;
+  background: var(--bg-tab);
 }
 
 .benefit-card__note-btn--has-content {
   opacity: 1;
-  color: var(--accent, #4f46e5);
 }
 
-.benefit-card__note-btn--has-cycle::after {
-  content: "";
-  position: absolute;
-  top: 0.05rem;
-  right: 0.05rem;
-  width: 0.35rem;
-  height: 0.35rem;
-  background: var(--accent, #4f46e5);
-  border-radius: 50%;
+.benefit-card__note-btn[aria-expanded="true"] {
+  background: var(--bg-tab);
+  opacity: 1;
+}
+
+/* Inline preview strip — shows the note content directly on the card when
+   either a cycle note or a generic note exists. Single line, truncated.
+   Clickable: opens the same editor as the icon. */
+.benefit-card__note-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  margin: 0;
+  background: var(--bg-tab);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.benefit-card__note-preview:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-card);
+  color: var(--text-primary);
+}
+
+.benefit-card__note-preview--cycle {
+  /* Cycle notes are the timely/important ones — tint left edge. */
+  border-left: 2px solid var(--accent, #007aff);
+  padding-left: 6px;
+}
+
+.benefit-card__note-preview-icon {
+  font-size: 11px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.benefit-card__note-preview-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

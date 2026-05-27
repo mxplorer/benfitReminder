@@ -313,17 +313,46 @@ describe("BenefitCard", () => {
       expect(btn).toHaveClass("benefit-card__note-btn--has-content");
     });
 
-    it("renders the icon with cycle dot when current-cycle note exists", () => {
+    it("renders the icon as filled when a current-cycle note exists", () => {
       const benefit = makeBenefit({ cycleNotes: { "M:2026-05": "plan A" } });
       render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
-      const btn = screen.getByRole("button", { name: "备注（本周期已有内容）" });
-      expect(btn).toHaveClass("benefit-card__note-btn--has-cycle");
+      const btn = screen.getByRole("button", { name: "备注（已有内容）" });
+      expect(btn).toHaveClass("benefit-card__note-btn--has-content");
+    });
+
+    it("shows an inline note preview when the cycle note exists, with cycle modifier", () => {
+      const benefit = makeBenefit({ cycleNotes: { "M:2026-05": "plan A" } });
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      const preview = screen.getByRole("button", { name: /备注：plan A/ });
+      expect(preview).toHaveTextContent("plan A");
+      expect(preview).toHaveClass("benefit-card__note-preview--cycle");
+    });
+
+    it("shows an inline note preview from the generic note when no cycle note exists", () => {
+      const benefit = makeBenefit({ note: "book online" });
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      const preview = screen.getByRole("button", { name: /备注：book online/ });
+      expect(preview).toHaveTextContent("book online");
+      expect(preview).toHaveClass("benefit-card__note-preview--generic");
+    });
+
+    it("renders no preview row when no notes exist", () => {
+      const benefit = makeBenefit();
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      expect(screen.queryByText(/备注：/)).not.toBeInTheDocument();
     });
 
     it("clicking the icon opens the note editor", () => {
       const benefit = makeBenefit();
       render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
       fireEvent.click(screen.getByRole("button", { name: "备注" }));
+      expect(screen.getByText(/通用备注/)).toBeInTheDocument();
+    });
+
+    it("clicking the preview opens the same editor", () => {
+      const benefit = makeBenefit({ note: "book online" });
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      fireEvent.click(screen.getByRole("button", { name: /备注：book online/ }));
       expect(screen.getByText(/通用备注/)).toBeInTheDocument();
     });
   });

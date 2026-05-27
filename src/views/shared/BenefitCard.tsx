@@ -8,6 +8,7 @@ import { useCardStore } from "../../stores/useCardStore";
 import { BenefitUsagePrompt } from "./BenefitUsagePrompt";
 import { NoteEditor } from "./NoteEditor";
 import { currentCycleKey } from "../../utils/cycleKey";
+import { roundMoney } from "../../utils/money";
 import "./BenefitCard.css";
 
 /** Reset types where the refresh date depends on when the benefit was used. */
@@ -151,10 +152,10 @@ export const BenefitCard = ({
       )
     : null;
   const cycleConsumed = cycleRecordsInWindow
-    ? cycleRecordsInWindow.reduce((s, r) => s + r.faceValue, 0)
+    ? roundMoney(cycleRecordsInWindow.reduce((s, r) => s + r.faceValue, 0))
     : 0;
   const cycleRemaining = cycleContext
-    ? Math.max(0, benefit.faceValue - cycleConsumed)
+    ? Math.max(0, roundMoney(benefit.faceValue - cycleConsumed))
     : availableValue;
   const cycleRecordCount = cycleRecordsInWindow ? cycleRecordsInWindow.length : 0;
   // For the standard (non-cycle) view, "records in cycle" comes from the
@@ -176,10 +177,21 @@ export const BenefitCard = ({
   } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
-  const hasGenericNote = !!benefit.note;
+  const noteBtnRef = useRef<HTMLButtonElement>(null);
   const noteCycleKey = currentCycleKey(today, benefit, card.cardOpenDate);
-  const hasCycleNote =
-    noteCycleKey !== null && !!benefit.cycleNotes?.[noteCycleKey];
+  const cycleNoteText =
+    noteCycleKey !== null ? (benefit.cycleNotes?.[noteCycleKey] ?? null) : null;
+  const hasCycleNote = cycleNoteText !== null;
+  const hasGenericNote = !!benefit.note;
+  const hasAnyNote = hasCycleNote || hasGenericNote;
+  // Cycle note takes preview precedence (more time-sensitive). Fall back to
+  // the generic note. Null when no note exists at all.
+  const notePreview: { kind: "cycle" | "generic"; text: string } | null =
+    cycleNoteText !== null
+      ? { kind: "cycle", text: cycleNoteText }
+      : benefit.note
+        ? { kind: "generic", text: benefit.note }
+        : null;
   const menuRef = useRef<HTMLDivElement>(null);
   const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);
   const monthlyLike = isMonthlyLikeBenefit(benefit);
@@ -289,20 +301,14 @@ export const BenefitCard = ({
           {benefit.name}
         </span>
         <button
+          ref={noteBtnRef}
           type="button"
-          className={[
-            "benefit-card__note-btn",
-            hasGenericNote || hasCycleNote ? "benefit-card__note-btn--has-content" : "",
-            hasCycleNote ? "benefit-card__note-btn--has-cycle" : "",
-          ].filter(Boolean).join(" ")}
-          onClick={() => { setNoteOpen(true); }}
-          aria-label={
-            hasCycleNote
-              ? "备注（本周期已有内容）"
-              : hasGenericNote
-                ? "备注（已有内容）"
-                : "备注"
-          }
+          className={`benefit-card__note-btn${
+            hasAnyNote ? " benefit-card__note-btn--has-content" : ""
+          }`}
+          onClick={() => { setNoteOpen((o) => !o); }}
+          aria-label={hasAnyNote ? "备注（已有内容）" : "备注"}
+          aria-expanded={noteOpen}
           title="备注"
         >
           <span aria-hidden="true">📝</span>
@@ -379,6 +385,19 @@ export const BenefitCard = ({
         <span className="benefit-card__description">{benefit.description}</span>
       )}
 
+      {notePreview && (
+        <button
+          type="button"
+          className={`benefit-card__note-preview benefit-card__note-preview--${notePreview.kind}`}
+          onClick={() => { setNoteOpen(true); }}
+          aria-label={`备注：${notePreview.text}`}
+          title={notePreview.text}
+        >
+          <span className="benefit-card__note-preview-icon" aria-hidden="true">📝</span>
+          <span className="benefit-card__note-preview-text">{notePreview.text}</span>
+        </button>
+      )}
+
       <div className="benefit-card__meta">
         <span
           className="benefit-card__period"
@@ -444,13 +463,15 @@ export const BenefitCard = ({
         );
       })()}
 
-      {noteOpen ? (
+      {noteOpen && (
         <NoteEditor
           benefit={benefit}
           card={card}
+          anchorRef={noteBtnRef}
           onClose={() => { setNoteOpen(false); }}
         />
-      ) : promptState === null ? (
+      )}
+      {promptState === null ? (
         <div className="benefit-card__actions">
           {onEditRollover && benefit.rolloverable && (
             <button
