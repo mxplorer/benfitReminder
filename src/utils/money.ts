@@ -4,3 +4,9 @@
  * displayed, so sums of face values never surface long decimal tails. */
 export const roundMoney = (amount: number): number =>
   Math.round((amount + Number.EPSILON) * 100) / 100;
+
+/** Format a monetary amount for display: round to cents (killing IEEE-754
+ * tails like 13.700000000000045 → 13.7) and stringify with at most two
+ * decimals and no forced trailing zeros (895 → "895", 12.95 → "12.95").
+ * Use at every money render site instead of String(amount). */
+export const formatMoney = (amount: number): string => String(roundMoney(amount));

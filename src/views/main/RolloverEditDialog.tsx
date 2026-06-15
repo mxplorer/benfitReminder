@@ -5,6 +5,7 @@ import { useToday } from "../../stores/useToday";
 import { useCardStore } from "../../stores/useCardStore";
 import { cycleStartForDate } from "../../utils/usageRecords";
 import { getAvailableValue } from "../../utils/rollover";
+import { formatMoney } from "../../utils/money";
 import "./RolloverEditDialog.css";
 
 const logger = createLogger("views.rollover-dialog");
@@ -103,7 +104,7 @@ const Inner = ({ card, benefit, period, onClose }: InnerProps) => {
             disabled={!hasRollover && available <= 0}
             data-testid="rollover-toggle-btn"
           >
-            {hasRollover ? "撤销结转" : `结转 $${String(available)} 到下期`}
+            {hasRollover ? "撤销结转" : `结转 $${formatMoney(available)} 到下期`}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { UsageRecord } from "../../models/types";
 import { useCardStore } from "../../stores/useCardStore";
 import { UsageRecordEditDialog } from "./UsageRecordEditDialog";
+import { formatMoney } from "../../utils/money";
 import "./BenefitHistoryDialog.css";
 
 interface BenefitHistoryDialogProps {
@@ -91,12 +92,12 @@ export const BenefitHistoryDialog = ({
                     >
                       <td>{record.usedDate}</td>
                       <td>
-                        ${String(record.faceValue)}
+                        ${formatMoney(record.faceValue)}
                         {isRollover && (
                           <span className="benefit-history-dialog__tag">结转</span>
                         )}
                       </td>
-                      <td>${String(record.actualValue)}</td>
+                      <td>${formatMoney(record.actualValue)}</td>
                       <td className="benefit-history-dialog__row-actions">
                         <button
                           type="button"

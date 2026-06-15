@@ -4,6 +4,7 @@ import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { calculateCardROI } from "../../utils/roi";
+import { formatMoney } from "../../utils/money";
 import { GlassContainer } from "../shared/GlassContainer";
 import { CardChip } from "../shared/CardChip";
 import "./History.css";
@@ -60,9 +61,9 @@ export const History = () => {
               </div>
 
               <div className="history__roi-row">
-                <span>年费: ${String(roi.annualFee)}</span>
-                <span>面值: ${String(roi.faceValueReturn)}</span>
-                <span>实际: ${String(roi.actualReturn)}</span>
+                <span>年费: ${formatMoney(roi.annualFee)}</span>
+                <span>面值: ${formatMoney(roi.faceValueReturn)}</span>
+                <span>实际: ${formatMoney(roi.actualReturn)}</span>
                 <span>回本率: {roi.roiPercent}%</span>
               </div>
             </GlassContainer>

@@ -68,6 +68,21 @@ describe("CardDetail", () => {
     expect(table).toHaveTextContent("$200");
     expect(table).toHaveTextContent("$150");
   });
+
+  it("renders the equivalent fee without IEEE-754 tail (Amex Plat $13.700000000000045 bug)", () => {
+    // $895 fee − $881.30 redeemed = 13.700000000000045 in raw float arithmetic.
+    const benefit = makeBenefit({
+      usageRecords: [{ usedDate: "2026-04-01", faceValue: 881.3, actualValue: 881.3, kind: "usage" }],
+    });
+    const card = makeCard({ benefits: [benefit] });
+    useCardStore.setState({ cards: [card] });
+
+    render(<CardDetail cardId="c1" onNavigate={() => undefined} />);
+
+    const feeValue = screen.getByTestId("hero-fee-value");
+    expect(feeValue).toHaveTextContent("$13.7");
+    expect(feeValue.textContent).not.toMatch(/13\.700000/);
+  });
 });
 
 describe("CardDetail filter integration", () => {

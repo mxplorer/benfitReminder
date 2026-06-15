@@ -8,6 +8,7 @@ import {
   isBenefitUsedInPeriod,
 } from "../../utils/period";
 import { getAvailableValue } from "../../utils/rollover";
+import { roundMoney } from "../../utils/money";
 import { initPersistence } from "../../tauri/persistence";
 import { ByCardView } from "./ByCardView";
 import { ByUrgencyView } from "./ByUrgencyView";
@@ -47,7 +48,7 @@ export const TrayPanel = () => {
         if (days !== null && days <= reminderDays) urgent++;
       }
     }
-    return { count, value, urgent };
+    return { count, value: roundMoney(value), urgent };
   }, [cards, reminderDays]);
 
   const handleDismiss = () => {

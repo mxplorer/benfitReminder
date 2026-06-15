@@ -4,6 +4,7 @@ import { useCardTypeStore } from "../../stores/useCardTypeStore";
 import { useToday } from "../../stores/useToday";
 import { getCardDisplayName } from "../../models/types";
 import { calculateCardROI, getMembershipYearRange } from "../../utils/roi";
+import { formatMoney } from "../../utils/money";
 import {
   expandBenefitsForFilter,
   type FilterMode,
@@ -174,7 +175,7 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
             <span className="card-detail__hero-alias">{aliasLine}</span>
           )}
           <span className="card-detail__hero-meta">
-            {card.owner} · 开卡 {card.cardOpenDate} · {String(card.benefits.length)} 项福利 · 年费 ${String(roi.annualFee)}
+            {card.owner} · 开卡 {card.cardOpenDate} · {String(card.benefits.length)} 项福利 · 年费 ${formatMoney(roi.annualFee)}
           </span>
         </div>
         <div className="card-detail__hero-fee" data-testid="hero-fee">
@@ -184,9 +185,9 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
             data-status={feeStatus}
             data-testid="hero-fee-value"
           >
-            {equivalentFee < 0 ? "−" : ""}${String(Math.abs(equivalentFee))}
+            {equivalentFee < 0 ? "−" : ""}${formatMoney(Math.abs(equivalentFee))}
           </span>
-          <span className="card-detail__hero-fee-sub">${String(roi.actualReturn)} 已兑现</span>
+          <span className="card-detail__hero-fee-sub">${formatMoney(roi.actualReturn)} 已兑现</span>
         </div>
         <div className="card-detail__actions" ref={menuRef}>
           <button
@@ -257,19 +258,19 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
         <div className="card-detail__roi-cell">
           <span className="card-detail__roi-label">年费</span>
           <span className="card-detail__roi-value" data-testid="roi-fee">
-            ${String(roi.annualFee)}
+            ${formatMoney(roi.annualFee)}
           </span>
         </div>
         <div className="card-detail__roi-cell">
           <span className="card-detail__roi-label">面值回报</span>
           <span className="card-detail__roi-value" data-testid="roi-face">
-            ${String(roi.faceValueReturn)}
+            ${formatMoney(roi.faceValueReturn)}
           </span>
         </div>
         <div className="card-detail__roi-cell">
           <span className="card-detail__roi-label">实际回报</span>
           <span className="card-detail__roi-value card-detail__roi-value--positive" data-testid="roi-actual">
-            ${String(roi.actualReturn)}
+            ${formatMoney(roi.actualReturn)}
           </span>
         </div>
         <div className="card-detail__roi-cell">
@@ -380,8 +381,8 @@ export const CardDetail = ({ cardId, onNavigate }: CardDetailProps) => {
                   >
                     <td>{r.usedDate}</td>
                     <td>{isRollover ? `${r.benefitName} · 结转` : r.benefitName}</td>
-                    <td>${String(r.faceValue)}</td>
-                    <td>${String(r.actualValue)}</td>
+                    <td>${formatMoney(r.faceValue)}</td>
+                    <td>${formatMoney(r.actualValue)}</td>
                     <td className="card-detail__history-actions">
                       <button
                         type="button"

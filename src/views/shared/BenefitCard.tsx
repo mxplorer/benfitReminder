@@ -8,7 +8,7 @@ import { useCardStore } from "../../stores/useCardStore";
 import { BenefitUsagePrompt } from "./BenefitUsagePrompt";
 import { NoteEditor } from "./NoteEditor";
 import { currentCycleKey } from "../../utils/cycleKey";
-import { roundMoney } from "../../utils/money";
+import { roundMoney, formatMoney } from "../../utils/money";
 import "./BenefitCard.css";
 
 /** Reset types where the refresh date depends on when the benefit was used. */
@@ -286,7 +286,7 @@ export const BenefitCard = ({
     });
   };
 
-  const valueText = displayValue > 0 ? `$${String(displayValue)}` : "—";
+  const valueText = displayValue > 0 ? `$${formatMoney(displayValue)}` : "—";
   // Button text content by remaining + whether any record exists in this cycle.
   // remaining == 0 (and isUsed) → "✓ 已用完"
   // remaining > 0, no records yet → "+ 使用 $X"

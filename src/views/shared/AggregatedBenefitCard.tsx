@@ -3,6 +3,7 @@ import type { BenefitDisplayItem } from "../../utils/benefitDisplay";
 import { useToday } from "../../stores/useToday";
 import { formatDate, getConsumedInPeriod, getCurrentPeriodRange } from "../../utils/period";
 import { getTotalFaceWithRollover } from "../../utils/rollover";
+import { formatMoney } from "../../utils/money";
 import { latestHasPropagate } from "../../utils/usageRecords";
 import { BenefitUsagePrompt } from "./BenefitUsagePrompt";
 import { GlassContainer } from "./GlassContainer";
@@ -58,15 +59,15 @@ const buildSummary = (item: BenefitDisplayItem): string => {
   if (!agg) return "";
   const name = item.benefit.name;
   if (agg.kind === "used") {
-    return `${name} · ${String(agg.usedCount)} 次 · 共 $${String(agg.totalActualValue)}`;
+    return `${name} · ${String(agg.usedCount)} 次 · 共 $${formatMoney(agg.totalActualValue)}`;
   }
   if (agg.kind === "unused") {
     const totalUnusedFace = agg.months
       .filter((m) => !m.used)
       .reduce((s, m) => s + m.faceValue, 0);
-    return `${name} · 未使用 ${String(agg.unusedCount)} 个月 · 共 $${String(totalUnusedFace)}`;
+    return `${name} · 未使用 ${String(agg.unusedCount)} 个月 · 共 $${formatMoney(totalUnusedFace)}`;
   }
-  return `${name} · ${String(agg.months.length)} 个月 · 已用 ${String(agg.usedCount)} · 未用 ${String(agg.unusedCount)} · $${String(agg.totalActualValue)} / $${String(agg.totalFaceValue)}`;
+  return `${name} · ${String(agg.months.length)} 个月 · 已用 ${String(agg.usedCount)} · 未用 ${String(agg.unusedCount)} · $${formatMoney(agg.totalActualValue)} / $${formatMoney(agg.totalFaceValue)}`;
 };
 
 const buildPendingSummary = (
@@ -286,8 +287,8 @@ export const AggregatedBenefitCard = ({
               aria-label={currentStatus === "partial" ? "再用一次" : "标记使用"}
             >
               {currentStatus === "partial"
-                ? `+ 再用一次 ($${String(Math.max(0, currentFace - currentConsumed))} 剩)`
-                : `+ 使用 $${String(currentFace)}`}
+                ? `+ 再用一次 ($${formatMoney(Math.max(0, currentFace - currentConsumed))} 剩)`
+                : `+ 使用 $${formatMoney(currentFace)}`}
             </button>
           ) : null}
         </div>
@@ -325,7 +326,7 @@ export const AggregatedBenefitCard = ({
                     }}
                   />
                 ) : (
-                  <span className="agg-benefit-card__row-value">${String(m.faceValue)}</span>
+                  <span className="agg-benefit-card__row-value">${formatMoney(m.faceValue)}</span>
                 )}
               </li>
             );
@@ -341,10 +342,10 @@ export const AggregatedBenefitCard = ({
             // they've used part of the credit already.
             const isPartial = !m.used && consumed > 0 && consumed < m.faceValue;
             const valueText = m.used && m.record
-              ? `$${String(m.record.actualValue)}`
+              ? `$${formatMoney(m.record.actualValue)}`
               : isPartial
-                ? `已用 $${String(consumed)} / $${String(m.faceValue)}`
-                : `$${String(m.faceValue)}`;
+                ? `已用 $${formatMoney(consumed)} / $${formatMoney(m.faceValue)}`
+                : `$${formatMoney(m.faceValue)}`;
             return (
               <li
                 key={m.label}
