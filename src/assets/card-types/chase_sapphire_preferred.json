@@ -4,16 +4,34 @@
   "issuer": "Chase",
   "defaultAnnualFee": 95,
   "color": "#2471A3",
-  "version": 2,
+  "version": 3,
   "defaultBenefits": [
     {
       "templateBenefitId": "chase_sapphire_preferred.hotel_credit",
-      "name": "$50 Annual Hotel Credit",
+      "name": "$100 Annual Hotel Credit",
       "description": "Annual hotel credit through Chase Travel",
-      "faceValue": 50,
+      "faceValue": 100,
       "category": "hotel",
       "resetType": "anniversary",
       "resetConfig": {}
+    },
+    {
+      "templateBenefitId": "chase_sapphire_preferred.global_entry",
+      "name": "$120 Global Entry / TSA PreCheck",
+      "description": "Global Entry, TSA PreCheck, or NEXUS application fee credit",
+      "faceValue": 120,
+      "category": "travel",
+      "resetType": "calendar",
+      "resetConfig": { "period": "every_4_years" }
+    },
+    {
+      "templateBenefitId": "chase_sapphire_preferred.apple_tv",
+      "name": "1-Year Apple TV Subscription",
+      "description": "One complimentary year of Apple TV; activate by Dec 31, 2026. Value is an estimate — Chase states no official amount.",
+      "faceValue": 156,
+      "category": "streaming",
+      "resetType": "one_time",
+      "resetConfig": { "availableFromDate": "2026-06-15", "expiresDate": "2026-12-31" }
     },
     {
       "templateBenefitId": "chase_sapphire_preferred.dashpass_promo",

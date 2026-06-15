@@ -34,6 +34,36 @@ describe("BUILTIN_CARD_TYPES", () => {
     expect(reserve.defaultBenefits).toHaveLength(10);
   });
 
+  it("has Chase Sapphire Preferred refreshed (v3): $100 hotel credit, $120 trusted-traveler, 1yr Apple TV", () => {
+    const csp = findCard("chase_sapphire_preferred");
+    expect(csp.defaultAnnualFee).toBe(95);
+    expect(csp.version).toBeGreaterThanOrEqual(3);
+
+    const byId = (id: string) =>
+      csp.defaultBenefits.find((b) => b.templateBenefitId === `chase_sapphire_preferred.${id}`);
+
+    // Hotel credit doubled $50 -> $100, still anniversary-based
+    const hotel = byId("hotel_credit");
+    expect(hotel?.faceValue).toBe(100);
+    expect(hotel?.resetType).toBe("anniversary");
+
+    // New $120 Global Entry / TSA PreCheck / NEXUS credit, every 4 years
+    const globalEntry = byId("global_entry");
+    expect(globalEntry?.faceValue).toBe(120);
+    expect(globalEntry?.resetType).toBe("calendar");
+    expect(globalEntry?.resetConfig.period).toBe("every_4_years");
+
+    // New one-time 1-year Apple TV promo, activation deadline 2026-12-31
+    const appleTv = byId("apple_tv");
+    expect(appleTv?.resetType).toBe("one_time");
+    expect(appleTv?.resetConfig.expiresDate).toBe("2026-12-31");
+    expect(appleTv?.resetConfig.availableFromDate).toBe("2026-06-15");
+
+    // Legacy DashPass benefits retained unchanged
+    expect(byId("dashpass_promo")?.faceValue).toBe(10);
+    expect(byId("dashpass")?.faceValue).toBe(120);
+  });
+
   it("has Chase Marriott Boundless with 2 one_time benefits with correct expiresDate", () => {
     const marriott = findCard("chase_marriott_boundless");
     expect(marriott.defaultAnnualFee).toBe(95);
