@@ -18,9 +18,11 @@ const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
 });
 
 beforeEach(() => {
-  useCardStore.setState({ cards: [] });
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-04-10T12:00:00"));
+  // Pin the store's monotonic `now` too — useToday reads s.now, which is
+  // initialized at module load (real clock) and is NOT updated by fake timers.
+  useCardStore.setState({ cards: [], now: new Date("2026-04-10T12:00:00") });
 });
 
 afterEach(() => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useCardStore } from "../src/stores/useCardStore";
 import { computeTrayStatus } from "../src/utils/trayState";
 import type { AppSettings, Benefit, CreditCard } from "../src/models/types";
@@ -76,11 +76,19 @@ describe("tray status across store mutations", () => {
   });
 
   it("toggling the benefit as used returns to clean", () => {
-    useCardStore.getState().addCard(makeCard([makeBenefit()]));
-    useCardStore.setState({ now: d("2026-04-29") });
-    useCardStore.getState().toggleBenefitUsage("card-1", "b1");
+    // toggleBenefitUsage stamps the record with the real wall clock (new Date()),
+    // so pin it to match `now`; otherwise the record lands outside the period.
+    vi.useFakeTimers();
+    vi.setSystemTime(d("2026-04-29"));
+    try {
+      useCardStore.getState().addCard(makeCard([makeBenefit()]));
+      useCardStore.setState({ now: d("2026-04-29") });
+      useCardStore.getState().toggleBenefitUsage("card-1", "b1");
 
-    expect(trayState().state).toBe("clean");
+      expect(trayState().state).toBe("clean");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("changing reminderDays promotes unused → urgent without other mutations", () => {

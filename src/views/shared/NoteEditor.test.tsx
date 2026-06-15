@@ -37,7 +37,12 @@ describe("NoteEditor", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-12T12:00:00"));
-    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+    // Pin the store's monotonic `now` (useToday reads s.now; fake timers don't touch it).
+    useCardStore.setState({
+      cards: [],
+      now: new Date("2026-05-12T12:00:00"),
+      settings: useCardStore.getState().settings,
+    });
     useCardStore.getState().addCard(card);
     useCardStore.getState().addBenefit(card.id, makeBenefit());
   });

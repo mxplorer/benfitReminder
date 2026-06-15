@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { AggregatedBenefitCard } from "./AggregatedBenefitCard";
 import type { BenefitDisplayItem } from "../../utils/benefitDisplay";
 import type { CreditCard, Benefit } from "../../models/types";
+import { useCardStore } from "../../stores/useCardStore";
 
 const benefit: Benefit = {
   id: "b1", name: "Uber Eats", description: "",
@@ -86,6 +87,8 @@ describe("AggregatedBenefitCard — pill-summary 本月 action (reuses BenefitUs
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-25T12:00:00"));
+    // Pin the store's monotonic `now` (useToday reads s.now; fake timers don't touch it).
+    useCardStore.setState({ now: new Date("2026-04-25T12:00:00") });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -290,6 +293,8 @@ describe("AggregatedBenefitCard — current-month progress", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-24T12:00:00"));
+    // Pin the store's monotonic `now` (useToday reads s.now; fake timers don't touch it).
+    useCardStore.setState({ now: new Date("2026-04-24T12:00:00") });
   });
   afterEach(() => {
     vi.useRealTimers();
