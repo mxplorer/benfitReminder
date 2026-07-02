@@ -9,6 +9,7 @@ import {
 import { cycleKeyForDate, cycleKeyForRecord, currentCycleKey } from "../utils/cycleKey";
 import { formatMonthKey } from "../utils/subscription";
 import { migrateCards } from "../utils/migrations";
+import { migrateSharedBenefitNotes } from "../utils/benefitNote";
 import { materializeSubscriptionPropagation } from "../utils/propagate";
 import { syncAllCardsWithTemplates } from "../utils/templateSync";
 import { generateRolloverRecords, getAvailableValue } from "../utils/rollover";
@@ -18,6 +19,9 @@ import { useCardTypeStore } from "./useCardTypeStore";
 interface CardStoreState {
   cards: CreditCard[];
   settings: AppSettings;
+  /** Generic notes shared across all cards carrying a benefit with the same
+   * `templateBenefitId`. Keyed by `templateBenefitId`. */
+  sharedBenefitNotes: Record<string, string>;
   /** "Current moment" the UI reads for today-dependent calculations.
    * Will be bumped by a `recalculate()` action on focus/midnight refresh. */
   now: Date;
@@ -53,6 +57,8 @@ interface CardStoreActions {
   removeBenefit: (cardId: string, benefitId: string) => void;
   toggleBenefitHidden: (cardId: string, benefitId: string) => void;
   setBenefitNote: (cardId: string, benefitId: string, note: string) => void;
+  /** Set the generic note shared by all benefits with this `templateBenefitId`. */
+  setSharedBenefitNote: (templateBenefitId: string, note: string) => void;
   setBenefitCycleNote: (
     cardId: string,
     benefitId: string,
@@ -131,6 +137,13 @@ const DEFAULT_SETTINGS: AppSettings = {
   sidebarCollapsed: false,
 };
 
+/** True when the value is a plain object whose values are all strings. */
+const isStringRecord = (v: unknown): v is Record<string, string> =>
+  typeof v === "object" &&
+  v !== null &&
+  !Array.isArray(v) &&
+  Object.values(v).every((x) => typeof x === "string");
+
 const updateBenefitInCards = (
   cards: CreditCard[],
   cardId: string,
@@ -148,6 +161,7 @@ const updateBenefitInCards = (
 export const useCardStore = create<CardStoreState & CardStoreActions>()((set, get) => ({
   cards: [],
   settings: { ...DEFAULT_SETTINGS },
+  sharedBenefitNotes: {},
   now: new Date(),
 
   addCard: (card) => {
@@ -208,6 +222,22 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
           note: value,
         })),
       };
+    });
+  },
+
+  setSharedBenefitNote: (templateBenefitId, note) => {
+    const trimmed = note.trim();
+    const value = trimmed === "" ? undefined : trimmed.slice(0, NOTE_MAX_LENGTH);
+    set((state) => {
+      const existing = state.sharedBenefitNotes;
+      if (value === undefined) {
+        if (!(templateBenefitId in existing)) return state;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { [templateBenefitId]: _omit, ...rest } = existing;
+        return { sharedBenefitNotes: rest };
+      }
+      if (existing[templateBenefitId] === value) return state;
+      return { sharedBenefitNotes: { ...existing, [templateBenefitId]: value } };
     });
   },
 
@@ -591,8 +621,8 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
   },
 
   exportData: () => {
-    const { cards, settings } = get();
-    const data: AppData = { version: 1, cards, settings };
+    const { cards, settings, sharedBenefitNotes } = get();
+    const data: AppData = { version: 1, cards, settings, sharedBenefitNotes };
     return JSON.stringify(data);
   },
 
@@ -626,8 +656,23 @@ export const useCardStore = create<CardStoreState & CardStoreActions>()((set, ge
     // consumers don't have to virtually compute forward chains. Idempotent.
     const materialized = materializeSubscriptionPropagation(synced, todayDate);
 
+    // Shared generic notes: use the stored map when present & valid; otherwise
+    // (absent or malformed) rebuild it from any per-benefit notes and strip
+    // those notes off template benefits so there's a single source of truth.
+    const rawShared = data.sharedBenefitNotes;
+    let cardsForState = materialized;
+    let sharedBenefitNotes: Record<string, string>;
+    if (isStringRecord(rawShared)) {
+      sharedBenefitNotes = rawShared;
+    } else {
+      const mig = migrateSharedBenefitNotes(materialized);
+      cardsForState = mig.cards;
+      sharedBenefitNotes = mig.sharedBenefitNotes;
+    }
+
     set({
-      cards: materialized,
+      cards: cardsForState,
+      sharedBenefitNotes,
       // Merge onto defaults so imports from older versions don't leave
       // newly-added fields (e.g. theme) undefined.
       settings: {

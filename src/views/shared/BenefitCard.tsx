@@ -8,6 +8,7 @@ import { useCardStore } from "../../stores/useCardStore";
 import { BenefitUsagePrompt } from "./BenefitUsagePrompt";
 import { NoteEditor } from "./NoteEditor";
 import { currentCycleKey } from "../../utils/cycleKey";
+import { resolveGenericNote } from "../../utils/benefitNote";
 import { roundMoney, formatMoney } from "../../utils/money";
 import "./BenefitCard.css";
 
@@ -137,6 +138,7 @@ export const BenefitCard = ({
 }: BenefitCardProps) => {
   const today = useToday();
   const reminderDays = useCardStore((s) => s.settings.reminderDays);
+  const sharedBenefitNotes = useCardStore((s) => s.sharedBenefitNotes);
   const isUsed = cycleUsed ?? isBenefitUsedInPeriod(benefit, today, card.cardOpenDate);
   const availableValue = getAvailableValue(benefit, today);
   const displayValue = cycleRecord ? cycleRecord.actualValue : availableValue;
@@ -182,15 +184,18 @@ export const BenefitCard = ({
   const cycleNoteText =
     noteCycleKey !== null ? (benefit.cycleNotes?.[noteCycleKey] ?? null) : null;
   const hasCycleNote = cycleNoteText !== null;
-  const hasGenericNote = !!benefit.note;
+  // Generic note is shared across cards with the same templateBenefitId;
+  // resolve it through the store map (falls back to benefit.note for customs).
+  const genericNoteText = resolveGenericNote(benefit, sharedBenefitNotes);
+  const hasGenericNote = genericNoteText !== "";
   const hasAnyNote = hasCycleNote || hasGenericNote;
   // Cycle note takes preview precedence (more time-sensitive). Fall back to
   // the generic note. Null when no note exists at all.
   const notePreview: { kind: "cycle" | "generic"; text: string } | null =
     cycleNoteText !== null
       ? { kind: "cycle", text: cycleNoteText }
-      : benefit.note
-        ? { kind: "generic", text: benefit.note }
+      : hasGenericNote
+        ? { kind: "generic", text: genericNoteText }
         : null;
   const menuRef = useRef<HTMLDivElement>(null);
   const dateRequired = DATE_REQUIRED_RESET_TYPES.has(benefit.resetType);

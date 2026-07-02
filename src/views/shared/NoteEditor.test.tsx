@@ -144,4 +144,36 @@ describe("NoteEditor", () => {
     );
     expect(screen.queryByRole("button", { name: /查看历史周期备注/ })).not.toBeInTheDocument();
   });
+
+  describe("shared generic notes (template benefits)", () => {
+    it("shows the '同类卡通用' hint and pre-fills from the shared map", () => {
+      useCardStore.setState({
+        sharedBenefitNotes: { "amex_aspire.resort_h1": "book FHR" },
+      });
+      const tmpl = makeBenefit({ templateBenefitId: "amex_aspire.resort_h1" });
+      render(<NoteEditor benefit={tmpl} card={card} onClose={() => {}} />);
+      expect(screen.getByText(/同类卡通用/)).toBeInTheDocument();
+      const [, genericTa] = screen.getAllByRole("textbox");
+      expect(genericTa).toHaveValue("book FHR");
+    });
+
+    it("saves the generic note to the shared map, not to benefit.note", () => {
+      useCardStore.setState({ sharedBenefitNotes: {} });
+      const tmpl = makeBenefit({ id: "shared-b", templateBenefitId: "amex_aspire.resort_h1" });
+      useCardStore.getState().addBenefit(card.id, tmpl);
+      render(<NoteEditor benefit={tmpl} card={card} onClose={() => {}} />);
+      const [, genericTa] = screen.getAllByRole("textbox");
+      fireEvent.change(genericTa, { target: { value: "book early" } });
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+      expect(useCardStore.getState().sharedBenefitNotes["amex_aspire.resort_h1"]).toBe("book early");
+      const saved = useCardStore.getState().cards[0].benefits.find((b) => b.id === "shared-b");
+      expect(saved?.note).toBeUndefined();
+    });
+
+    it("does not show the shared hint for custom benefits", () => {
+      render(<NoteEditor benefit={makeBenefit()} card={card} onClose={() => {}} />);
+      expect(screen.queryByText(/同类卡通用/)).not.toBeInTheDocument();
+    });
+  });
 });

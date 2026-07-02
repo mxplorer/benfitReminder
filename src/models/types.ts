@@ -137,6 +137,10 @@ export interface AppData {
   version: number;
   cards: CreditCard[];
   settings: AppSettings;
+  /** Generic ("通用") notes shared across all cards that carry a benefit with
+   * the same `templateBenefitId`. Keyed by `templateBenefitId`. Optional so
+   * data files written before this feature load without it (see migration). */
+  sharedBenefitNotes?: Record<string, string>;
 }
 
 // --- Display name ---

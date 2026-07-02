@@ -294,6 +294,7 @@ describe("BenefitCard", () => {
   describe("note icon", () => {
     beforeEach(() => {
       vi.setSystemTime(new Date("2026-05-12T12:00:00"));
+      useCardStore.setState({ sharedBenefitNotes: {} });
       useCardStore.getState().recalculate();
     });
 
@@ -311,6 +312,28 @@ describe("BenefitCard", () => {
       render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
       const btn = screen.getByRole("button", { name: "备注（已有内容）" });
       expect(btn).toHaveClass("benefit-card__note-btn--has-content");
+    });
+
+    it("renders filled icon + preview from the shared map for a template benefit", () => {
+      useCardStore.setState({
+        sharedBenefitNotes: { "amex_aspire.resort_h1": "book FHR" },
+      });
+      const benefit = makeBenefit({ templateBenefitId: "amex_aspire.resort_h1" });
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      expect(screen.getByRole("button", { name: "备注（已有内容）" })).toHaveClass(
+        "benefit-card__note-btn--has-content",
+      );
+      expect(screen.getByRole("button", { name: /备注：book FHR/ })).toHaveTextContent("book FHR");
+    });
+
+    it("ignores stale benefit.note for a template benefit (shared map wins)", () => {
+      useCardStore.setState({ sharedBenefitNotes: {} });
+      const benefit = makeBenefit({ templateBenefitId: "amex_aspire.resort_h1", note: "stale" });
+      render(<BenefitCard benefit={benefit} card={makeCard()} onToggleUsage={() => {}} />);
+      // No shared entry → no note shown, even though benefit.note is set.
+      expect(screen.getByRole("button", { name: "备注" })).not.toHaveClass(
+        "benefit-card__note-btn--has-content",
+      );
     });
 
     it("renders the icon as filled when a current-cycle note exists", () => {

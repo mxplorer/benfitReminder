@@ -10,6 +10,7 @@ import {
   cycleKeyLabel,
   cycleKeySortValue,
 } from "../../utils/cycleKey";
+import { resolveGenericNote, sharedNoteKey } from "../../utils/benefitNote";
 import "./NoteEditor.css";
 
 interface NoteEditorProps {
@@ -37,7 +38,10 @@ const COUNTER_THRESHOLD = Math.floor(NOTE_MAX_LENGTH * 0.8);
 export const NoteEditor = ({ benefit, card, anchorRef, onClose }: NoteEditorProps) => {
   const today = useToday();
   const setBenefitNote = useCardStore((s) => s.setBenefitNote);
+  const setSharedBenefitNote = useCardStore((s) => s.setSharedBenefitNote);
+  const sharedBenefitNotes = useCardStore((s) => s.sharedBenefitNotes);
   const setBenefitCycleNote = useCardStore((s) => s.setBenefitCycleNote);
+  const isShared = sharedNoteKey(benefit) !== null;
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const cycleKey = useMemo(
@@ -47,7 +51,7 @@ export const NoteEditor = ({ benefit, card, anchorRef, onClose }: NoteEditorProp
   const showCycle = showsCycleSection(benefit) && cycleKey !== null;
 
   const initialCycleValue = (cycleKey && benefit.cycleNotes?.[cycleKey]) ?? "";
-  const initialGenericValue = benefit.note ?? "";
+  const initialGenericValue = resolveGenericNote(benefit, sharedBenefitNotes);
 
   const [cycleDraft, setCycleDraft] = useState(initialCycleValue);
   const [genericDraft, setGenericDraft] = useState(initialGenericValue);
@@ -118,7 +122,12 @@ export const NoteEditor = ({ benefit, card, anchorRef, onClose }: NoteEditorProp
       setBenefitCycleNote(card.id, benefit.id, cycleKey, cycleDraft);
     }
     if (genericDraft !== initialGenericValue) {
-      setBenefitNote(card.id, benefit.id, genericDraft);
+      const key = sharedNoteKey(benefit);
+      if (key !== null) {
+        setSharedBenefitNote(key, genericDraft);
+      } else {
+        setBenefitNote(card.id, benefit.id, genericDraft);
+      }
     }
     onClose();
   };
@@ -173,6 +182,7 @@ export const NoteEditor = ({ benefit, card, anchorRef, onClose }: NoteEditorProp
       <section className="note-popover__section">
         <div className="note-popover__label">
           <span>通用备注</span>
+          {isShared && <span className="note-popover__label-sub">同类卡通用</span>}
         </div>
         <textarea
           className="note-popover__textarea"

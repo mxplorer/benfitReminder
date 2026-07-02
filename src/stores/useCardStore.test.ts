@@ -32,7 +32,11 @@ const makeCard = (overrides: Partial<CreditCard> = {}): CreditCard => ({
 
 describe("useCardStore", () => {
   beforeEach(() => {
-    useCardStore.setState({ cards: [], settings: useCardStore.getState().settings });
+    useCardStore.setState({
+      cards: [],
+      settings: useCardStore.getState().settings,
+      sharedBenefitNotes: {},
+    });
     useCardTypeStore.getState().reset();
   });
 
@@ -130,6 +134,132 @@ describe("useCardStore", () => {
       const before = useCardStore.getState().cards;
       useCardStore.getState().setBenefitNote("card-1", "nope", "x");
       expect(useCardStore.getState().cards).toBe(before);
+    });
+  });
+
+  describe("setSharedBenefitNote", () => {
+    it("sets a shared note keyed by templateBenefitId", () => {
+      useCardStore.getState().setSharedBenefitNote("amex_aspire.resort_h1", "  book FHR  ");
+      expect(useCardStore.getState().sharedBenefitNotes["amex_aspire.resort_h1"]).toBe("book FHR");
+    });
+
+    it("updates an existing shared note", () => {
+      useCardStore.getState().setSharedBenefitNote("k", "first");
+      useCardStore.getState().setSharedBenefitNote("k", "second");
+      expect(useCardStore.getState().sharedBenefitNotes["k"]).toBe("second");
+    });
+
+    it("clears the shared note when value is empty after trim", () => {
+      useCardStore.getState().setSharedBenefitNote("k", "x");
+      useCardStore.getState().setSharedBenefitNote("k", "   ");
+      expect("k" in useCardStore.getState().sharedBenefitNotes).toBe(false);
+    });
+
+    it("truncates input longer than 500 chars", () => {
+      useCardStore.getState().setSharedBenefitNote("k", "a".repeat(700));
+      expect(useCardStore.getState().sharedBenefitNotes["k"].length).toBe(500);
+    });
+
+    it("is a no-op (same reference) when clearing a missing key", () => {
+      const before = useCardStore.getState().sharedBenefitNotes;
+      useCardStore.getState().setSharedBenefitNote("absent", "  ");
+      expect(useCardStore.getState().sharedBenefitNotes).toBe(before);
+    });
+
+    it("shares a note across two cards carrying the same templateBenefitId", () => {
+      // Two Aspire cards, each with the same template benefit instance.
+      useCardStore.getState().addCard(
+        makeCard({
+          id: "aspire-1",
+          cardTypeSlug: "amex_aspire",
+          benefits: [makeBenefit({ id: "a1b", templateBenefitId: "amex_aspire.resort_h1" })],
+        }),
+      );
+      useCardStore.getState().addCard(
+        makeCard({
+          id: "aspire-2",
+          cardTypeSlug: "amex_aspire",
+          benefits: [makeBenefit({ id: "a2b", templateBenefitId: "amex_aspire.resort_h1" })],
+        }),
+      );
+      useCardStore.getState().setSharedBenefitNote("amex_aspire.resort_h1", "book FHR early");
+      // Both cards resolve the same shared note via the store map.
+      const shared = useCardStore.getState().sharedBenefitNotes;
+      expect(shared["amex_aspire.resort_h1"]).toBe("book FHR early");
+    });
+  });
+
+  describe("shared benefit notes persistence", () => {
+    it("round-trips sharedBenefitNotes through export → import", () => {
+      useCardStore.getState().addCard(
+        makeCard({
+          benefits: [makeBenefit({ id: "b1", templateBenefitId: "amex_aspire.resort_h1" })],
+        }),
+      );
+      useCardStore.getState().setSharedBenefitNote("amex_aspire.resort_h1", "book FHR");
+      const json = useCardStore.getState().exportData();
+
+      useCardStore.setState({ cards: [], sharedBenefitNotes: {} });
+      useCardStore.getState().importData(json);
+      expect(useCardStore.getState().sharedBenefitNotes["amex_aspire.resort_h1"]).toBe("book FHR");
+    });
+
+    it("migrates legacy per-benefit notes into the shared map when the field is absent", () => {
+      const legacy = JSON.stringify({
+        version: 1,
+        settings: useCardStore.getState().settings,
+        cards: [
+          {
+            ...makeCard({
+              benefits: [
+                makeBenefit({ id: "b1", templateBenefitId: "amex_aspire.resort_h1", note: "book FHR" }),
+              ],
+            }),
+          },
+        ],
+        // no sharedBenefitNotes field
+      });
+      useCardStore.getState().importData(legacy);
+      expect(useCardStore.getState().sharedBenefitNotes["amex_aspire.resort_h1"]).toBe("book FHR");
+      // The per-benefit note is stripped so there's a single source of truth.
+      expect(useCardStore.getState().cards[0].benefits[0].note).toBeUndefined();
+    });
+
+    it("rebuilds from benefit notes when sharedBenefitNotes is malformed", () => {
+      const bad = JSON.stringify({
+        version: 1,
+        settings: useCardStore.getState().settings,
+        sharedBenefitNotes: [1, 2, 3], // not a string record
+        cards: [
+          {
+            ...makeCard({
+              benefits: [
+                makeBenefit({ id: "b1", templateBenefitId: "amex_aspire.resort_h1", note: "recovered" }),
+              ],
+            }),
+          },
+        ],
+      });
+      useCardStore.getState().importData(bad);
+      expect(useCardStore.getState().sharedBenefitNotes["amex_aspire.resort_h1"]).toBe("recovered");
+    });
+
+    it("keeps a valid sharedBenefitNotes map and does not strip custom notes", () => {
+      const json = JSON.stringify({
+        version: 1,
+        settings: useCardStore.getState().settings,
+        sharedBenefitNotes: { "amex_aspire.resort_h1": "kept" },
+        cards: [
+          {
+            ...makeCard({
+              benefits: [makeBenefit({ id: "custom", note: "custom note" })],
+            }),
+          },
+        ],
+      });
+      useCardStore.getState().importData(json);
+      expect(useCardStore.getState().sharedBenefitNotes["amex_aspire.resort_h1"]).toBe("kept");
+      expect(useCardStore.getState().cards[0].benefits[0].note).toBe("custom note");
     });
   });
 
@@ -1049,7 +1179,15 @@ describe("useCardStore", () => {
       });
     });
 
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it("adds a record for unused cycle with cycleStart date when today outside cycle", () => {
+      // Pin the clock outside the Q3 cycle so the "today outside cycle" branch
+      // is deterministic (otherwise the record's usedDate tracks wall-clock).
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-15T12:00:00"));
       useCardStore
         .getState()
         .setBenefitCycleUsed("c1", "b1", "2026-07-01", "2026-09-30", true, { actualValue: 90 });
