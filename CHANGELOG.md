@@ -4,6 +4,51 @@ All notable changes to Credit Card Benefits Tracker are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] — 2026-07-18
+
+Benefit notes (generic + per-cycle), money-precision fixes, and a Chase
+Sapphire Preferred template refresh.
+
+### Added
+
+**Benefit notes**
+- `note` (generic) and `cycleNotes` (per-cycle) fields on Benefit, with
+  `setBenefitNote` / `setBenefitCycleNote` store actions. Both survive the
+  JSON save/load round-trip.
+- 📝 icon on BenefitCard opens the NoteEditor — a portal-mounted,
+  glass-style popover anchored under the button (flips above when the
+  viewport is tight, clamped horizontally) with two sections: generic note
+  and current-cycle note, plus a history of past cycle notes.
+- Inline single-line note preview on the card when notes exist — cycle note
+  preferred over generic; cycle previews carry an accent left border to
+  convey time-sensitivity. Char counter appears only at ≥80% of the limit.
+- Generic notes are shared across cards holding the same template benefit
+  (matched by `templateBenefitId`), so a note written on one card shows up
+  on the duplicate card too.
+- `cycleKeyLabel` + `cycleKeySortValue` helpers for rendering and sorting
+  cycle keys in the note history.
+
+**Templates**
+- Chase Sapphire Preferred refreshed to v3: hotel credit doubled
+  $50 → $100, added $120 Global Entry / TSA PreCheck (every 4 years) and a
+  one-time 1-year Apple TV promo (activate by 2026-12-31). Template version
+  2 → 3 so existing cards re-sync.
+
+### Fixed
+
+**Money precision**
+- `roundMoney` applied to `getAvailableValue` — kills IEEE-754 artifacts in
+  rollover math (9.99 − 2.69 no longer yields 7.300000000000001).
+- `formatMoney` rounds to cents before stringifying, with no forced
+  trailing zeros (895 → "895", 12.95 → "12.95"). Applied across CardDetail,
+  History, BenefitHistoryDialog, RolloverEditDialog, AggregatedBenefitCard,
+  BenefitCard, and the tray summary — $13.700000000000045 renders no more.
+
+**Tests**
+- Date-coupled store tests now pin the store's monotonic `now` (not just
+  `vi.setSystemTime`), so they no longer break when the real-world month
+  rolls over.
+
 ## [0.1.1] — 2026-04-26
 
 Cumulative-consumption model rewrite, sidebar / tray / dashboard / settings
