@@ -144,6 +144,88 @@ commit rules).
 
 ---
 
+## Cutting a release
+
+Releases are cut from the `release` branch and published to GitHub
+[Releases](../../releases) with the DMG attached. Requires the
+[GitHub CLI](https://cli.github.com/) (`gh auth login` once).
+
+### 1. Bump the version (four files)
+
+The version lives in **four** places — keep them in sync:
+
+| File | Field |
+|---|---|
+| `package.json` | `"version"` |
+| `src-tauri/tauri.conf.json` | `"version"` |
+| `src-tauri/Cargo.toml` | `version` |
+| `src-tauri/Cargo.lock` | the `credit-card-benefits` package entry |
+
+For `Cargo.lock`, edit `Cargo.toml` first, then refresh the lock entry:
+
+```sh
+cd src-tauri && cargo update -p credit-card-benefits --offline
+```
+
+### 2. Update `CHANGELOG.md`
+
+Add a `## [x.y.z] — YYYY-MM-DD` section at the top (Keep-a-Changelog
+style). This section becomes the GitHub release notes verbatim, so write
+it for end users.
+
+### 3. Test, commit, push
+
+```sh
+npm run test && npm run lint
+git add -A
+git commit -m "release: bump version to x.y.z, add changelog entry"
+git push origin release
+```
+
+### 4. Build the DMG
+
+```sh
+npm run tauri build
+# → src-tauri/target/release/bundle/dmg/Credit Card Benefits_x.y.z_aarch64.dmg
+# → src-tauri/target/release/bundle/macos/Credit Card Benefits.app
+```
+
+Takes a few minutes for the Rust release build. The DMG is
+self-contained; no runtime dependencies.
+
+### 5. Tag + publish the GitHub release
+
+```sh
+git tag vx.y.z
+git push origin vx.y.z
+
+# Extract the new changelog section as release notes
+awk '/^## \[x.y.z\]/{flag=1} /^## \[<previous version>\]/{flag=0} flag' \
+  CHANGELOG.md > /tmp/notes.md
+
+gh release create vx.y.z \
+  --title "vx.y.z — <one-line summary>" \
+  --notes-file /tmp/notes.md \
+  "src-tauri/target/release/bundle/dmg/Credit Card Benefits_x.y.z_aarch64.dmg"
+```
+
+### 6. Install locally
+
+```sh
+osascript -e 'tell application "Credit Card Benefits" to quit'
+rm -rf "/Applications/Credit Card Benefits.app"
+ditto "src-tauri/target/release/bundle/macos/Credit Card Benefits.app" \
+      "/Applications/Credit Card Benefits.app"
+open "/Applications/Credit Card Benefits.app"
+```
+
+`ditto` preserves extended attributes and code-signing metadata that
+`cp -R` can mangle. If the app icon changed, see the icon-cache note:
+`touch src-tauri/build.rs` before building and clear the macOS icon
+services cache, or the Dock keeps showing the stale icon.
+
+---
+
 ## Code signing & notarization (optional)
 
 The prebuilt DMG in Releases is **unsigned**. Users will hit the Gatekeeper
