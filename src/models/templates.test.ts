@@ -28,6 +28,23 @@ describe("BUILTIN_CARD_TYPES", () => {
     expect(fhr.rolloverMaxYears).toBe(2);
   });
 
+  it("Uber One credit resets per calendar year, not monthly (v3)", () => {
+    // Amex/Uber terms: "up to $120 in statement credits each calendar year",
+    // regardless of monthly vs annual membership billing. Was wrongly modeled
+    // as `subscription`, which cycles monthly ($120 available every month).
+    const platinum = findCard("amex_platinum");
+    expect(platinum.version).toBeGreaterThanOrEqual(3);
+
+    const uberOne = platinum.defaultBenefits.find(
+      (b) => b.templateBenefitId === "amex_platinum.uber_one",
+    );
+    expect(uberOne).toBeDefined();
+    if (!uberOne) return;
+    expect(uberOne.faceValue).toBe(120);
+    expect(uberOne.resetType).toBe("calendar");
+    expect(uberOne.resetConfig.period).toBe("annual");
+  });
+
   it("has Chase Sapphire Reserve with annual fee $795", () => {
     const reserve = findCard("chase_sapphire_reserve");
     expect(reserve.defaultAnnualFee).toBe(795);

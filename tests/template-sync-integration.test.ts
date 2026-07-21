@@ -45,7 +45,7 @@ describe("syncAllCardsWithTemplates — integration against real built-in templa
     const synced = result.cards[0];
 
     expect(synced).toBeDefined();
-    expect(synced.templateVersion).toBe(2);
+    expect(synced.templateVersion).toBe(template.version);
 
     // Legacy benefit kept as custom (no templateBenefitId assigned)
     const oldBenefit = synced.benefits.find((b) => b.id === "old-b");
@@ -63,7 +63,7 @@ describe("syncAllCardsWithTemplates — integration against real built-in templa
   it("does not modify an already-synced card", () => {
     const template = findCardType("amex_platinum");
 
-    // Build a fully synced card: benefits carry templateBenefitId, card has templateVersion: 1
+    // Build a fully synced card: benefits carry templateBenefitId, card is at the current template version
     const syncedBenefits: Benefit[] = template.defaultBenefits.map((tmpl) => ({
       id: crypto.randomUUID(),
       templateBenefitId: tmpl.templateBenefitId,
@@ -88,7 +88,7 @@ describe("syncAllCardsWithTemplates — integration against real built-in templa
       color: template.color,
       isEnabled: true,
       benefits: syncedBenefits,
-      templateVersion: 2,
+      templateVersion: template.version,
     };
 
     const result = syncAllCardsWithTemplates([syncedCard], [template], "2026-04-16");
